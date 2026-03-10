@@ -86,7 +86,7 @@ export function Login() {
               }`}
             >
               <div
-                className={`w-5 h-5 rounded-full bg-blue-600 transition-transform ${
+                className={`w-5 h-5 rounded-full bg-[#0E6F73] transition-transform ${
                   useBiometria
                     ? "translate-x-6"
                     : "translate-x-1"
@@ -98,7 +98,7 @@ export function Login() {
           {/* Botão Entrar */}
           <button
             type="submit"
-            className="w-full bg-white text-blue-600 rounded-2xl py-4 font-semibold hover:bg-blue-50 transition-colors"
+            className="w-full bg-white text-[#0E6F73] rounded-2xl py-4 font-semibold hover:bg-blue-50 transition-colors"
           >
             Entrar
           </button>

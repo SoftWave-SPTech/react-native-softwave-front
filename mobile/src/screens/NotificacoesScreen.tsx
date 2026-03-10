@@ -87,7 +87,7 @@ export function NotificacoesScreen({ onBack, onNavigate }: Props) {
         <View style={{ height: 80 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
-        <BottomNav activeScreen="Notificacoes" onNavigate={onNavigate} />
+        <BottomNav />
       </View>
     </View>
   );

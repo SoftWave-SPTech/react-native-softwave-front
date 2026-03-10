@@ -12,7 +12,8 @@ import {
   X,
   FileSpreadsheet,
   Database,
-  RefreshCw
+  RefreshCw,
+  FolderOpen
 } from 'lucide-react';
 
 type TipoImportacao = 'extrato' | 'transacoes' | 'clientes';
@@ -139,8 +140,8 @@ export function ImportacaoExportacao() {
         {/* Info ETL */}
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 text-white">
           <div className="flex items-center gap-3 mb-2">
-            <Database className="w-6 h-6" />
-            <h2 className="font-semibold text-lg">ETL de Dados</h2>
+            <FolderOpen className="w-6 h-6" />
+            <h2 className="font-semibold text-lg">Processamento de dados</h2>
           </div>
           <p className="text-blue-100 text-sm">
             Importe extratos bancários para reconciliação automática ou exporte seus dados para backup e análise.

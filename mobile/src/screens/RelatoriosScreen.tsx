@@ -73,7 +73,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         <View style={{ height: 80 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
-        <BottomNav activeScreen="Relatorios" onNavigate={onNavigate} />
+        <BottomNav />
       </View>
     </View>
   );

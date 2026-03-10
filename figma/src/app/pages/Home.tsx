@@ -28,8 +28,8 @@ export function Home() {
           <p className="text-blue-100 text-sm mb-2">Valor disponível</p>
           <h2 className="text-3xl font-bold mb-4">R$ 145.280,00</h2>
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-sm">Lucro líquido do mês: R$ 42.500,00</span>
+            {/* <TrendingUp className="w-4 h-4" /> */}
+            {/* <span className="text-sm">Lucro líquido do mês: R$ 42.500,00</span> */}
           </div>
         </div>
 
@@ -129,7 +129,7 @@ export function Home() {
         </div>
 
         {/* Ações Rápidas */}
-        <div>
+        {/* <div>
           <h3 className="font-semibold text-gray-900 mb-3">Ações Rápidas</h3>
           <div className="grid grid-cols-2 gap-3">
             <button 
@@ -172,7 +172,7 @@ export function Home() {
               <p className="font-medium text-gray-900 text-sm">Nova Transação</p>
             </button>
           </div>
-        </div>
+        </div> */}
 
         <div className="h-20"></div>
       </div>

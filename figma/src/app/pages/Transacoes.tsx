@@ -10,7 +10,7 @@ export function Transacoes() {
   const navigate = useNavigate();
   const [busca, setBusca] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState<'todas' | 'receita' | 'despesa'>('todas');
-  const [statusFiltro, setStatusFiltro] = useState<'todos' | 'pago' | 'pendente' | 'atrasado'>('todos');
+  const [statusFiltro, setStatusFiltro] = useState<'todos' | 'pago' | 'pendente' | 'em_dia' |'atrasado'>('todos');
 
   return (
     <div className="h-full bg-gray-50 overflow-y-auto">
@@ -117,9 +117,9 @@ export function Transacoes() {
                 Pendente
               </button>
               <button
-                onClick={() => setStatusFiltro('atrasado')}
+                onClick={() => setStatusFiltro('em_dia')}
                 className={`px-4 py-2 rounded-full text-sm ${
-                  statusFiltro === 'atrasado'
+                  statusFiltro === 'em_dia'
                     ? 'bg-blue-600 text-white'
                     : 'bg-blue-100 text-gray-600'
                 }`}

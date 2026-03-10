@@ -56,7 +56,7 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
         <View style={{ height: 80 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
-        <BottomNav activeScreen="Perfil" onNavigate={onNavigate} />
+        <BottomNav />
       </View>
     </View>
   );

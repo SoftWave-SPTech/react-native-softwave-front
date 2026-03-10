@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Header } from '../components/Header';
-import { Camera, Upload, CheckCircle } from 'lucide-react';
+import { Camera, Upload, CheckCircle, Repeat } from 'lucide-react';
 
 export function NovaTransacao() {
   const navigate = useNavigate();
@@ -18,6 +18,10 @@ export function NovaTransacao() {
   const [status, setStatus] = useState<'pago' | 'pendente'>('pendente');
   const [descricao, setDescricao] = useState('');
   const [mostrarSucesso, setMostrarSucesso] = useState(false);
+  
+  // Campos de recorrência
+  const [recorrencia, setRecorrencia] = useState('sem');
+  const [duracao, setDuracao] = useState('');
 
   // Preencher formulário se estiver editando
   useEffect(() => {
@@ -31,6 +35,8 @@ export function NovaTransacao() {
       setVencimento(transacaoParaEditar.vencimento || '');
       setStatus(transacaoParaEditar.status);
       setDescricao(transacaoParaEditar.descricao || '');
+      setRecorrencia(transacaoParaEditar.recorrencia || 'sem');
+      setDuracao(transacaoParaEditar.duracao || '');
     }
   }, [transacaoParaEditar]);
 
@@ -92,7 +98,9 @@ export function NovaTransacao() {
 
           {/* Valor */}
           <div className="bg-white rounded-2xl p-4">
-            <label className="text-sm text-gray-600 mb-2 block">Valor</label>
+            <label className="text-sm text-gray-600 mb-2 block">
+              Valor <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               value={valor}
@@ -105,7 +113,9 @@ export function NovaTransacao() {
 
           {/* Categoria */}
           <div className="bg-white rounded-2xl p-4">
-            <label className="text-sm text-gray-600 mb-2 block">Categoria</label>
+            <label className="text-sm text-gray-600 mb-2 block">
+              Categoria <span className="text-red-500">*</span>
+            </label>
             <select
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
@@ -123,13 +133,16 @@ export function NovaTransacao() {
 
           {/* Descrição */}
           <div className="bg-white rounded-2xl p-4">
-            <label className="text-sm text-gray-600 mb-2 block">Descrição</label>
+            <label className="text-sm text-gray-600 mb-2 block">
+              Descrição <span className="text-red-500">*</span>
+            </label>
             <textarea
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
               placeholder="Descreva os detalhes da transação"
               className="w-full outline-none text-gray-900 resize-none"
               rows={3}
+              required
             />
           </div>
 
@@ -142,6 +155,7 @@ export function NovaTransacao() {
               className="w-full outline-none text-gray-900"
             >
               <option value="">Selecione um cliente</option>
+              <option value="joao">Nenhum cliente vinculado</option>
               <option value="joao">João Silva</option>
               <option value="maria">Maria Santos</option>
               <option value="carlos">Carlos Oliveira</option>
@@ -163,7 +177,7 @@ export function NovaTransacao() {
           {/* Data e Vencimento */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white rounded-2xl p-4">
-              <label className="text-sm text-gray-600 mb-2 block">Data</label>
+              <label className="text-sm text-gray-600 mb-2 block">Data pagamento</label>
               <input
                 type="date"
                 value={data}
@@ -172,7 +186,7 @@ export function NovaTransacao() {
               />
             </div>
             <div className="bg-white rounded-2xl p-4">
-              <label className="text-sm text-gray-600 mb-2 block">Vencimento</label>
+              <label className="text-sm text-gray-600 mb-2 block">Vencimento<span className="text-red-500">*</span></label>
               <input
                 type="date"
                 value={vencimento}
@@ -184,7 +198,7 @@ export function NovaTransacao() {
 
           {/* Status */}
           <div className="bg-white rounded-2xl p-4">
-            <label className="text-sm text-gray-600 mb-2 block">Status</label>
+            <label className="text-sm text-gray-600 mb-2 block">Status<span className="text-red-500">*</span></label>
             <div className="flex gap-3">
               <button
                 type="button"
@@ -210,6 +224,57 @@ export function NovaTransacao() {
               </button>
             </div>
           </div>
+
+          {/* Recorrência - Apenas para Despesas */}
+          {tipo === 'despesa' && (
+            <div className="bg-white rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Repeat className="w-5 h-5 text-gray-600" />
+                <label className="text-sm text-gray-600">Recorrência<span className="text-red-500">*</span></label>
+              </div>
+              
+              <select
+                value={recorrencia}
+                onChange={(e) => setRecorrencia(e.target.value)}
+                className="w-full outline-none text-gray-900 bg-gray-50 rounded-lg p-3 border border-gray-200"
+              >
+                <option value="sem">Sem recorrência</option>
+                <option value="semanal">Semanal</option>
+                <option value="mensal">Mensal</option>
+                <option value="anual">Anual</option>
+              </select>
+
+              {recorrencia !== 'sem' && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <label className="text-sm text-gray-600 mb-2 block">
+                    Duração (número de repetições)
+                  </label>
+                  <input
+                    type="number"
+                    value={duracao}
+                    onChange={(e) => setDuracao(e.target.value)}
+                    placeholder="Ex: 12"
+                    min="1"
+                    max="120"
+                    className="w-full outline-none text-gray-900 bg-gray-50 rounded-lg p-3 border border-gray-200"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    {recorrencia === 'semanal' && duracao && `${duracao} semanas (${Math.round(parseInt(duracao) / 4)} meses)`}
+                    {recorrencia === 'mensal' && duracao && `${duracao} meses (${Math.round(parseInt(duracao) / 12)} anos)`}
+                    {recorrencia === 'anual' && duracao && `${duracao} anos`}
+                  </p>
+                </div>
+              )}
+              
+              {recorrencia !== 'sem' && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-700">
+                    <strong>💡 Dica:</strong> A despesa será criada automaticamente na frequência selecionada.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Upload Comprovante */}
           <div className="bg-white rounded-2xl p-4">
@@ -239,6 +304,9 @@ export function NovaTransacao() {
           >
             {transacaoParaEditar ? 'Salvar Alterações' : 'Salvar Transação'}
           </button>
+
+          {/* Espaçamento final */}
+          <div className="h-4"></div>
         </form>
       </div>
     </div>

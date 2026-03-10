@@ -6,7 +6,8 @@ import {
   ChevronDown,
   Calendar,
   Send,
-  Clock
+  Clock,
+  Filter
 } from 'lucide-react';
 
 interface HistoricoItem {
@@ -24,6 +25,7 @@ export function AssistenteIA() {
   const [dataFim, setDataFim] = useState('');
   const [respostaIA, setRespostaIA] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [filtroHistorico, setFiltroHistorico] = useState('todos');
 
   const tiposAnalise = [
     { value: 'receita-despesa', label: 'Receita vs Despesa' },
@@ -202,13 +204,33 @@ export function AssistenteIA() {
 
         {/* Histórico de Insights */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Clock className="w-5 h-5 text-gray-600" />
-            <h3 className="font-semibold text-gray-900">Histórico de Insights</h3>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-gray-600" />
+              <h3 className="font-semibold text-gray-900">Histórico de Insights</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-600" />
+              <select
+                value={filtroHistorico}
+                onChange={(e) => setFiltroHistorico(e.target.value)}
+                className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="todos">Todos</option>
+                <option value="Receita vs Despesa">Receita vs Despesa</option>
+                <option value="Receita por Categoria">Receita por Categoria</option>
+                <option value="Despesa por Categoria">Despesa por Categoria</option>
+                <option value="Maiores Clientes">Maiores Clientes</option>
+                <option value="Margem de Lucro">Margem de Lucro</option>
+                <option value="Inadimplência">Inadimplência</option>
+              </select>
+            </div>
           </div>
 
           <div className="space-y-3">
-            {historico.map((item) => (
+            {historico
+              .filter(item => filtroHistorico === 'todos' || item.tipo === filtroHistorico)
+              .map((item) => (
               <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">

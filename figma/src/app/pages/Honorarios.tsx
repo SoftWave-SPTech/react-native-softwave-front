@@ -4,12 +4,13 @@ import { Header } from '../components/Header';
 import { BarraProgresso } from '../components/BarraProgresso';
 import { TagStatus } from '../components/TagStatus';
 import { BottomNav } from '../components/BottomNav';
-import { Briefcase, FileText, ChevronDown, User } from 'lucide-react';
+import { Briefcase, FileText, ChevronDown, User, Check } from 'lucide-react';
 
 export function Honorarios() {
   const navigate = useNavigate();
   const [aba, setAba] = useState<'ativos' | 'encerrados'>('ativos');
   const [filtroCliente, setFiltroCliente] = useState('todos');
+  const [dropdownAberto, setDropdownAberto] = useState(false);
 
   const contratos = [
     {
@@ -21,7 +22,8 @@ export function Honorarios() {
       progresso: 60,
       vencimento: '15/03/2026',
       total: 'R$ 25.000,00',
-      pago: 'R$ 15.000,00'
+      pago: 'R$ 15.000,00',
+      reprovado: false
     },
     {
       id: 2,
@@ -32,7 +34,8 @@ export function Honorarios() {
       progresso: 33,
       vencimento: '20/02/2026',
       total: 'R$ 18.000,00',
-      pago: 'R$ 6.000,00'
+      pago: 'R$ 6.000,00',
+      reprovado: true
     },
     {
       id: 3,
@@ -43,13 +46,22 @@ export function Honorarios() {
       progresso: 75,
       vencimento: '10/02/2026',
       total: 'R$ 12.000,00',
-      pago: 'R$ 9.000,00'
+      pago: 'R$ 9.000,00',
+      reprovado: false
     }
   ];
+
+  // Extrair lista única de clientes
+  const listaClientes = ['todos', ...Array.from(new Set(contratos.map(c => c.cliente)))];
 
   const contratosFiltrados = filtroCliente === 'todos' 
     ? contratos 
     : contratos.filter(c => c.cliente === filtroCliente);
+
+  const handleSelecionarCliente = (cliente: string) => {
+    setFiltroCliente(cliente);
+    setDropdownAberto(false);
+  };
 
   return (
     <div className="h-full bg-gray-50 overflow-y-auto">
@@ -95,13 +107,53 @@ export function Honorarios() {
         {/* Filtro de Cliente */}
         <div className="relative">
           <button
-            className="flex items-center justify-between px-4 py-2 bg-white rounded-2xl shadow-sm text-gray-600"
-            onClick={() => setFiltroCliente(filtroCliente === 'todos' ? 'João Silva' : 'todos')}
+            className="w-full flex items-center justify-between px-4 py-2 bg-white rounded-2xl shadow-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            onClick={() => setDropdownAberto(!dropdownAberto)}
           >
-            <User className="w-5 h-5 mr-2" />
-            {filtroCliente === 'todos' ? 'Todos os Clientes' : filtroCliente}
-            <ChevronDown className="w-5 h-5 ml-2" />
+            <div className="flex items-center">
+              <User className="w-5 h-5 mr-2" />
+              <span className="font-medium">
+                {filtroCliente === 'todos' ? 'Todos os Clientes' : filtroCliente}
+              </span>
+            </div>
+            <ChevronDown className={`w-5 h-5 transition-transform ${dropdownAberto ? 'rotate-180' : ''}`} />
           </button>
+
+          {/* Dropdown Menu */}
+          {dropdownAberto && (
+            <>
+              {/* Overlay para fechar ao clicar fora */}
+              <div 
+                className="fixed inset-0 z-10" 
+                onClick={() => setDropdownAberto(false)}
+              />
+              
+              {/* Menu */}
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden z-20">
+                {listaClientes.map((cliente) => (
+                  <button
+                    key={cliente}
+                    onClick={() => handleSelecionarCliente(cliente)}
+                    className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
+                      filtroCliente === cliente
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <User className="w-4 h-4 mr-3 text-gray-400" />
+                      <span className="font-medium">
+                        {cliente === 'todos' ? 'Todos os Clientes' : cliente}
+                      </span>
+                    </div>
+                    {filtroCliente === cliente && (
+                      <Check className="w-5 h-5 text-blue-600" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Lista de Contratos */}
@@ -126,7 +178,14 @@ export function Honorarios() {
                     <p className="text-sm text-gray-500 mt-0.5">{contrato.tipoContrato}</p>
                   </div>
                 </div>
-                <TagStatus status={contrato.status} />
+                <div className="flex flex-col gap-2 items-end">
+                  <TagStatus status={contrato.status} />
+                  {contrato.reprovado && contrato.status === 'pendente' && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-medium">
+                      Reprovado
+                    </span>
+                  )}
+                </div>
               </div>
 
               <BarraProgresso percentage={contrato.progresso} />

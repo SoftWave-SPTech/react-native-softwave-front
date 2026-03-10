@@ -63,7 +63,7 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
         <View style={{ height: 80 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
-        <BottomNav activeScreen="PagamentosConferir" onNavigate={onNavigate} />
+        <BottomNav />
       </View>
 
       <Modal visible={!!selectedPagamento} transparent animationType="fade">

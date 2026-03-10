@@ -1,35 +1,34 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter, usePathname } from 'expo-router';
 
 type NavItem = {
-  id: string;
+  path: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   label: string;
 };
 
 const items: NavItem[] = [
-  { id: 'Home', icon: 'home', label: 'Home' },
-  { id: 'Transacoes', icon: 'receipt', label: 'Transações' },
-  { id: 'PagamentosConferir', icon: 'file-document', label: 'Pagamentos' },
-  { id: 'Honorarios', icon: 'briefcase', label: 'Honorários' },
-  { id: 'Relatorios', icon: 'chart-bar', label: 'Relatórios' },
+  { path: '/home',        icon: 'home',          label: 'Home' },
+  { path: '/transacoes',  icon: 'receipt',        label: 'Transações' },
+  { path: '/pagamentos',  icon: 'file-document',  label: 'Pagamentos' },
+  { path: '/honorarios',  icon: 'briefcase',      label: 'Honorários' },
+  { path: '/relatorios',  icon: 'chart-bar',      label: 'Relatórios' },
 ];
 
-type Props = {
-  activeScreen: string;
-  onNavigate: (screen: string) => void;
-};
+export function BottomNav() {
+  const router = useRouter();
+  const pathname = usePathname();
 
-export function BottomNav({ activeScreen, onNavigate }: Props) {
   return (
     <View style={styles.container}>
       {items.map((item) => {
-        const isActive = activeScreen === item.id;
+        const isActive = pathname === item.path;
         return (
           <Pressable
-            key={item.id}
-            onPress={() => onNavigate(item.id)}
+            key={item.path}
+            onPress={() => router.navigate(item.path as any)}
             style={styles.item}
           >
             <MaterialCommunityIcons

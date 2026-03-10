@@ -68,7 +68,7 @@ export function HonorariosScreen({ onBack, onNavigate }: Props) {
         <View style={{ height: 80 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
-        <BottomNav activeScreen="Honorarios" onNavigate={(s) => onNavigate(s)} />
+        <BottomNav />
       </View>
     </View>
   );

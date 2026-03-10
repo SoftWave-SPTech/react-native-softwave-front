@@ -10,7 +10,7 @@ import {
   Activity,
   Calendar,
   Sparkles,
-  Database,
+  FolderOpen,
   Upload,
   Download
 } from 'lucide-react';
@@ -140,16 +140,6 @@ export function Relatorios() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setPeriodo('semana')}
-              className={`px-4 py-2 rounded-lg text-sm ${
-                periodo === 'semana'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              Semana
-            </button>
-            <button
               onClick={() => setPeriodo('mes')}
               className={`px-4 py-2 rounded-lg text-sm ${
                 periodo === 'mes'
@@ -158,6 +148,16 @@ export function Relatorios() {
               }`}
             >
               Mês
+            </button>
+            <button
+              onClick={() => setPeriodo('semana')}
+              className={`px-4 py-2 rounded-lg text-sm ${
+                periodo === 'semestre'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              Semestre
             </button>
             <button
               onClick={() => setPeriodo('ano')}
@@ -228,11 +228,11 @@ export function Relatorios() {
         >
           <div className="flex items-center gap-3">
             <div className="p-3 bg-blue-50 rounded-xl">
-              <Database className="w-6 h-6 text-blue-600" />
+              <FolderOpen className="w-6 h-6 text-blue-600" />
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 mb-1">Importação & Exportação</h3>
-              <p className="text-sm text-gray-600">ETL de extratos bancários e dados</p>
+              <p className="text-sm text-gray-600">Extratos bancários e dados</p>
             </div>
             <div className="flex gap-1">
               <Upload className="w-5 h-5 text-blue-600" />

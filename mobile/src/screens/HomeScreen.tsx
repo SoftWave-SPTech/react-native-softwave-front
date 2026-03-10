@@ -143,7 +143,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
 
       <FAB onPress={() => onNavigate('NovaTransacao')} />
       <View style={styles.bottomNavWrap}>
-        <BottomNav activeScreen="Home" onNavigate={onNavigate} />
+        <BottomNav />
       </View>
     </View>
   );

@@ -10,11 +10,14 @@ import {
   Bell,
   LogOut,
   ChevronRight,
-  Camera
+  Camera,
+  Image,
+  X
 } from 'lucide-react';
 
 export function ClientePerfil() {
   const [notificacoesAtivas, setNotificacoesAtivas] = useState(true);
+  const [modalFoto, setModalFoto] = useState(false);
 
   const dadosPessoais = [
     { icon: User, label: 'Nome Completo', value: 'João Silva' },
@@ -29,6 +32,37 @@ export function ClientePerfil() {
     { icon: FileText, label: 'Documentos', action: () => {} },
   ];
 
+  const handleEscolherGaleria = () => {
+    // Simula seleção de galeria
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        console.log('Arquivo selecionado:', file.name);
+        setModalFoto(false);
+      }
+    };
+    input.click();
+  };
+
+  const handleAbrirCamera = () => {
+    // Simula abertura da câmera
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        console.log('Foto capturada:', file.name);
+        setModalFoto(false);
+      }
+    };
+    input.click();
+  };
+
   return (
     <div className="h-full bg-gray-50 overflow-y-auto pb-6">
       <Header title="Meu Perfil" showBack />
@@ -41,7 +75,10 @@ export function ClientePerfil() {
               <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-3xl font-bold text-white">JS</span>
               </div>
-              <button className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white">
+              <button 
+                onClick={() => setModalFoto(true)}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white hover:bg-blue-700 transition-colors"
+              >
                 <Camera className="w-4 h-4 text-white" />
               </button>
             </div>
@@ -159,6 +196,68 @@ export function ClientePerfil() {
           <span className="font-semibold">Sair da Conta</span>
         </button>
       </div>
+
+      {/* Modal de Escolha de Foto */}
+      {modalFoto && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-end justify-center z-50"
+          onClick={() => setModalFoto(false)}
+        >
+          <div 
+            className="bg-white rounded-t-3xl p-5 w-full max-w-[393px] animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900 text-lg">
+                Alterar Foto de Perfil
+              </h3>
+              <button
+                onClick={() => setModalFoto(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-4">
+              {/* Opção: Câmera */}
+              <button
+                onClick={handleAbrirCamera}
+                className="w-full flex items-center gap-4 p-4 bg-gray-50 hover:bg-gray-100 rounded-2xl transition-colors"
+              >
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Camera className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-semibold text-gray-900">Tirar Foto</p>
+                  <p className="text-sm text-gray-500">Usar câmera do dispositivo</p>
+                </div>
+              </button>
+
+              {/* Opção: Galeria */}
+              <button
+                onClick={handleEscolherGaleria}
+                className="w-full flex items-center gap-4 p-4 bg-gray-50 hover:bg-gray-100 rounded-2xl transition-colors"
+              >
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <Image className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-semibold text-gray-900">Escolher da Galeria</p>
+                  <p className="text-sm text-gray-500">Selecionar foto existente</p>
+                </div>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setModalFoto(false)}
+              className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-semibold transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -17,7 +17,8 @@ export function ClienteCobrancas() {
       status: 'pendente' as const,
       parcela: 4,
       totalParcelas: 5,
-      percentualPago: 60
+      percentualPago: 80,
+      reprovado: true
     },
     {
       id: 4,
@@ -25,9 +26,10 @@ export function ClienteCobrancas() {
       valor: 'R$ 7.000,00',
       vencimento: '15/04/2026',
       status: 'pendente' as const,
-      parcela: 5,
+      parcela: 2,
       totalParcelas: 5,
-      percentualPago: 60
+      percentualPago: 40,
+      reprovado: false
     },
     {
       id: 1,
@@ -35,9 +37,10 @@ export function ClienteCobrancas() {
       valor: 'R$ 6.000,00',
       vencimento: '15/01/2026',
       status: 'pago' as const,
-      parcela: 1,
+      parcela: 5,
       totalParcelas: 5,
-      percentualPago: 20
+      percentualPago: 100,
+      reprovado: false
     },
     {
       id: 2,
@@ -45,9 +48,10 @@ export function ClienteCobrancas() {
       valor: 'R$ 6.000,00',
       vencimento: '15/02/2026',
       status: 'pago' as const,
-      parcela: 2,
+      parcela: 5,
       totalParcelas: 5,
-      percentualPago: 40
+      percentualPago: 100,
+      reprovado: false
     },
   ];
 
@@ -104,7 +108,14 @@ export function ClienteCobrancas() {
                         Vencimento: {cobranca.vencimento}
                       </p>
                     </div>
-                    <TagStatus status={cobranca.status} />
+                    <div className="flex flex-col gap-2 items-end">
+                      <TagStatus status={cobranca.status} />
+                      {cobranca.reprovado && cobranca.status === 'pendente' && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-medium">
+                          ❌ Reprovado
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="text-xl font-semibold text-blue-600 mb-3">
                     {cobranca.valor}

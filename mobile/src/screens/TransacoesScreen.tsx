@@ -65,7 +65,7 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
       </ScrollView>
       <FAB onPress={() => onNavigate('NovaTransacao')} />
       <View style={styles.bottomNavWrap}>
-        <BottomNav activeScreen="Transacoes" onNavigate={(s) => onNavigate(s)} />
+        <BottomNav />
       </View>
     </View>
   );

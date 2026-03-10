@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Header } from '../components/Header';
-import { FileImage, Check, X, User, FileText } from 'lucide-react';
+import { FileImage, Check, X, User, FileText, CheckCircle } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 
 export function PagamentosConferir() {
   const [selectedPagamento, setSelectedPagamento] = useState<number | null>(null);
   const [modalRejeicao, setModalRejeicao] = useState<number | null>(null);
+  const [modalAprovacao, setModalAprovacao] = useState<number | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
+  const [sucessoAprovacao, setSucessoAprovacao] = useState(false);
 
   const pagamentos = [
     {
@@ -38,6 +40,7 @@ export function PagamentosConferir() {
   const handleConfirmar = (id: number) => {
     console.log('Confirmar pagamento', id);
     setSelectedPagamento(null);
+    setModalAprovacao(id);
   };
 
   const handleAbrirModalRejeicao = (id: number) => {
@@ -167,6 +170,33 @@ export function PagamentosConferir() {
                 className="flex-1 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Reprovar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Aprovação com Sucesso */}
+      {modalAprovacao && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-5 z-50"
+          onClick={() => setModalAprovacao(null)}
+        >
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-10 h-10 text-green-600" />
+              </div>
+              <h3 className="font-bold text-gray-900 text-lg mb-2">Pagamento Aprovado!</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                O pagamento foi aprovado e o cliente será notificado automaticamente.
+              </p>
+              
+              <button
+                onClick={() => setModalAprovacao(null)}
+                className="w-full py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium"
+              >
+                Concluir
               </button>
             </div>
           </div>
