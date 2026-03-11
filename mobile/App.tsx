@@ -70,9 +70,11 @@ export default function App() {
   if (screen === 'Login') {
     return (
       <LoginScreen
-        onLogin={() => navigate('Home')}
+        onLogin={async () => {
+          navigate('Home');
+          return { success: true };
+        }}
         onEsqueciSenha={() => navigate('EsqueciSenha')}
-        onClienteAcesso={() => navigate('ClienteHome')}
       />
     );
   }

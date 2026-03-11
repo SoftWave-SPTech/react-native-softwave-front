@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import logoImage from '../../assets/softwave-logo.png';
 
 type Props = {
   onLogin: (email: string, senha: string) => Promise<{ success: boolean; error?: string }>;
@@ -35,7 +36,8 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
         {/* Logo */}
         <View style={styles.logoContainer}>
           <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>SF</Text>
+            <Image source={logoImage} style={styles.logoImage} />
+            {/* <Text style={styles.logoText}></Text> */}
           </View>
           <Text style={styles.title}>SoftWave Finance</Text>
           <Text style={styles.subtitle}>Gestão financeira para advocacia</Text>
@@ -139,6 +141,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
+  },
+  logoImage: {
+    width: 136,
+    height: 136,
+    resizeMode: 'contain',
   },
   logoText: {
     fontSize: 30,
