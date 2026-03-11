@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type Props = {
@@ -9,7 +10,7 @@ type Props = {
 
 export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={['#2563eb', '#1e3a8a']} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           {onBack && (
@@ -66,12 +67,12 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
           <Text style={styles.btnText}>Minhas Cobranças</Text>
         </Pressable>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#2563eb' },
+  container: { flex: 1 },
   header: { paddingHorizontal: 20, paddingVertical: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { padding: 4 },
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 16, fontWeight: '600', color: '#2563eb' },
   content: { flex: 1, backgroundColor: '#f9fafb', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 24 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 24, marginBottom: 16 },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 24, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
   iconWrapGreen: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#dcfce7', alignItems: 'center', justifyContent: 'center' },
   iconWrapYellow: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#fef3c7', alignItems: 'center', justifyContent: 'center' },

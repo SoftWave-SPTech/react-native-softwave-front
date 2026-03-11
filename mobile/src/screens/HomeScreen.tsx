@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { CardKPI } from '../components/CardKPI';
@@ -24,14 +25,14 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Hero Card */}
-        <View style={styles.heroCard}>
+        <LinearGradient colors={['#3b82f6', '#374151']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
           <Text style={styles.heroLabel}>Valor disponível</Text>
           <Text style={styles.heroValue}>R$ 145.280,00</Text>
           <View style={styles.heroRow}>
             <MaterialCommunityIcons name="trending-up" size={16} color="#bfdbfe" />
             <Text style={styles.heroSubtext}>Lucro líquido do mês: R$ 42.500,00</Text>
           </View>
-        </View>
+        </LinearGradient>
 
         {/* KPIs Grid */}
         <View style={styles.kpiGrid}>
@@ -101,11 +102,20 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
               status="atrasado"
               onPress={() => onNavigate('DetalheTransacao', '3')}
             />
+            <CardTransacao
+              icon="credit-card"
+              title="Honorários - Consultoria Premium" 
+              subtitle="Carlos Oliveira"
+              value="R$ 8.000,00"
+              type="receita"
+              status="em-dia"
+              onPress={() => onNavigate('DetalheTransacao', '3')}
+            />
           </View>
         </View>
 
         {/* Ações Rápidas */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ações Rápidas</Text>
           <View style={styles.actionsGrid}>
             <Pressable style={styles.actionCard} onPress={() => onNavigate('Honorarios')}>
@@ -136,7 +146,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
               <Text style={styles.actionLabel}>Nova Transação</Text>
             </Pressable>
           </View>
-        </View>
+        </View> */}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -163,10 +173,14 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   heroCard: {
-    backgroundColor: '#3b82f6',
     borderRadius: 16,
     padding: 24,
     marginBottom: 16,
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 5,
   },
   heroLabel: {
     fontSize: 14,
@@ -205,6 +219,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
+    shadowColor: '#92400e',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   insightsIconWrap: {
     width: 40,
@@ -276,10 +295,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   actionCardBadge: {
     position: 'relative',

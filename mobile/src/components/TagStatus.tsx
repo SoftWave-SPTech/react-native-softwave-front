@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-type Status = 'pago' | 'pendente' | 'atrasado' | 'em-dia';
+type Status = 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado' | 'encerrado';
 
 type Props = {
   status: Status;
@@ -12,6 +12,8 @@ const statusConfig: Record<Status, { bg: string; text: string }> = {
   pendente: { bg: '#fef9c3', text: '#a16207' },
   atrasado: { bg: '#fee2e2', text: '#dc2626' },
   'em-dia': { bg: '#dbeafe', text: '#2563eb' },
+  cancelado: { bg: '#f3f4f6', text: '#6b7280' },
+  encerrado: { bg: '#f3f4f6', text: '#374151' },
 };
 
 const labels: Record<Status, string> = {
@@ -19,6 +21,8 @@ const labels: Record<Status, string> = {
   pendente: 'Pendente',
   atrasado: 'Atrasado',
   'em-dia': 'Em dia',
+  cancelado: 'Cancelado',
+  encerrado: 'Encerrado',
 };
 
 export function TagStatus({ status }: Props) {

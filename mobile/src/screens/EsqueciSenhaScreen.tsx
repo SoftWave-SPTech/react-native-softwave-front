@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type Etapa = 'email' | 'token' | 'novaSenha';
 
@@ -26,7 +27,7 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
   // Etapa 1: Email
   if (etapa === 'email') {
     return (
-      <View style={styles.container}>
+      <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
         <Pressable onPress={onBack} style={styles.header}>
           <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
           <Text style={styles.headerText}>Voltar</Text>
@@ -61,14 +62,14 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
             <Text><Text style={styles.linkText}>Lembrou sua senha? </Text><Text style={styles.linkBold}>Fazer login</Text></Text>
           </Pressable>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   // Etapa 2: Token
   if (etapa === 'token') {
     return (
-      <View style={styles.container}>
+      <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
         <Pressable onPress={() => setEtapa('email')} style={styles.header}>
           <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
           <Text style={styles.headerText}>Voltar</Text>
@@ -103,13 +104,13 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
             <Text style={styles.linkBold}>Reenviar</Text>
           </Pressable>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   // Etapa 3: Nova Senha
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
       <Pressable onPress={() => setEtapa('token')} style={styles.header}>
         <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
         <Text style={styles.headerText}>Voltar</Text>
@@ -140,12 +141,12 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
           <Text style={styles.buttonText}>Redefinir Senha</Text>
         </Pressable>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0E6F73' },
+  container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 24 },
   headerText: { color: '#fff', fontSize: 16 },
   content: { flex: 1, paddingHorizontal: 20, paddingTop: 24 },

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Lock, Mail, Fingerprint } from "lucide-react";
-import logoImage from "figma:asset/0ad24c7f890777b03da82d6439dab1886bc294ce.png";
+import logoImage from "../../../assets/icon2.png";
 
 export function Login() {
   const navigate = useNavigate();

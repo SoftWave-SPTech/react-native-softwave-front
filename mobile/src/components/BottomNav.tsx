@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@expo/vector-icons/Ionicons';
 import { useRouter, usePathname } from 'expo-router';
 
 type NavItem = {
@@ -12,9 +12,9 @@ type NavItem = {
 const items: NavItem[] = [
   { path: '/home',        icon: 'home',          label: 'Home' },
   { path: '/transacoes',  icon: 'receipt',        label: 'Transações' },
-  { path: '/pagamentos',  icon: 'file-document',  label: 'Pagamentos' },
+  { path: '/pagamentos',  icon: 'document-text-outline',  label: 'Pagamentos' },
   { path: '/honorarios',  icon: 'briefcase',      label: 'Honorários' },
-  { path: '/relatorios',  icon: 'chart-bar',      label: 'Relatórios' },
+  { path: '/relatorios',  icon: 'bar-chart-outline',      label: 'Relatórios' },
 ];
 
 export function BottomNav() {
@@ -50,12 +50,17 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: '#f3f4f6',
     paddingHorizontal: 20,
     paddingVertical: 12,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
   },
   item: {
     alignItems: 'center',

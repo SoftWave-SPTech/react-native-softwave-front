@@ -376,8 +376,8 @@ const styles = StyleSheet.create({
   actionCard: {
     flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 16,
     alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 2, elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   actionIcon: {
     width: 48, height: 48, borderRadius: 12,
@@ -391,8 +391,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16,
     marginBottom: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 2, elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   cardTitle: { fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 12 },
 

@@ -1,24 +1,38 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type Props = {
-  onLogin: () => void;
+  onLogin: (email: string, senha: string) => Promise<{ success: boolean; error?: string }>;
   onEsqueciSenha?: () => void;
-  onClienteAcesso?: () => void;
 };
 
-export function LoginScreen({ onLogin, onEsqueciSenha, onClienteAcesso }: Props) {
+export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState('');
 
-  const handleLogin = () => {
-    onLogin();
+  const handleLogin = async () => {
+    if (!email.trim() || !senha.trim()) {
+      setErro('Preencha o e-mail e a senha.');
+      return;
+    }
+    setErro('');
+    setCarregando(true);
+    const resultado = await onLogin(email, senha);
+    setCarregando(false);
+    if (!resultado.success) {
+      setErro(resultado.error ?? 'Erro ao realizar login.');
+    }
   };
 
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
       <View style={styles.card}>
-        {/* Logo / título */}
+        {/* Logo */}
         <View style={styles.logoContainer}>
           <View style={styles.logoCircle}>
             <Text style={styles.logoText}>SF</Text>
@@ -27,16 +41,17 @@ export function LoginScreen({ onLogin, onEsqueciSenha, onClienteAcesso }: Props)
           <Text style={styles.subtitle}>Gestão financeira para advocacia</Text>
         </View>
 
-        {/* Campo email */}
+        {/* Campo e-mail */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>E-mail</Text>
           <TextInput
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(v) => { setEmail(v); setErro(''); }}
             placeholder="seu@email.com"
-            placeholderTextColor="rgba(255,255,255,0.6)"
+            placeholderTextColor="rgba(255,255,255,0.5)"
             keyboardType="email-address"
             autoCapitalize="none"
+            autoCorrect={false}
             style={styles.input}
           />
         </View>
@@ -44,41 +59,66 @@ export function LoginScreen({ onLogin, onEsqueciSenha, onClienteAcesso }: Props)
         {/* Campo senha */}
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Senha</Text>
-          <TextInput
-            value={senha}
-            onChangeText={setSenha}
-            placeholder="••••••••"
-            placeholderTextColor="rgba(255,255,255,0.6)"
-            secureTextEntry
-            style={styles.input}
-          />
+          <View style={styles.senhaRow}>
+            <TextInput
+              value={senha}
+              onChangeText={(v) => { setSenha(v); setErro(''); }}
+              placeholder="••••••••"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              secureTextEntry={!senhaVisivel}
+              style={[styles.input, styles.senhaInput]}
+            />
+            <Pressable onPress={() => setSenhaVisivel((v) => !v)} style={styles.senhaOlho}>
+              <MaterialCommunityIcons
+                name={senhaVisivel ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color="rgba(255,255,255,0.7)"
+              />
+            </Pressable>
+          </View>
         </View>
 
-        {/* Botão entrar */}
-        <Pressable onPress={handleLogin} style={styles.button}>
-          <Text style={styles.buttonText}>Entrar</Text>
+        {/* Mensagem de erro */}
+        {erro ? (
+          <View style={styles.erroBox}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#fca5a5" />
+            <Text style={styles.erroText}>{erro}</Text>
+          </View>
+        ) : null}
+
+        {/* Botão Entrar */}
+        <Pressable
+          onPress={handleLogin}
+          style={[styles.button, carregando && styles.buttonLoading]}
+          disabled={carregando}
+        >
+          {carregando ? (
+            <ActivityIndicator color="#0E6F73" />
+          ) : (
+            <Text style={styles.buttonText}>Entrar</Text>
+          )}
         </Pressable>
 
-        {/* Link esqueci senha */}
-        <Pressable onPress={onEsqueciSenha ?? (() => {})} style={styles.linkContainer}>
+        {/* Esqueci minha senha */}
+        <Pressable onPress={onEsqueciSenha} style={styles.linkContainer}>
           <Text style={styles.linkText}>Esqueci minha senha</Text>
         </Pressable>
 
-        {/* Acesso Cliente */}
-        {onClienteAcesso && (
-          <Pressable onPress={onClienteAcesso} style={[styles.linkContainer, styles.clienteLink]}>
-            <Text style={styles.linkText}>Acesso para Cliente →</Text>
-          </Pressable>
-        )}
+        {/* Hint de credenciais (remover em produção) */}
+        <View style={styles.hintBox}>
+          <Text style={styles.hintTitle}>Credenciais de teste</Text>
+          <Text style={styles.hintText}>Advogado: advogado@softwave.com</Text>
+          <Text style={styles.hintText}>Cliente:    cliente@softwave.com</Text>
+          <Text style={styles.hintText}>Senha:      123456</Text>
+        </View>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0E6F73',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
@@ -92,16 +132,16 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logoCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   logoText: {
-    fontSize: 32,
+    fontSize: 30,
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
@@ -116,44 +156,88 @@ const styles = StyleSheet.create({
     color: '#CCF5F2',
   },
   fieldContainer: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
-    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     marginBottom: 12,
   },
   label: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
     marginBottom: 4,
+    fontWeight: '500',
+    letterSpacing: 0.5,
   },
   input: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
+  },
+  senhaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  senhaInput: {
+    flex: 1,
+  },
+  senhaOlho: {
+    paddingLeft: 8,
+  },
+  erroBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(239,68,68,0.2)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  erroText: {
+    color: '#fca5a5',
+    fontSize: 13,
+    flex: 1,
   },
   button: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
+  },
+  buttonLoading: {
+    opacity: 0.85,
   },
   buttonText: {
     color: '#0E6F73',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 16,
   },
   linkContainer: {
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 16,
   },
   linkText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: 14,
   },
-  clienteLink: {
-    marginTop: 24,
-    paddingTop: 24,
+  hintBox: {
+    marginTop: 32,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
+    borderTopColor: 'rgba(255,255,255,0.15)',
+    paddingTop: 16,
+    gap: 3,
+  },
+  hintTitle: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  hintText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+    fontFamily: 'monospace',
   },
 });

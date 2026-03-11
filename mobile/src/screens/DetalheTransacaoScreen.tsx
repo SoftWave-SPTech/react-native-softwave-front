@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, Modal, Alert } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { TagStatus } from '../components/TagStatus';
@@ -10,11 +11,13 @@ type Props = {
   onEditar: () => void;
 };
 
+type TransacaoStatus = 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
+
 const MOCK = {
   tipo: 'receita' as const,
   titulo: 'Honorários - Processo 1234',
   valor: 'R$ 5.000,00',
-  status: 'pago' as const,
+  status: 'pendente' as TransacaoStatus,
   categoria: 'Honorários',
   cliente: 'João Silva',
   processo: 'Processo 1234/2025',
@@ -30,7 +33,8 @@ const MOCK = {
 export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar }: Props) {
   const [modalComprovante, setModalComprovante] = useState(false);
   const [modalExcluir, setModalExcluir] = useState(false);
-  const t = MOCK;
+  const [status, setStatus] = useState<TransacaoStatus>(MOCK.status);
+  const t = { ...MOCK, status };
 
   const handleExcluir = () => {
     Alert.alert('Excluir Transação?', 'Esta ação não pode ser desfeita.', [
@@ -39,18 +43,36 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar }: Props)
     ]);
   };
 
+  const handleMarcarComoPago = () => {
+    Alert.alert('Confirmar Pagamento', 'Deseja marcar esta transação como paga?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Confirmar', onPress: () => setStatus('pago') },
+    ]);
+  };
+
+  const handleCancelarTransacao = () => {
+    Alert.alert('Cancelar Transação', 'Deseja realmente cancelar esta transação?', [
+      { text: 'Não', style: 'cancel' },
+      { text: 'Cancelar', style: 'destructive', onPress: () => setStatus('cancelado') },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       <Header title="Detalhes da Transação" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={[styles.heroCard, t.tipo === 'receita' ? styles.heroReceita : styles.heroDespesa]}>
+        <LinearGradient
+          colors={t.tipo === 'receita' ? ['#22c55e', '#16a34a'] : ['#ef4444', '#dc2626']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
           <View style={styles.heroHeader}>
             <Text style={styles.heroLabel}>{t.tipo === 'receita' ? 'Receita' : 'Despesa'}</Text>
             <TagStatus status={t.status} />
           </View>
           <Text style={styles.heroValue}>{t.valor}</Text>
           <Text style={styles.heroTitle}>{t.titulo}</Text>
-        </View>
+        </LinearGradient>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Informações</Text>
           <InfoRow icon="tag" label="Categoria" value={t.categoria} />
@@ -97,10 +119,10 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar }: Props)
             <Text style={styles.btnExcluirText}>Excluir</Text>
           </Pressable>
         </View>
-        {t.status === 'pendente' && (
+        {(t.status === 'pendente' || t.status === 'atrasado') && (
           <View style={styles.statusActions}>
-            <Pressable style={styles.btnPago}><MaterialCommunityIcons name="check-circle" size={22} color="#fff" /><Text style={styles.btnPagoText}>Marcar como Pago</Text></Pressable>
-            <Pressable style={styles.btnCancelar}><MaterialCommunityIcons name="close-circle-outline" size={22} color="#6b7280" /><Text style={styles.btnCancelarText}>Cancelar Transação</Text></Pressable>
+            <Pressable onPress={handleMarcarComoPago} style={styles.btnPago}><MaterialCommunityIcons name="check-circle" size={22} color="#fff" /><Text style={styles.btnPagoText}>Marcar como Pago</Text></Pressable>
+            <Pressable onPress={handleCancelarTransacao} style={styles.btnCancelar}><MaterialCommunityIcons name="close-circle-outline" size={22} color="#6b7280" /><Text style={styles.btnCancelarText}>Cancelar Transação</Text></Pressable>
           </View>
         )}
         <View style={{ height: 40 }} />
@@ -140,13 +162,11 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
   heroCard: { borderRadius: 16, padding: 24, marginBottom: 16 },
-  heroReceita: { backgroundColor: '#16a34a' },
-  heroDespesa: { backgroundColor: '#dc2626' },
   heroHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   heroLabel: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
   heroValue: { fontSize: 28, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
   heroTitle: { fontSize: 16, color: 'rgba(255,255,255,0.9)' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16 },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 16 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   infoIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },

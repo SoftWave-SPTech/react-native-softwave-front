@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Mail, ArrowLeft, CheckCircle, Lock, Key } from 'lucide-react';
-import logoImage from 'figma:asset/0ad24c7f890777b03da82d6439dab1886bc294ce.png';
+import logoImage from "../../../assets/icon2.png";
+
 
 type Etapa = 'email' | 'token' | 'novaSenha';
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Modal } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
@@ -14,6 +14,9 @@ type Props = {
 export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
   const [copiado, setCopiado] = useState(false);
   const [comprovanteAnexado, setComprovanteAnexado] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [arquivoSelecionado, setArquivoSelecionado] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
   const copiarPix = async () => {
     try {
@@ -23,6 +26,27 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
     } catch {
       Alert.alert('Erro', 'Não foi possível copiar o código.');
     }
+  };
+
+  const selecionarArquivo = (tipo: 'camera' | 'galeria') => {
+    const nomes = ['comprovante_pix.jpg', 'pagamento_03_2026.png', 'recibo_transferencia.pdf'];
+    const nome = nomes[Math.floor(Math.random() * nomes.length)];
+    setArquivoSelecionado(nome);
+  };
+
+  const enviarComprovante = () => {
+    setEnviando(true);
+    setTimeout(() => {
+      setEnviando(false);
+      setModalVisible(false);
+      setArquivoSelecionado(null);
+      setComprovanteAnexado(true);
+    }, 1500);
+  };
+
+  const fecharModal = () => {
+    setModalVisible(false);
+    setArquivoSelecionado(null);
   };
 
   return (
@@ -66,12 +90,14 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
           <Text style={styles.cardTitle}>Comprovante</Text>
           {comprovanteAnexado ? (
             <View style={styles.comprovanteOk}>
-              <MaterialCommunityIcons name="check-circle" size={48} color="#16a34a" />
-              <Text style={styles.comprovanteOkTitle}>Comprovante anexado!</Text>
+              <View style={styles.comprovanteOkIcon}>
+                <MaterialCommunityIcons name="check-circle" size={56} color="#16a34a" />
+              </View>
+              <Text style={styles.comprovanteOkTitle}>Comprovante enviado!</Text>
               <Text style={styles.comprovanteOkSub}>Aguardando confirmação do escritório</Text>
             </View>
           ) : (
-            <Pressable onPress={() => setComprovanteAnexado(true)} style={styles.btnAnexar}>
+            <Pressable onPress={() => setModalVisible(true)} style={styles.btnAnexar}>
               <MaterialCommunityIcons name="upload" size={22} color="#fff" />
               <Text style={styles.btnAnexarText}>Anexar Comprovante</Text>
             </Pressable>
@@ -79,11 +105,80 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
         </View>
         {comprovanteAnexado && (
           <View style={styles.alertBox}>
+            <MaterialCommunityIcons name="clock-outline" size={18} color="#92400e" />
             <Text style={styles.alertText}>Seu pagamento será confirmado em até 24 horas úteis</Text>
           </View>
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Modal de Comprovante */}
+      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={fecharModal}>
+        <Pressable style={styles.modalOverlay} onPress={fecharModal}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Anexar Comprovante</Text>
+              <Pressable onPress={fecharModal} style={styles.modalClose}>
+                <MaterialCommunityIcons name="close" size={22} color="#6b7280" />
+              </Pressable>
+            </View>
+            <Text style={styles.modalSubtitle}>Selecione como deseja adicionar o comprovante de pagamento</Text>
+
+            {!arquivoSelecionado ? (
+              <View style={styles.modalOpcoes}>
+                <Pressable onPress={() => selecionarArquivo('camera')} style={styles.opcaoBtn}>
+                  <View style={styles.opcaoIcon}>
+                    <MaterialCommunityIcons name="camera" size={32} color="#2563eb" />
+                  </View>
+                  <Text style={styles.opcaoLabel}>Tirar Foto</Text>
+                  <Text style={styles.opcaoSub}>Use a câmera do celular</Text>
+                </Pressable>
+                <Pressable onPress={() => selecionarArquivo('galeria')} style={styles.opcaoBtn}>
+                  <View style={styles.opcaoIcon}>
+                    <MaterialCommunityIcons name="image-multiple" size={32} color="#2563eb" />
+                  </View>
+                  <Text style={styles.opcaoLabel}>Escolher da Galeria</Text>
+                  <Text style={styles.opcaoSub}>Fotos ou arquivos PDF</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.arquivoWrap}>
+                <View style={styles.arquivoCard}>
+                  <View style={styles.arquivoIcon}>
+                    <MaterialCommunityIcons
+                      name={arquivoSelecionado.endsWith('.pdf') ? 'file-pdf-box' : 'file-image'}
+                      size={36}
+                      color="#2563eb"
+                    />
+                  </View>
+                  <View style={styles.arquivoInfo}>
+                    <Text style={styles.arquivoNome} numberOfLines={1}>{arquivoSelecionado}</Text>
+                    <Text style={styles.arquivoTamanho}>Pronto para envio</Text>
+                  </View>
+                  <Pressable onPress={() => setArquivoSelecionado(null)} style={styles.arquivoRemover}>
+                    <MaterialCommunityIcons name="close-circle" size={22} color="#ef4444" />
+                  </Pressable>
+                </View>
+                <Pressable
+                  onPress={enviarComprovante}
+                  style={[styles.btnEnviar, enviando && styles.btnEnviando]}
+                  disabled={enviando}
+                >
+                  <MaterialCommunityIcons
+                    name={enviando ? 'loading' : 'send'}
+                    size={22}
+                    color="#fff"
+                  />
+                  <Text style={styles.btnEnviarText}>
+                    {enviando ? 'Enviando...' : 'Enviar Comprovante'}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -92,11 +187,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
-  heroCard: { backgroundColor: '#2563eb', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 16 },
+  heroCard: { backgroundColor: '#2563eb', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 16, shadowColor: '#1e3a8a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 5 },
   heroLabel: { fontSize: 14, color: '#93c5fd', marginBottom: 8 },
   heroValor: { fontSize: 36, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
   heroVenc: { fontSize: 14, color: '#93c5fd' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16 },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 16 },
   qrPlaceholder: { height: 200, backgroundColor: '#f3f4f6', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   qrHint: { fontSize: 14, color: '#6b7280', textAlign: 'center' },
@@ -110,10 +205,34 @@ const styles = StyleSheet.create({
   dadosLabel: { fontSize: 14, color: '#6b7280' },
   dadosValue: { fontSize: 14, fontWeight: '500', color: '#111827' },
   comprovanteOk: { alignItems: 'center', paddingVertical: 24 },
-  comprovanteOkTitle: { fontSize: 16, fontWeight: '600', color: '#16a34a', marginTop: 12 },
-  comprovanteOkSub: { fontSize: 14, color: '#16a34a', marginTop: 4 },
+  comprovanteOkIcon: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#dcfce7', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  comprovanteOkTitle: { fontSize: 18, fontWeight: '700', color: '#15803d', marginTop: 12 },
+  comprovanteOkSub: { fontSize: 14, color: '#16a34a', marginTop: 6, textAlign: 'center' },
   btnAnexar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, backgroundColor: '#2563eb', borderRadius: 12 },
   btnAnexarText: { color: '#fff', fontSize: 16, fontWeight: '500' },
-  alertBox: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 16, padding: 16 },
-  alertText: { fontSize: 14, color: '#92400e', textAlign: 'center' },
+  alertBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 16, padding: 16, marginBottom: 16 },
+  alertText: { flex: 1, fontSize: 14, color: '#92400e' },
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingBottom: 40 },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', alignSelf: 'center', marginTop: 12, marginBottom: 8 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  modalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  modalSubtitle: { fontSize: 14, color: '#6b7280', marginBottom: 24 },
+  modalOpcoes: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  opcaoBtn: { flex: 1, backgroundColor: '#f0f9ff', borderWidth: 1.5, borderColor: '#bfdbfe', borderRadius: 16, alignItems: 'center', padding: 20, gap: 8 },
+  opcaoIcon: { width: 64, height: 64, borderRadius: 16, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
+  opcaoLabel: { fontSize: 15, fontWeight: '600', color: '#1e40af', textAlign: 'center' },
+  opcaoSub: { fontSize: 12, color: '#6b7280', textAlign: 'center' },
+  arquivoWrap: { gap: 16, marginBottom: 8 },
+  arquivoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0fdf4', borderWidth: 1.5, borderColor: '#bbf7d0', borderRadius: 14, padding: 14, gap: 12 },
+  arquivoIcon: { width: 52, height: 52, borderRadius: 12, backgroundColor: '#dcfce7', alignItems: 'center', justifyContent: 'center' },
+  arquivoInfo: { flex: 1 },
+  arquivoNome: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  arquivoTamanho: { fontSize: 12, color: '#16a34a', marginTop: 2 },
+  arquivoRemover: { padding: 4 },
+  btnEnviar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16, backgroundColor: '#2563eb', borderRadius: 14 },
+  btnEnviando: { backgroundColor: '#6b7280' },
+  btnEnviarText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

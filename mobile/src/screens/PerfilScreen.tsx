@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Alert, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
@@ -16,6 +16,7 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
   const [telefone, setTelefone] = useState('(11) 3456-7890');
   const [oab, setOab] = useState('OAB/SP 123.456');
   const [endereco, setEndereco] = useState('Av. Paulista, 1000 - São Paulo/SP');
+  const [modalFoto, setModalFoto] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja realmente sair do aplicativo?', [
@@ -29,7 +30,12 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
       <Header title="Meu Perfil" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.avatarCard}>
-          <View style={styles.avatar}><Text style={styles.avatarText}>SA</Text></View>
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatar}><Text style={styles.avatarText}>SA</Text></View>
+            <Pressable onPress={() => setModalFoto(true)} style={styles.cameraBtn}>
+              <MaterialCommunityIcons name="camera" size={16} color="#fff" />
+            </Pressable>
+          </View>
           <Text style={styles.nome}>{nome}</Text>
           <Text style={styles.oab}>{oab}</Text>
         </View>
@@ -58,6 +64,28 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
       <View style={styles.bottomNavWrap}>
         <BottomNav />
       </View>
+
+      <Modal visible={modalFoto} transparent animationType="slide">
+        <Pressable style={styles.modalOverlay} onPress={() => setModalFoto(false)}>
+          <View style={styles.bottomSheet} onStartShouldSetResponder={() => true}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Alterar Foto de Perfil</Text>
+            <Pressable style={styles.sheetOption} onPress={() => { setModalFoto(false); Alert.alert('Câmera', 'Funcionalidade de câmera disponível após permissões.'); }}>
+              <View style={styles.sheetOptionIcon}><MaterialCommunityIcons name="camera" size={24} color="#2563eb" /></View>
+              <Text style={styles.sheetOptionText}>Tirar Foto</Text>
+              <MaterialCommunityIcons name="chevron-right" size={22} color="#9ca3af" />
+            </Pressable>
+            <Pressable style={styles.sheetOption} onPress={() => { setModalFoto(false); Alert.alert('Galeria', 'Funcionalidade de galeria disponível após permissões.'); }}>
+              <View style={styles.sheetOptionIcon}><MaterialCommunityIcons name="image" size={24} color="#2563eb" /></View>
+              <Text style={styles.sheetOptionText}>Escolher da Galeria</Text>
+              <MaterialCommunityIcons name="chevron-right" size={22} color="#9ca3af" />
+            </Pressable>
+            <Pressable style={styles.sheetCancel} onPress={() => setModalFoto(false)}>
+              <Text style={styles.sheetCancelText}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -88,12 +116,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
-  avatarCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 16 },
-  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  avatarCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
+  avatarWrap: { position: 'relative', marginBottom: 16 },
+  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
+  cameraBtn: { position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: '#374151', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
   nome: { fontSize: 20, fontWeight: '600', color: '#111827', marginBottom: 4 },
   oab: { fontSize: 14, color: '#6b7280' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16 },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 16 },
   inputWrap: { marginBottom: 16 },
   inputLabel: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 8 },
@@ -107,4 +137,13 @@ const styles = StyleSheet.create({
   logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fee2e2', borderRadius: 12, paddingVertical: 14 },
   logoutBtnText: { fontSize: 16, fontWeight: '500', color: '#dc2626' },
   bottomNavWrap: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  bottomSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', alignSelf: 'center', marginBottom: 20 },
+  sheetTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 20, textAlign: 'center' },
+  sheetOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  sheetOptionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  sheetOptionText: { flex: 1, fontSize: 16, color: '#111827' },
+  sheetCancel: { marginTop: 16, paddingVertical: 14, backgroundColor: '#f3f4f6', borderRadius: 14, alignItems: 'center' },
+  sheetCancelText: { fontSize: 16, fontWeight: '500', color: '#6b7280' },
 });

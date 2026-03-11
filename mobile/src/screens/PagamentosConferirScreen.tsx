@@ -19,6 +19,8 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
   const [selectedPagamento, setSelectedPagamento] = useState<number | null>(null);
   const [modalRejeicao, setModalRejeicao] = useState<number | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
+  const [modalAprovacao, setModalAprovacao] = useState<number | null>(null);
+  const [aprovados, setAprovados] = useState<number[]>([]);
 
   const handleRejeitar = () => {
     if (motivoRejeicao.trim()) {
@@ -27,14 +29,26 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
     }
   };
 
+  const handleConfirmar = (id: number) => {
+    setSelectedPagamento(null);
+    setModalAprovacao(id);
+  };
+
+  const handleConcluirAprovacao = () => {
+    if (modalAprovacao) {
+      setAprovados((prev) => [...prev, modalAprovacao]);
+    }
+    setModalAprovacao(null);
+  };
+
   return (
     <View style={styles.container}>
       <Header title="Pagamentos a Conferir" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.alertBox}>
-          <Text style={styles.alertText}><Text style={styles.alertBold}>{PAGAMENTOS.length} pagamentos</Text> aguardando confirmação</Text>
+          <Text style={styles.alertText}><Text style={styles.alertBold}>{PAGAMENTOS.filter(p => !aprovados.includes(p.id)).length} pagamentos</Text> aguardando confirmação</Text>
         </View>
-        {PAGAMENTOS.map((p) => (
+        {PAGAMENTOS.filter(p => !aprovados.includes(p.id)).map((p) => (
           <View key={p.id} style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardIcon}><MaterialCommunityIcons name="file-image-outline" size={24} color="#2563eb" /></View>
@@ -53,7 +67,7 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
                 <MaterialCommunityIcons name="close" size={18} color="#dc2626" />
                 <Text style={styles.reprovarBtnText}>Reprovar</Text>
               </Pressable>
-              <Pressable style={styles.aprovarBtn}>
+              <Pressable onPress={() => handleConfirmar(p.id)} style={styles.aprovarBtn}>
                 <MaterialCommunityIcons name="check" size={18} color="#15803d" />
                 <Text style={styles.aprovarBtnText}>Aprovar</Text>
               </Pressable>
@@ -74,6 +88,21 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
             <Pressable onPress={() => setSelectedPagamento(null)} style={styles.modalFechar}><Text style={styles.modalFecharText}>Fechar</Text></Pressable>
           </View>
         </Pressable>
+      </Modal>
+
+      <Modal visible={!!modalAprovacao} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.sucessoIcon}>
+              <MaterialCommunityIcons name="check-circle" size={56} color="#16a34a" />
+            </View>
+            <Text style={styles.sucessoTitle}>Pagamento Aprovado!</Text>
+            <Text style={styles.sucessoSubtitle}>O cliente será notificado sobre a aprovação do pagamento.</Text>
+            <Pressable onPress={handleConcluirAprovacao} style={styles.btnConcluir}>
+              <Text style={styles.btnConcluirText}>Concluir</Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
 
       <Modal visible={!!modalRejeicao} transparent animationType="fade">
@@ -99,10 +128,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
-  alertBox: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 16, padding: 16, marginBottom: 16 },
+  alertBox: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#92400e', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
   alertText: { fontSize: 14, color: '#92400e' },
   alertBold: { fontWeight: '600' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12 },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardHeader: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   cardIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
   cardContent: { flex: 1 },
@@ -134,4 +163,9 @@ const styles = StyleSheet.create({
   modalFechar: { backgroundColor: '#111827', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   modalFecharText: { fontSize: 16, fontWeight: '500', color: '#fff' },
   comprovantePlaceholder: { height: 200, backgroundColor: '#f3f4f6', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  sucessoIcon: { alignItems: 'center', marginBottom: 16 },
+  sucessoTitle: { fontSize: 20, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 8 },
+  sucessoSubtitle: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 24 },
+  btnConcluir: { backgroundColor: '#2563eb', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  btnConcluirText: { fontSize: 16, fontWeight: '600', color: '#fff' },
 });

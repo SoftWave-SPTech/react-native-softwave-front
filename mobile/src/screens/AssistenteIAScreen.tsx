@@ -371,8 +371,8 @@ const styles = StyleSheet.create({
 
   historicoCard: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 2, elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   historicoTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   tipoTag: {
