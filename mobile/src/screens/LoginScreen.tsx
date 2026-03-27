@@ -91,7 +91,11 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
         {/* Botão Entrar */}
         <Pressable
           onPress={handleLogin}
-          style={[styles.button, carregando && styles.buttonLoading]}
+          style={({ pressed }) => [
+            styles.button,
+            carregando && styles.buttonLoading,
+            !carregando && pressed && styles.buttonPressed,
+          ]}
           disabled={carregando}
         >
           {carregando ? (
@@ -160,7 +164,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#CCF5F2',
+    color: '#ccfbf1',
   },
   fieldContainer: {
     backgroundColor: 'rgba(255,255,255,0.12)',
@@ -214,6 +218,9 @@ const styles = StyleSheet.create({
   },
   buttonLoading: {
     opacity: 0.85,
+  },
+  buttonPressed: {
+    backgroundColor: '#f0fdfa',
   },
   buttonText: {
     color: '#0E6F73',

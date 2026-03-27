@@ -18,9 +18,9 @@ interface Notificacao {
 const ICON_CONFIG: Record<Tipo, { icon: string; bg: string; color: string }> = {
   pagamento: { icon: 'cash', bg: '#dcfce7', color: '#16a34a' },
   alerta: { icon: 'alert-circle', bg: '#fee2e2', color: '#dc2626' },
-  sucesso: { icon: 'check-circle', bg: '#dbeafe', color: '#2563eb' },
-  lembrete: { icon: 'clock-outline', bg: '#fef3c7', color: '#d97706' },
-  insight: { icon: 'trending-up', bg: '#f3e8ff', color: '#7c3aed' },
+  sucesso: { icon: 'check-circle', bg: '#dcfce7', color: '#15803d' },
+  lembrete: { icon: 'clock-outline', bg: '#f1f5f9', color: '#475569' },
+  insight: { icon: 'trending-up', bg: '#ccfbf1', color: '#0d9488' },
 };
 
 type Props = {
@@ -99,15 +99,15 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   headerText: { fontSize: 14, color: '#6b7280' },
-  marcarTodas: { fontSize: 14, color: '#2563eb', fontWeight: '500' },
+  marcarTodas: { fontSize: 14, color: '#0d9488', fontWeight: '500' },
   card: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
-  cardNaoLida: { borderLeftWidth: 4, borderLeftColor: '#2563eb' },
+  cardNaoLida: { borderLeftWidth: 4, borderLeftColor: '#0d9488' },
   iconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   content: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
   titulo: { flex: 1, fontSize: 16, fontWeight: '500', color: '#111827' },
   tituloBold: { fontWeight: '700' },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563eb', marginTop: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#0d9488', marginTop: 6 },
   mensagem: { fontSize: 14, color: '#6b7280', marginBottom: 4 },
   data: { fontSize: 12, color: '#9ca3af' },
   empty: { alignItems: 'center', paddingVertical: 48 },

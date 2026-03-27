@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 16,
-    color: '#2563eb',
+    color: '#0d9488',
     fontWeight: '500',
   },
   content: {

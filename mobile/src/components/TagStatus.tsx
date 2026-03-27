@@ -11,7 +11,7 @@ const statusConfig: Record<Status, { bg: string; text: string }> = {
   pago: { bg: '#dcfce7', text: '#15803d' },
   pendente: { bg: '#fef9c3', text: '#a16207' },
   atrasado: { bg: '#fee2e2', text: '#dc2626' },
-  'em-dia': { bg: '#dbeafe', text: '#2563eb' },
+  'em-dia': { bg: '#ccfbf1', text: '#0f766e' },
   cancelado: { bg: '#f3f4f6', text: '#6b7280' },
   encerrado: { bg: '#f3f4f6', text: '#374151' },
 };

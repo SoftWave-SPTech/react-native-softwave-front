@@ -23,7 +23,7 @@ const DADOS_LINHA = {
 };
 
 const DADOS_PIZZA = [
-  { name: 'Honorários', value: 65000, color: '#2563eb', legendFontColor: '#374151', legendFontSize: 13 },
+  { name: 'Honorários', value: 65000, color: '#0d9488', legendFontColor: '#374151', legendFontSize: 13 },
   { name: 'Consultoria', value: 20000, color: '#16a34a', legendFontColor: '#374151', legendFontSize: 13 },
   { name: 'Outros', value: 15000, color: '#f59e0b', legendFontColor: '#374151', legendFontSize: 13 },
 ];
@@ -65,11 +65,11 @@ const INSIGHTS = {
 const CHART_CONFIG = {
   backgroundGradientFrom: '#fff',
   backgroundGradientTo: '#fff',
-  color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
+  color: (opacity = 1) => `rgba(13, 148, 136, ${opacity})`,
   labelColor: () => '#6b7280',
   strokeWidth: 2,
   decimalPlaces: 0,
-  propsForDots: { r: '4', strokeWidth: '2', stroke: '#2563eb' },
+  propsForDots: { r: '4', strokeWidth: '2', stroke: '#0d9488' },
 };
 
 export function RelatoriosScreen({ onBack, onNavigate }: Props) {
@@ -115,13 +115,13 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         </Pressable>
 
         <Pressable onPress={() => onNavigate('ImportacaoExportacao')} style={styles.etlCard}>
-          <View style={styles.etlIcon}><MaterialCommunityIcons name="folder-open" size={24} color="#2563eb" /></View>
+          <View style={styles.etlIcon}><MaterialCommunityIcons name="folder-open" size={24} color="#0d9488" /></View>
           <View style={styles.etlContent}>
             <Text style={styles.etlTitle}>Importação & Exportação</Text>
             <Text style={styles.etlSubtitle}>ETL de extratos bancários e dados</Text>
           </View>
-          <MaterialCommunityIcons name="upload" size={22} color="#2563eb" />
-          <MaterialCommunityIcons name="download" size={22} color="#2563eb" />
+          <MaterialCommunityIcons name="upload" size={22} color="#0d9488" />
+          <MaterialCommunityIcons name="download" size={22} color="#0d9488" />
         </Pressable>
 
         {/* LineChart — Receita vs Despesa */}
@@ -129,7 +129,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Receita vs Despesa</Text>
             <Pressable onPress={() => toggleInsight('linha')} style={[styles.insightBtn, insightAberto === 'linha' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'linha' ? '#fff' : '#f59e0b'} />
+              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'linha' ? '#0f766e' : '#0d9488'} />
             </Pressable>
           </View>
           <LineChart
@@ -154,7 +154,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Receita por Categoria</Text>
             <Pressable onPress={() => toggleInsight('pizza')} style={[styles.insightBtn, insightAberto === 'pizza' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'pizza' ? '#fff' : '#f59e0b'} />
+              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'pizza' ? '#0f766e' : '#0d9488'} />
             </Pressable>
           </View>
           <PieChart
@@ -176,7 +176,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Despesas por Mês</Text>
             <Pressable onPress={() => toggleInsight('barra')} style={[styles.insightBtn, insightAberto === 'barra' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'barra' ? '#fff' : '#f59e0b'} />
+              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'barra' ? '#0f766e' : '#0d9488'} />
             </Pressable>
           </View>
           <BarChart
@@ -197,7 +197,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           <View style={styles.chartHeader}>
             <Text style={styles.cardTitle}>Maiores Clientes</Text>
             <Pressable onPress={() => toggleInsight('maioresClientes')} style={[styles.insightBtn, insightAberto === 'maioresClientes' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'maioresClientes' ? '#fff' : '#f59e0b'} />
+              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'maioresClientes' ? '#0f766e' : '#0d9488'} />
             </Pressable>
             </View>
           {CLIENTES_RANKING.map((c, i) => (
@@ -223,7 +223,7 @@ function InsightCard({ bullets }: { bullets: string[] }) {
   return (
     <View style={styles.insightCard}>
       <View style={styles.insightHeader}>
-        <MaterialCommunityIcons name="creation" size={16} color="#92400e" />
+        <MaterialCommunityIcons name="creation" size={16} color="#0d9488" />
         <Text style={styles.insightTitle}>Análise IA</Text>
       </View>
       {bullets.map((b, i) => (
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   periodoLabel: { fontSize: 14, color: '#6b7280' },
   periodoRow: { flexDirection: 'row', gap: 8 },
   periodoChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: '#f3f4f6' },
-  periodoChipActive: { backgroundColor: '#2563eb' },
+  periodoChipActive: { backgroundColor: '#0d9488' },
   periodoChipText: { fontSize: 14, color: '#6b7280' },
   periodoChipTextActive: { color: '#fff' },
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
@@ -253,36 +253,36 @@ const styles = StyleSheet.create({
   chartCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   chartTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  insightBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#fffbeb', alignItems: 'center', justifyContent: 'center' },
-  insightBtnActive: { backgroundColor: '#f59e0b' },
+  insightBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#f0fdfa', alignItems: 'center', justifyContent: 'center' },
+  insightBtnActive: { backgroundColor: '#ccfbf1' },
   chart: { borderRadius: 8, marginLeft: -16 },
   legenda: { flexDirection: 'row', gap: 16, marginTop: 8 },
   legendaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendaDot: { width: 10, height: 10, borderRadius: 5 },
   legendaText: { fontSize: 13, color: '#6b7280' },
-  insightCard: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 12, padding: 12, marginTop: 12 },
+  insightCard: { backgroundColor: '#f0fdfa', borderWidth: 1, borderColor: '#99f6e4', borderRadius: 12, padding: 12, marginTop: 12 },
   insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  insightTitle: { fontSize: 14, fontWeight: '600', color: '#92400e' },
+  insightTitle: { fontSize: 14, fontWeight: '600', color: '#115e59' },
   insightRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
-  insightBullet: { fontSize: 14, color: '#92400e', lineHeight: 20 },
-  insightText: { flex: 1, fontSize: 13, color: '#78350f', lineHeight: 20 },
-  iaBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#7c3aed', borderRadius: 16, padding: 16, marginBottom: 16 },
+  insightBullet: { fontSize: 14, color: '#0d9488', lineHeight: 20 },
+  insightText: { flex: 1, fontSize: 13, color: '#334155', lineHeight: 20 },
+  iaBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0d9488', borderRadius: 16, padding: 16, marginBottom: 16 },
   iaIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   iaContent: { flex: 1 },
   iaTitle: { fontSize: 16, fontWeight: '600', color: '#fff', marginBottom: 4 },
   iaSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
   iaArrow: { fontSize: 24, color: '#fff' },
-  etlCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 2, borderColor: '#bfdbfe', borderRadius: 16, padding: 16, marginBottom: 16 },
-  etlIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  etlCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 2, borderColor: '#99f6e4', borderRadius: 16, padding: 16, marginBottom: 16 },
+  etlIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   etlContent: { flex: 1 },
   etlTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 4 },
   etlSubtitle: { fontSize: 14, color: '#6b7280' },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 16 },
   clienteRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  clienteRank: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  clienteRankText: { fontSize: 14, fontWeight: '600', color: '#2563eb' },
+  clienteRank: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  clienteRankText: { fontSize: 14, fontWeight: '600', color: '#0d9488' },
   clienteNome: { flex: 1, fontSize: 16, color: '#111827' },
-  clienteValor: { fontSize: 16, fontWeight: '600', color: '#2563eb' },
+  clienteValor: { fontSize: 16, fontWeight: '600', color: '#0d9488' },
   bottomNavWrap: { position: 'absolute', bottom: 0, left: 0, right: 0 },
 });

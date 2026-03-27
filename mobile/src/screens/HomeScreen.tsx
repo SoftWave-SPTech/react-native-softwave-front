@@ -25,11 +25,11 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Hero Card */}
-        <LinearGradient colors={['#3b82f6', '#374151']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
+        <LinearGradient colors={['#14b8a6', '#0e7490']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
           <Text style={styles.heroLabel}>Valor disponível</Text>
           <Text style={styles.heroValue}>R$ 145.280,00</Text>
           <View style={styles.heroRow}>
-            <MaterialCommunityIcons name="trending-up" size={16} color="#bfdbfe" />
+            <MaterialCommunityIcons name="trending-up" size={16} color="#ccfbf1" />
             <Text style={styles.heroSubtext}>Lucro líquido do mês: R$ 42.500,00</Text>
           </View>
         </LinearGradient>
@@ -53,7 +53,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
         {/* Insights IA */}
         <View style={styles.insightsCard}>
           <View style={styles.insightsIconWrap}>
-            <MaterialCommunityIcons name="lightbulb-outline" size={20} color="#b45309" />
+            <MaterialCommunityIcons name="lightbulb-outline" size={20} color="#0d9488" />
           </View>
           <View style={styles.insightsContent}>
             <Text style={styles.insightsTitle}>Insights Inteligentes</Text>
@@ -120,7 +120,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
           <View style={styles.actionsGrid}>
             <Pressable style={styles.actionCard} onPress={() => onNavigate('Honorarios')}>
               <View style={[styles.actionIcon, styles.actionIconBlue]}>
-                <MaterialCommunityIcons name="briefcase" size={20} color="#2563eb" />
+                <MaterialCommunityIcons name="briefcase" size={20} color="#0d9488" />
               </View>
               <Text style={styles.actionLabel}>Honorários</Text>
             </Pressable>
@@ -141,7 +141,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
             </Pressable>
             <Pressable style={styles.actionCard} onPress={() => onNavigate('NovaTransacao')}>
               <View style={[styles.actionIcon, styles.actionIconPurple]}>
-                <MaterialCommunityIcons name="credit-card" size={20} color="#7c3aed" />
+                <MaterialCommunityIcons name="credit-card" size={20} color="#0d9488" />
               </View>
               <Text style={styles.actionLabel}>Nova Transação</Text>
             </Pressable>
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     marginBottom: 16,
-    shadowColor: '#1e3a8a',
+    shadowColor: '#115e59',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   },
   heroLabel: {
     fontSize: 14,
-    color: '#bfdbfe',
+    color: '#ccfbf1',
     marginBottom: 8,
   },
   heroValue: {
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   },
   heroSubtext: {
     fontSize: 14,
-    color: '#bfdbfe',
+    color: '#ccfbf1',
   },
   kpiGrid: {
     flexDirection: 'row',
@@ -213,15 +213,15 @@ const styles = StyleSheet.create({
   },
   insightsCard: {
     flexDirection: 'row',
-    backgroundColor: '#fffbeb',
+    backgroundColor: '#f0fdfa',
     borderWidth: 1,
-    borderColor: '#fde68a',
+    borderColor: '#99f6e4',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#92400e',
+    shadowColor: '#115e59',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   },
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#fef3c7',
+    backgroundColor: '#ccfbf1',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -255,12 +255,12 @@ const styles = StyleSheet.create({
   },
   insightsLinkText: {
     fontSize: 14,
-    color: '#b45309',
+    color: '#0f766e',
     fontWeight: '500',
   },
   insightsLinkArrow: {
     fontSize: 18,
-    color: '#b45309',
+    color: '#115e59',
   },
   section: {
     marginBottom: 16,
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   },
   sectionLink: {
     fontSize: 14,
-    color: '#2563eb',
+    color: '#0d9488',
   },
   transactionsList: {
     gap: 12,
@@ -311,10 +311,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  actionIconBlue: { backgroundColor: '#dbeafe' },
+  actionIconBlue: { backgroundColor: '#ccfbf1' },
   actionIconGreen: { backgroundColor: '#dcfce7' },
   actionIconAmber: { backgroundColor: '#fef3c7' },
-  actionIconPurple: { backgroundColor: '#f3e8ff' },
+  actionIconPurple: { backgroundColor: '#ccfbf1' },
   actionLabel: {
     fontSize: 14,
     fontWeight: '500',

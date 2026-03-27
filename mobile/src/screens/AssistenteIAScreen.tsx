@@ -123,7 +123,7 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.iconWrap}>
-              <MaterialCommunityIcons name="shimmer" size={24} color="#9333ea" />
+              <MaterialCommunityIcons name="shimmer" size={24} color="#0d9488" />
             </View>
             <View>
               <Text style={styles.cardTitle}>Consultoria Inteligente</Text>
@@ -192,7 +192,7 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
           <View style={styles.respostaCard}>
             <View style={styles.respostaHeader}>
               <View style={styles.respostaIconWrap}>
-                <MaterialCommunityIcons name="shimmer" size={20} color="#9333ea" />
+                <MaterialCommunityIcons name="shimmer" size={20} color="#0d9488" />
               </View>
               <View style={styles.respostaContent}>
                 <Text style={styles.respostaTitle}>Análise Gerada</Text>
@@ -252,7 +252,7 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
                   {tipo.label}
                 </Text>
                 {tipoAnalise === tipo.value && (
-                  <MaterialCommunityIcons name="check" size={18} color="#9333ea" />
+                  <MaterialCommunityIcons name="check" size={18} color="#0d9488" />
                 )}
               </Pressable>
             ))}
@@ -278,7 +278,7 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
                   {f.label}
                 </Text>
                 {filtroHistorico === f.value && (
-                  <MaterialCommunityIcons name="check" size={18} color="#9333ea" />
+                  <MaterialCommunityIcons name="check" size={18} color="#0d9488" />
                 )}
               </Pressable>
             ))}
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   iconWrap: {
     width: 48, height: 48, borderRadius: 12,
-    backgroundColor: '#f3e8ff', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center',
   },
   cardTitle: { fontSize: 15, fontWeight: '600', color: '#111827' },
   cardSubtitle: { fontSize: 13, color: '#6b7280', marginTop: 2 },
@@ -336,20 +336,20 @@ const styles = StyleSheet.create({
   dateInput: { flex: 1, height: 46, fontSize: 13, color: '#111827' },
 
   submitBtn: {
-    backgroundColor: '#9333ea', borderRadius: 12, paddingVertical: 14,
+    backgroundColor: '#0d9488', borderRadius: 12, paddingVertical: 14,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   submitBtnDisabled: { backgroundColor: '#d1d5db' },
   submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 
   respostaCard: {
-    backgroundColor: '#faf5ff', borderWidth: 1, borderColor: '#e9d5ff',
+    backgroundColor: '#ecfeff', borderWidth: 1, borderColor: '#99f6e4',
     borderRadius: 16, padding: 16, marginBottom: 16,
   },
   respostaHeader: { flexDirection: 'row', gap: 12 },
   respostaIconWrap: {
     width: 36, height: 36, borderRadius: 8,
-    backgroundColor: '#f3e8ff', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center',
   },
   respostaContent: { flex: 1 },
   respostaTitle: { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 6 },
@@ -376,9 +376,9 @@ const styles = StyleSheet.create({
   },
   historicoTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   tipoTag: {
-    backgroundColor: '#f3e8ff', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: '#ccfbf1', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
   },
-  tipoTagText: { fontSize: 12, color: '#7c3aed', fontWeight: '500' },
+  tipoTagText: { fontSize: 12, color: '#0f766e', fontWeight: '500' },
   historicoData: { fontSize: 12, color: '#9ca3af' },
   historicoPeriodo: { fontSize: 13, color: '#6b7280', marginBottom: 8 },
   historicoResposta: { fontSize: 13, color: '#374151', lineHeight: 20 },
@@ -398,9 +398,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, marginBottom: 4,
   },
-  modalOptionActive: { backgroundColor: '#faf5ff' },
+  modalOptionActive: { backgroundColor: '#f0fdfa' },
   modalOptionText: { fontSize: 15, color: '#374151' },
-  modalOptionTextActive: { color: '#9333ea', fontWeight: '500' },
+  modalOptionTextActive: { color: '#0d9488', fontWeight: '500' },
   modalCancel: {
     marginTop: 8, paddingVertical: 14, backgroundColor: '#f3f4f6',
     borderRadius: 12, alignItems: 'center',

@@ -105,7 +105,7 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar }: Props)
         )}
         {t.comprovante && (
           <Pressable onPress={() => setModalComprovante(true)} style={styles.comprovanteBtn}>
-            <MaterialCommunityIcons name="file-document" size={22} color="#2563eb" />
+            <MaterialCommunityIcons name="file-document" size={22} color="#0d9488" />
             <Text style={styles.comprovanteBtnText}>Visualizar Comprovante</Text>
           </Pressable>
         )}
@@ -148,7 +148,7 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar }: Props)
 function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
-      <View style={styles.infoIcon}><MaterialCommunityIcons name={icon as any} size={20} color="#2563eb" /></View>
+      <View style={styles.infoIcon}><MaterialCommunityIcons name={icon as any} size={20} color="#0d9488" /></View>
       <View style={styles.infoContent}>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value}</Text>
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 16 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  infoIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
+  infoIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center' },
   infoContent: { flex: 1 },
   infoLabel: { fontSize: 12, color: '#6b7280' },
   infoValue: { fontSize: 16, fontWeight: '500', color: '#111827' },
@@ -180,13 +180,13 @@ const styles = StyleSheet.create({
   pagamentoValue: { fontSize: 16, fontWeight: '600', color: '#16a34a' },
   metodo: { fontSize: 12, color: '#6b7280', marginTop: 4 },
   descricao: { fontSize: 14, color: '#6b7280', lineHeight: 22 },
-  obsCard: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 16, padding: 16, marginBottom: 16 },
+  obsCard: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 16, padding: 16, marginBottom: 16 },
   obsTitle: { fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 8 },
   obsText: { fontSize: 14, color: '#6b7280' },
-  comprovanteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#dbeafe', borderRadius: 12, marginBottom: 16 },
-  comprovanteBtnText: { fontSize: 16, color: '#2563eb', fontWeight: '500' },
+  comprovanteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#ccfbf1', borderRadius: 12, marginBottom: 16 },
+  comprovanteBtnText: { fontSize: 16, color: '#0d9488', fontWeight: '500' },
   actionsRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  btnEditar: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#2563eb', borderRadius: 12 },
+  btnEditar: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#0d9488', borderRadius: 12 },
   btnEditarText: { color: '#fff', fontSize: 16, fontWeight: '500' },
   btnExcluir: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#fff', borderWidth: 2, borderColor: '#fecaca', borderRadius: 12 },
   btnExcluirText: { color: '#dc2626', fontSize: 16, fontWeight: '500' },

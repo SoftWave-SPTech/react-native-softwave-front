@@ -20,6 +20,6 @@ export function BarraProgresso({ percentage }: Props) {
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   track: { flex: 1, height: 8, backgroundColor: '#e5e7eb', borderRadius: 4, overflow: 'hidden' },
-  fill: { height: '100%', backgroundColor: '#eab308', borderRadius: 4 },
+  fill: { height: '100%', backgroundColor: '#0d9488', borderRadius: 4 },
   label: { fontSize: 12, color: '#6b7280', width: 36, textAlign: 'right' },
 });

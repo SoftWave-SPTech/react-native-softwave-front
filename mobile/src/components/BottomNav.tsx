@@ -34,7 +34,7 @@ export function BottomNav() {
             <MaterialCommunityIcons
               name={item.icon}
               size={24}
-              color={isActive ? '#2563eb' : '#9ca3af'}
+              color={isActive ? '#0d9488' : '#9ca3af'}
             />
             <Text style={[styles.label, isActive ? styles.labelActive : styles.labelInactive]}>
               {item.label}
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   labelActive: {
-    color: '#2563eb',
+    color: '#0d9488',
     fontWeight: '500',
   },
   labelInactive: {

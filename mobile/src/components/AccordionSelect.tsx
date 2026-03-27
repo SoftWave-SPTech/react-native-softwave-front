@@ -70,7 +70,7 @@ export function AccordionSelect({
                   {opt.label}
                 </Text>
                 {isSelected && (
-                  <MaterialCommunityIcons name="check" size={18} color="#2563eb" />
+                  <MaterialCommunityIcons name="check" size={18} color="#0d9488" />
                 )}
               </Pressable>
             );
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   optionTextSelected: {
-    color: '#2563eb',
+    color: '#0d9488',
     fontWeight: '600',
   },
 });

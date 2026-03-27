@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   filterLabel: { fontSize: 14, color: '#6b7280', marginBottom: 8 },
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: '#fff' },
-  chipAtivo: { backgroundColor: '#2563eb' },
+  chipAtivo: { backgroundColor: '#0d9488' },
   chipReceita: { backgroundColor: '#16a34a' },
   chipDespesa: { backgroundColor: '#dc2626' },
   chipStatusAtivo: { backgroundColor: '#111827' },
