@@ -9,7 +9,7 @@ type Props = {
   subtitle: string;
   value: string;
   type: 'receita' | 'despesa';
-  status: 'pago' | 'pendente' | 'atrasado' | 'em-dia';
+  status: 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
   onPress?: () => void;
 };
 

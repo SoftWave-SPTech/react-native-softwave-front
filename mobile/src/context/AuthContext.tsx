@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
+import { getApiBaseUrl } from '../config/api';
+import { loginWithApi } from '../services/authApi';
 
 export type UserType = 'advogado' | 'cliente';
 
@@ -11,10 +13,10 @@ type AuthContextData = {
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
-// Credenciais mock — substituir pela chamada real à API
+/** Login local quando `EXPO_PUBLIC_API_URL` não está definida */
 const MOCK_USERS = [
   { email: 'advogado@softwave.com', senha: '123456', tipo: 'advogado' as UserType, token: 'mock_token_adv_abc123' },
-  { email: 'cliente@softwave.com',  senha: '123456', tipo: 'cliente' as UserType, token: 'mock_token_cli_xyz456' },
+  { email: 'cliente@softwave.com', senha: '123456', tipo: 'cliente' as UserType, token: 'mock_token_cli_xyz456' },
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -22,7 +24,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
 
   const login = async (email: string, senha: string): Promise<{ success: boolean; error?: string }> => {
-    // Simula latência de rede
+    const apiBase = getApiBaseUrl();
+
+    if (apiBase) {
+      const result = await loginWithApi(email, senha);
+      if (result.ok) {
+        setUserType(result.data.usuario.tipo);
+        setToken(result.data.token);
+        return { success: true };
+      }
+      return { success: false, error: result.error };
+    }
+
     await new Promise((r) => setTimeout(r, 900));
 
     const usuario = MOCK_USERS.find(

@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Modal } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import {
+  fetchPagamentosPendentes,
+  syncPagamentosDashboardCount,
+  updatePagamentoConferir,
+} from '../services/resources';
+import type { PagamentoConferirApi } from '../types/api';
+import { formatCentavosBRL } from '../utils/money';
 
-const PAGAMENTOS = [
-  { id: 1, cliente: 'João Silva', processo: 'Processo 1234/2025', valor: 'R$ 6.000,00', data: '15/02/2026' },
-  { id: 2, cliente: 'Maria Santos', processo: 'Processo 5678/2025', valor: 'R$ 3.200,00', data: '14/02/2026' },
-  { id: 3, cliente: 'Carlos Oliveira', processo: 'Processo 9012/2025', valor: 'R$ 5.500,00', data: '13/02/2026' },
+const PAGAMENTOS_FALLBACK: PagamentoConferirApi[] = [
+  { id: 1, cliente: 'João Silva', processo: 'Processo 1234/2025', valor: 600000, data: '15/02/2026', status: 'pendente' },
+  { id: 2, cliente: 'Maria Santos', processo: 'Processo 5678/2025', valor: 320000, data: '14/02/2026', status: 'pendente' },
+  { id: 3, cliente: 'Carlos Oliveira', processo: 'Processo 9012/2025', valor: 550000, data: '13/02/2026', status: 'pendente' },
 ];
 
 type Props = {
@@ -16,17 +25,58 @@ type Props = {
 };
 
 export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
+  void onNavigate;
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [lista, setLista] = useState<PagamentoConferirApi[]>(PAGAMENTOS_FALLBACK);
+  const [loading, setLoading] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  const carregar = useCallback(async () => {
+    if (!apiOn) {
+      setLista(PAGAMENTOS_FALLBACK);
+      return;
+    }
+    setLoading(true);
+    try {
+      const rows = await fetchPagamentosPendentes(token);
+      setLista(rows);
+    } catch {
+      setLista(PAGAMENTOS_FALLBACK);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiOn, token]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
   const [selectedPagamento, setSelectedPagamento] = useState<number | null>(null);
   const [modalRejeicao, setModalRejeicao] = useState<number | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
   const [modalAprovacao, setModalAprovacao] = useState<number | null>(null);
-  const [aprovados, setAprovados] = useState<number[]>([]);
 
-  const handleRejeitar = () => {
-    if (motivoRejeicao.trim()) {
-      setModalRejeicao(null);
-      setMotivoRejeicao('');
+  const pendentes = lista.filter((p) => p.status === 'pendente');
+
+  const handleRejeitar = async () => {
+    if (!motivoRejeicao.trim() || modalRejeicao == null) return;
+    const id = modalRejeicao;
+    if (apiOn && token) {
+      try {
+        setBusyId(id);
+        await updatePagamentoConferir(token, id, { status: 'reprovado', motivoRejeicao: motivoRejeicao.trim() });
+        await syncPagamentosDashboardCount(token);
+        await carregar();
+      } finally {
+        setBusyId(null);
+      }
+    } else {
+      setLista((prev) => prev.filter((p) => p.id !== id));
     }
+    setModalRejeicao(null);
+    setMotivoRejeicao('');
   };
 
   const handleConfirmar = (id: number) => {
@@ -34,21 +84,40 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
     setModalAprovacao(id);
   };
 
-  const handleConcluirAprovacao = () => {
-    if (modalAprovacao) {
-      setAprovados((prev) => [...prev, modalAprovacao]);
-    }
+  const handleConcluirAprovacao = async () => {
+    const id = modalAprovacao;
     setModalAprovacao(null);
+    if (id == null) return;
+    if (apiOn && token) {
+      try {
+        setBusyId(id);
+        await updatePagamentoConferir(token, id, { status: 'aprovado' });
+        await syncPagamentosDashboardCount(token);
+        await carregar();
+      } finally {
+        setBusyId(null);
+      }
+    } else {
+      setLista((prev) => prev.filter((p) => p.id !== id));
+    }
   };
 
   return (
     <View style={styles.container}>
       <Header title="Pagamentos a Conferir" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Carregando…</Text>
+          </View>
+        )}
         <View style={styles.alertBox}>
-          <Text style={styles.alertText}><Text style={styles.alertBold}>{PAGAMENTOS.filter(p => !aprovados.includes(p.id)).length} pagamentos</Text> aguardando confirmação</Text>
+          <Text style={styles.alertText}>
+            <Text style={styles.alertBold}>{pendentes.length} pagamentos</Text> aguardando confirmação
+          </Text>
         </View>
-        {PAGAMENTOS.filter(p => !aprovados.includes(p.id)).map((p) => (
+        {pendentes.map((p) => (
           <View key={p.id} style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardIcon}><MaterialCommunityIcons name="file-image-outline" size={24} color="#2563eb" /></View>
@@ -56,18 +125,18 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
                 <Text style={styles.cardCliente}>{p.cliente}</Text>
                 <View style={styles.cardProcesso}><MaterialCommunityIcons name="file-document" size={14} color="#6b7280" /><Text style={styles.cardProcessoText}>{p.processo}</Text></View>
                 <Text style={styles.cardData}>{p.data}</Text>
-                <Text style={styles.cardValor}>{p.valor}</Text>
+                <Text style={styles.cardValor}>{formatCentavosBRL(p.valor)}</Text>
               </View>
             </View>
             <Pressable onPress={() => setSelectedPagamento(p.id)} style={styles.verBtn}>
               <Text style={styles.verBtnText}>Visualizar Comprovante</Text>
             </Pressable>
             <View style={styles.actionsRow}>
-              <Pressable onPress={() => setModalRejeicao(p.id)} style={styles.reprovarBtn}>
+              <Pressable onPress={() => setModalRejeicao(p.id)} disabled={busyId === p.id} style={styles.reprovarBtn}>
                 <MaterialCommunityIcons name="close" size={18} color="#dc2626" />
                 <Text style={styles.reprovarBtnText}>Reprovar</Text>
               </Pressable>
-              <Pressable onPress={() => handleConfirmar(p.id)} style={styles.aprovarBtn}>
+              <Pressable onPress={() => handleConfirmar(p.id)} disabled={busyId === p.id} style={styles.aprovarBtn}>
                 <MaterialCommunityIcons name="check" size={18} color="#15803d" />
                 <Text style={styles.aprovarBtnText}>Aprovar</Text>
               </Pressable>
@@ -128,6 +197,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
   alertBox: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#92400e', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
   alertText: { fontSize: 14, color: '#92400e' },
   alertBold: { fontWeight: '600' },

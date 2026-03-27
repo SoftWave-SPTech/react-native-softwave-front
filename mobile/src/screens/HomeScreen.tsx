@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
@@ -7,13 +7,108 @@ import { CardKPI } from '../components/CardKPI';
 import { CardTransacao } from '../components/CardTransacao';
 import { BottomNav } from '../components/BottomNav';
 import { FAB } from '../components/FAB';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { mapTransacaoApiToCard, type TransacaoCardModel } from '../mappers/transacao';
+import { fetchDashboardResumo, fetchTransacoesRecentes, syncPagamentosDashboardCount } from '../services/resources';
+import type { DashboardResumoApi } from '../types/api';
+import { formatCentavosBRL } from '../utils/money';
 
 type Props = {
   onBack?: () => void;
   onNavigate: (screen: string, id?: string) => void;
 };
 
+/** Fallback local (centavos) quando não há API ou falha de rede */
+const MOCK_DASHBOARD: DashboardResumoApi = {
+  id: 0,
+  valorDisponivel: 14528000,
+  lucroLiquidoMes: 4250000,
+  receitaMensal: 8540000,
+  despesaMensal: 4290000,
+  pendentes: 2830000,
+  variacaoReceita: '+12%',
+  variacaoPendentes: '-5%',
+  variacaoDespesa: '+8%',
+  variacaoLucro: '+15%',
+  pagamentosParaConferir: 3,
+};
+
+const MOCK_RECENT: TransacaoCardModel[] = [
+  { id: '1', icon: 'briefcase', title: 'Honorários - Processo 1234', subtitle: 'João Silva', value: 'R$ 5.000,00', type: 'receita', status: 'pago' },
+  { id: '2', icon: 'file-document', title: 'Custas Judiciais', subtitle: 'Processo 5678', value: 'R$ 850,00', type: 'despesa', status: 'pendente' },
+  { id: '3', icon: 'credit-card', title: 'Honorários - Consultoria', subtitle: 'Maria Santos', value: 'R$ 3.200,00', type: 'receita', status: 'atrasado' },
+  { id: '4', icon: 'credit-card', title: 'Honorários - Consultoria Premium', subtitle: 'Carlos Oliveira', value: 'R$ 8.000,00', type: 'receita', status: 'em-dia' },
+];
+
+function variationTypeFromString(s: string): 'positive' | 'negative' {
+  return s.trim().startsWith('-') ? 'negative' : 'positive';
+}
+
 export function HomeScreen({ onBack, onNavigate }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [dash, setDash] = useState<DashboardResumoApi | null>(null);
+  const [recent, setRecent] = useState<TransacaoCardModel[]>(MOCK_RECENT);
+  const [loading, setLoading] = useState(false);
+
+  const effectiveDash = dash ?? MOCK_DASHBOARD;
+
+  useEffect(() => {
+    if (!apiOn) {
+      setDash(null);
+      setRecent(MOCK_RECENT);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const [d, tx] = await Promise.all([
+          fetchDashboardResumo(token),
+          fetchTransacoesRecentes(token, 4),
+        ]);
+        if (cancelled) return;
+        try {
+          await syncPagamentosDashboardCount(token);
+        } catch {
+          /* mantém resumo do GET */
+        }
+        if (cancelled) return;
+        const dAfter = await fetchDashboardResumo(token);
+        if (cancelled) return;
+        if (dAfter) setDash(dAfter);
+        else if (d) setDash(d);
+        if (tx.length > 0) setRecent(tx.map(mapTransacaoApiToCard));
+      } catch {
+        if (!cancelled) {
+          setDash(null);
+          setRecent(MOCK_RECENT);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiOn, token]);
+
+  const heroValor = useMemo(
+    () => formatCentavosBRL(effectiveDash.valorDisponivel),
+    [effectiveDash.valorDisponivel],
+  );
+  const heroLucro = useMemo(
+    () => formatCentavosBRL(effectiveDash.lucroLiquidoMes),
+    [effectiveDash.lucroLiquidoMes],
+  );
+
+  const receitaVal = formatCentavosBRL(effectiveDash.receitaMensal);
+  const pendentesVal = formatCentavosBRL(effectiveDash.pendentes);
+  const despesaVal = formatCentavosBRL(effectiveDash.despesaMensal);
+  const lucroVal = formatCentavosBRL(effectiveDash.lucroLiquidoMes);
+
   return (
     <View style={styles.container}>
       <Header
@@ -24,33 +119,61 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
       />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Hero Card */}
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Atualizando dados…</Text>
+          </View>
+        )}
+
         <LinearGradient colors={['#3b82f6', '#374151']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
           <Text style={styles.heroLabel}>Valor disponível</Text>
-          <Text style={styles.heroValue}>R$ 145.280,00</Text>
+          <Text style={styles.heroValue}>{heroValor}</Text>
           <View style={styles.heroRow}>
             <MaterialCommunityIcons name="trending-up" size={16} color="#bfdbfe" />
-            <Text style={styles.heroSubtext}>Lucro líquido do mês: R$ 42.500,00</Text>
+            <Text style={styles.heroSubtext}>Lucro líquido do mês: {heroLucro}</Text>
           </View>
         </LinearGradient>
 
-        {/* KPIs Grid */}
         <View style={styles.kpiGrid}>
           <View style={styles.kpiItem}>
-            <CardKPI icon="cash" title="Receita Mensal" value="R$ 85.400" variation="+12%" variationType="positive" />
+            <CardKPI
+              icon="cash"
+              title="Receita Mensal"
+              value={receitaVal}
+              variation={effectiveDash.variacaoReceita}
+              variationType={variationTypeFromString(effectiveDash.variacaoReceita)}
+            />
           </View>
           <View style={styles.kpiItem}>
-            <CardKPI icon="clock-outline" title="Pendentes" value="R$ 28.300" variation="-5%" variationType="positive" />
+            <CardKPI
+              icon="clock-outline"
+              title="Pendentes"
+              value={pendentesVal}
+              variation={effectiveDash.variacaoPendentes}
+              variationType={variationTypeFromString(effectiveDash.variacaoPendentes)}
+            />
           </View>
           <View style={styles.kpiItem}>
-            <CardKPI icon="trending-down" title="Despesa Mensal" value="R$ 42.900" variation="+8%" variationType="negative" />
+            <CardKPI
+              icon="trending-down"
+              title="Despesa Mensal"
+              value={despesaVal}
+              variation={effectiveDash.variacaoDespesa}
+              variationType={variationTypeFromString(effectiveDash.variacaoDespesa)}
+            />
           </View>
           <View style={styles.kpiItem}>
-            <CardKPI icon="trending-up" title="Lucro Líquido" value="R$ 42.500" variation="+15%" variationType="positive" />
+            <CardKPI
+              icon="trending-up"
+              title="Lucro Líquido"
+              value={lucroVal}
+              variation={effectiveDash.variacaoLucro}
+              variationType={variationTypeFromString(effectiveDash.variacaoLucro)}
+            />
           </View>
         </View>
 
-        {/* Insights IA */}
         <View style={styles.insightsCard}>
           <View style={styles.insightsIconWrap}>
             <MaterialCommunityIcons name="lightbulb-outline" size={20} color="#b45309" />
@@ -66,7 +189,6 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
           </View>
         </View>
 
-        {/* Transações Recentes */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Transações Recentes</Text>
@@ -75,78 +197,20 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
             </Pressable>
           </View>
           <View style={styles.transactionsList}>
-            <CardTransacao
-              icon="briefcase"
-              title="Honorários - Processo 1234"
-              subtitle="João Silva"
-              value="R$ 5.000,00"
-              type="receita"
-              status="pago"
-              onPress={() => onNavigate('DetalheTransacao', '1')}
-            />
-            <CardTransacao
-              icon="file-document"
-              title="Custas Judiciais"
-              subtitle="Processo 5678"
-              value="R$ 850,00"
-              type="despesa"
-              status="pendente"
-              onPress={() => onNavigate('DetalheTransacao', '2')}
-            />
-            <CardTransacao
-              icon="credit-card"
-              title="Honorários - Consultoria"
-              subtitle="Maria Santos"
-              value="R$ 3.200,00"
-              type="receita"
-              status="atrasado"
-              onPress={() => onNavigate('DetalheTransacao', '3')}
-            />
-            <CardTransacao
-              icon="credit-card"
-              title="Honorários - Consultoria Premium" 
-              subtitle="Carlos Oliveira"
-              value="R$ 8.000,00"
-              type="receita"
-              status="em-dia"
-              onPress={() => onNavigate('DetalheTransacao', '3')}
-            />
+            {recent.map((t) => (
+              <CardTransacao
+                key={t.id}
+                icon={t.icon}
+                title={t.title}
+                subtitle={t.subtitle}
+                value={t.value}
+                type={t.type}
+                status={t.status}
+                onPress={() => onNavigate('DetalheTransacao', t.id)}
+              />
+            ))}
           </View>
         </View>
-
-        {/* Ações Rápidas */}
-        {/* <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ações Rápidas</Text>
-          <View style={styles.actionsGrid}>
-            <Pressable style={styles.actionCard} onPress={() => onNavigate('Honorarios')}>
-              <View style={[styles.actionIcon, styles.actionIconBlue]}>
-                <MaterialCommunityIcons name="briefcase" size={20} color="#2563eb" />
-              </View>
-              <Text style={styles.actionLabel}>Honorários</Text>
-            </Pressable>
-            <Pressable style={styles.actionCard} onPress={() => onNavigate('Relatorios')}>
-              <View style={[styles.actionIcon, styles.actionIconGreen]}>
-                <MaterialCommunityIcons name="trending-up" size={20} color="#16a34a" />
-              </View>
-              <Text style={styles.actionLabel}>Relatórios</Text>
-            </Pressable>
-            <Pressable style={[styles.actionCard, styles.actionCardBadge]} onPress={() => onNavigate('PagamentosConferir')}>
-              <View style={[styles.actionIcon, styles.actionIconAmber]}>
-                <MaterialCommunityIcons name="file-document" size={20} color="#d97706" />
-              </View>
-              <Text style={styles.actionLabel}>Pagamentos</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>3</Text>
-              </View>
-            </Pressable>
-            <Pressable style={styles.actionCard} onPress={() => onNavigate('NovaTransacao')}>
-              <View style={[styles.actionIcon, styles.actionIconPurple]}>
-                <MaterialCommunityIcons name="credit-card" size={20} color="#7c3aed" />
-              </View>
-              <Text style={styles.actionLabel}>Nova Transação</Text>
-            </Pressable>
-          </View>
-        </View> */}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -172,6 +236,13 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 32,
   },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  loadingText: { fontSize: 13, color: '#6b7280' },
   heroCard: {
     borderRadius: 16,
     padding: 24,
@@ -283,58 +354,6 @@ const styles = StyleSheet.create({
   },
   transactionsList: {
     gap: 12,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  actionCard: {
-    width: '47%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  actionCardBadge: {
-    position: 'relative',
-  },
-  actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  actionIconBlue: { backgroundColor: '#dbeafe' },
-  actionIconGreen: { backgroundColor: '#dcfce7' },
-  actionIconAmber: { backgroundColor: '#fef3c7' },
-  actionIconPurple: { backgroundColor: '#f3e8ff' },
-  actionLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#111827',
-  },
-  badge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#ef4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
   },
   bottomNavWrap: {
     position: 'absolute',

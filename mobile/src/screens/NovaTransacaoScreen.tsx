@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { AccordionSelect, SelectOption } from '../components/AccordionSelect';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { createTransacao, fetchTransacoes, updateTransacao } from '../services/resources';
+import type { TransacaoApi } from '../types/api';
+import { parseDateBRToIso, parseValorInputToCentavos } from '../utils/money';
 
 type Recorrencia = 'sem' | 'semanal' | 'mensal' | 'anual';
 
 export type TransacaoParaEditar = {
+  id?: string;
   tipo: 'receita' | 'despesa';
   valor: string;
   categoria: string;
@@ -34,10 +40,26 @@ const CATEGORIAS: SelectOption[] = [
 
 const CLIENTES: SelectOption[] = [
   { value: '', label: 'Nenhum cliente vinculado' },
-  { value: 'joao', label: 'João Silva' },
-  { value: 'maria', label: 'Maria Santos' },
-  { value: 'carlos', label: 'Carlos Oliveira' },
+  { value: 'cli_1', label: 'João Silva' },
+  { value: 'cli_2', label: 'Maria Santos' },
+  { value: 'cli_3', label: 'Carlos Oliveira' },
 ];
+
+function iconeFromCategoria(c: string): string {
+  const map: Record<string, string> = {
+    honorarios: 'briefcase',
+    custas: 'file-document',
+    consultoria: 'credit-card',
+    aluguel: 'receipt',
+    outros: 'cash',
+  };
+  return map[c] || 'cash';
+}
+
+function labelCliente(clienteId: string) {
+  const o = CLIENTES.find((x) => x.value === clienteId);
+  return o?.label ?? '';
+}
 
 const RECORRENCIAS: SelectOption[] = [
   { value: 'sem', label: 'Sem recorrência' },
@@ -47,7 +69,10 @@ const RECORRENCIAS: SelectOption[] = [
 ];
 
 export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: Props) {
-  const modoEdicao = !!transacaoParaEditar;
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+  const modoEdicao = !!transacaoParaEditar?.id;
+  const [salvando, setSalvando] = useState(false);
   const [tipo, setTipo] = useState<'receita' | 'despesa'>(transacaoParaEditar?.tipo ?? 'receita');
   const [valor, setValor] = useState(transacaoParaEditar?.valor ?? '');
   const [categoria, setCategoria] = useState(transacaoParaEditar?.categoria ?? '');
@@ -84,11 +109,73 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
     return '';
   };
 
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     if (!valor || !categoria || !descricao || !vencimento) {
       Alert.alert('Campos obrigatórios', 'Preencha todos os campos marcados com *');
       return;
     }
+    const centavos = parseValorInputToCentavos(valor);
+    if (centavos == null || centavos <= 0) {
+      Alert.alert('Valor inválido', 'Informe um valor válido (ex.: 1500,50).');
+      return;
+    }
+    const vencIso = parseDateBRToIso(vencimento);
+    if (!vencIso) {
+      Alert.alert('Vencimento', 'Use o formato DD/MM/AAAA.');
+      return;
+    }
+    const dataIso = data.trim() ? parseDateBRToIso(data) ?? vencIso : vencIso;
+    const subtitulo =
+      processo.trim() ||
+      (cliente ? labelCliente(cliente) : '') ||
+      (tipo === 'despesa' ? 'Despesa' : 'Receita');
+
+    if (apiOn && token) {
+      try {
+        setSalvando(true);
+        if (modoEdicao && transacaoParaEditar?.id) {
+          await updateTransacao(token, transacaoParaEditar.id, {
+            titulo: descricao,
+            subtitulo,
+            valor: centavos,
+            tipo,
+            status: status === 'pago' ? 'pago' : 'pendente',
+            categoria,
+            clienteId: cliente || undefined,
+            data: dataIso,
+            vencimento: vencIso,
+            icone: iconeFromCategoria(categoria),
+          });
+        } else {
+          const txs = await fetchTransacoes(token);
+          const maxOrdem = txs.reduce((m, t) => Math.max(m, t.ordem ?? 0), 0);
+          const body: TransacaoApi = {
+            id: `txn_${Date.now()}`,
+            titulo: descricao,
+            subtitulo,
+            valor: centavos,
+            tipo,
+            status: status === 'pago' ? 'pago' : 'pendente',
+            categoria,
+            clienteId: cliente || undefined,
+            data: dataIso,
+            vencimento: vencIso,
+            icone: iconeFromCategoria(categoria),
+            ordem: maxOrdem + 1,
+          };
+          await createTransacao(token, body);
+        }
+        setMostrarSucesso(true);
+        setTimeout(() => onSuccess(), 1500);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Não foi possível salvar.';
+        Alert.alert('Erro', msg);
+      } finally {
+        setSalvando(false);
+      }
+      return;
+    }
+
     setMostrarSucesso(true);
     setTimeout(() => onSuccess(), 2000);
   };
@@ -271,8 +358,12 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
           </View>
         </View>
 
-        <Pressable onPress={handleSalvar} style={styles.saveBtn}>
-          <Text style={styles.saveBtnText}>{modoEdicao ? 'Salvar Alterações' : 'Salvar Transação'}</Text>
+        <Pressable onPress={handleSalvar} disabled={salvando} style={[styles.saveBtn, salvando && styles.saveBtnDisabled]}>
+          {salvando ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveBtnText}>{modoEdicao ? 'Salvar Alterações' : 'Salvar Transação'}</Text>
+          )}
         </Pressable>
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -325,5 +416,6 @@ const styles = StyleSheet.create({
   comprovanteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#dbeafe', borderRadius: 12 },
   comprovanteBtnText: { fontSize: 14, color: '#2563eb', fontWeight: '500' },
   saveBtn: { backgroundColor: '#2563eb', borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 8, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 5 },
+  saveBtnDisabled: { opacity: 0.7 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

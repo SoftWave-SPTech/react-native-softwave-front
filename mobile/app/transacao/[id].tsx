@@ -9,6 +9,7 @@ export default function DetalheTransacaoPage() {
       transacaoId={id ?? '1'}
       onBack={() => router.back()}
       onEditar={() => router.push('/nova-transacao')}
+      onEditarComDados={(p) => router.push({ pathname: '/nova-transacao', params: p })}
     />
   );
 }

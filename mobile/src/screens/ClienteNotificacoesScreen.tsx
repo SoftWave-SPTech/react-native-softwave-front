@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { fetchNotificacoesCliente } from '../services/resources';
 
 type Props = {
   onBack: () => void;
@@ -25,7 +29,7 @@ interface Notificacao {
   color: string;
 }
 
-const notificacoes: Notificacao[] = [
+const NOTIFICACOES_FALLBACK: Notificacao[] = [
   {
     id: 1,
     tipo: 'pagamento',
@@ -83,6 +87,47 @@ const iconColors: Record<string, string> = {
 };
 
 export function ClienteNotificacoesScreen({ onBack }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [notificacoes, setNotificacoes] = useState<Notificacao[]>(NOTIFICACOES_FALLBACK);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!apiOn) {
+      setNotificacoes(NOTIFICACOES_FALLBACK);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const rows = await fetchNotificacoesCliente(token);
+        if (!cancelled && rows.length > 0) {
+          setNotificacoes(
+            rows.map((r) => ({
+              id: r.id,
+              tipo: r.tipo,
+              titulo: r.titulo,
+              mensagem: r.mensagem,
+              data: r.data,
+              lida: r.lida,
+              icon: r.icon as IconName,
+              color: r.color,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setNotificacoes(NOTIFICACOES_FALLBACK);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiOn, token]);
+
   const naoLidas = notificacoes.filter(n => !n.lida).length;
 
   return (
@@ -90,6 +135,12 @@ export function ClienteNotificacoesScreen({ onBack }: Props) {
       <Header title="Notificações" showBack onBack={onBack} />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Carregando…</Text>
+          </View>
+        )}
         {/* Resumo de não lidas */}
         {naoLidas > 0 && (
           <View style={styles.resumoCard}>
@@ -153,6 +204,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
 
   resumoCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

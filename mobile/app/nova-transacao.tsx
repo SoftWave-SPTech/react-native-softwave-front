@@ -4,6 +4,7 @@ import { NovaTransacaoScreen, TransacaoParaEditar } from '../src/screens/NovaTra
 export default function NovaTransacaoPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{
+    id?: string;
     tipo?: string;
     valor?: string;
     categoria?: string;
@@ -17,6 +18,7 @@ export default function NovaTransacaoPage() {
 
   const transacaoParaEditar: TransacaoParaEditar | undefined = params.valor
     ? {
+        id: params.id ? String(params.id) : undefined,
         tipo: (params.tipo as 'receita' | 'despesa') ?? 'receita',
         valor: params.valor ?? '',
         categoria: params.categoria ?? '',

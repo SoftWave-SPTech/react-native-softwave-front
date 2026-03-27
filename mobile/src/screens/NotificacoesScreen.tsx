@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { apiPatchJson } from '../services/http';
+import { fetchNotificacoesAdvogado } from '../services/resources';
 
 type Tipo = 'pagamento' | 'alerta' | 'sucesso' | 'lembrete' | 'insight';
 
@@ -47,19 +51,70 @@ type Props = {
   onNavigate: (screen: string) => void;
 };
 
-export function NotificacoesScreen({ onBack, onNavigate }: Props) {
-  const [notificacoes, setNotificacoes] = useState<Notificacao[]>([
-    { id: 1, tipo: 'pagamento', titulo: 'Novo pagamento recebido', mensagem: 'João Silva realizou o pagamento de R$ 5.000,00', data: 'Há 2 horas', lida: false },
-    { id: 2, tipo: 'alerta', titulo: 'Pagamento pendente', mensagem: 'Honorários de Maria Santos vence amanhã', data: 'Há 4 horas', lida: false },
-    { id: 3, tipo: 'insight', titulo: 'Insight de IA', mensagem: 'Sua receita cresceu 15% este mês em comparação ao anterior', data: 'Há 6 horas', lida: false },
-    { id: 4, tipo: 'sucesso', titulo: 'Pagamento confirmado', mensagem: 'Comprovante aprovado para o processo #1234', data: 'Ontem', lida: true },
-    { id: 5, tipo: 'lembrete', titulo: 'Relatório mensal disponível', mensagem: 'O relatório financeiro de fevereiro está pronto', data: 'Ontem', lida: true },
-    { id: 6, tipo: 'alerta', titulo: 'Pagamento atrasado', mensagem: 'Carlos Oliveira possui R$ 3.200,00 em atraso', data: '2 dias atrás', lida: true },
-    { id: 7, tipo: 'pagamento', titulo: 'Pagamento recebido', mensagem: 'Ana Costa pagou R$ 2.500,00 de honorários', data: '3 dias atrás', lida: true },
-  ]);
+const NOTIFICACOES_FALLBACK: Notificacao[] = [
+  { id: 1, tipo: 'pagamento', titulo: 'Novo pagamento recebido', mensagem: 'João Silva realizou o pagamento de R$ 5.000,00', data: 'Há 2 horas', lida: false },
+  { id: 2, tipo: 'alerta', titulo: 'Pagamento pendente', mensagem: 'Honorários de Maria Santos vence amanhã', data: 'Há 4 horas', lida: false },
+  { id: 3, tipo: 'insight', titulo: 'Insight de IA', mensagem: 'Sua receita cresceu 15% este mês em comparação ao anterior', data: 'Há 6 horas', lida: false },
+  { id: 4, tipo: 'sucesso', titulo: 'Pagamento confirmado', mensagem: 'Comprovante aprovado para o processo #1234', data: 'Ontem', lida: true },
+  { id: 5, tipo: 'lembrete', titulo: 'Relatório mensal disponível', mensagem: 'O relatório financeiro de fevereiro está pronto', data: 'Ontem', lida: true },
+  { id: 6, tipo: 'alerta', titulo: 'Pagamento atrasado', mensagem: 'Carlos Oliveira possui R$ 3.200,00 em atraso', data: '2 dias atrás', lida: true },
+  { id: 7, tipo: 'pagamento', titulo: 'Pagamento recebido', mensagem: 'Ana Costa pagou R$ 2.500,00 de honorários', data: '3 dias atrás', lida: true },
+];
 
-  const marcarComoLida = (id: number) => {
+function garantirTipo(t: string): Tipo {
+  const tipos: Tipo[] = ['pagamento', 'alerta', 'sucesso', 'lembrete', 'insight'];
+  return (tipos.includes(t as Tipo) ? t : 'alerta') as Tipo;
+}
+
+export function NotificacoesScreen({ onBack, onNavigate }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [notificacoes, setNotificacoes] = useState<Notificacao[]>(NOTIFICACOES_FALLBACK);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!apiOn) {
+      setNotificacoes(NOTIFICACOES_FALLBACK);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const rows = await fetchNotificacoesAdvogado(token);
+        if (!cancelled && rows.length > 0) {
+          setNotificacoes(
+            rows.map((r) => ({
+              id: r.id,
+              tipo: garantirTipo(r.tipo),
+              titulo: r.titulo,
+              mensagem: r.mensagem,
+              data: r.data,
+              lida: r.lida,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setNotificacoes(NOTIFICACOES_FALLBACK);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiOn, token]);
+
+  const marcarComoLida = async (id: number) => {
+    const anterior = notificacoes;
     setNotificacoes((prev) => prev.map((n) => (n.id === id ? { ...n, lida: true } : n)));
+    if (!apiOn) return;
+    try {
+      await apiPatchJson(`/notificacoesAdvogado/${id}`, token, { lida: true });
+    } catch {
+      setNotificacoes(anterior);
+    }
   };
 
   const naoLidas = notificacoes.filter((n) => !n.lida).length;
@@ -68,6 +123,12 @@ export function NotificacoesScreen({ onBack, onNavigate }: Props) {
     <View style={styles.container}>
       <Header title="Notificações" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Carregando notificações…</Text>
+          </View>
+        )}
         {naoLidas > 0 && (
           <View style={styles.resumoCard}>
             <View style={styles.resumoIconWrap}>
@@ -129,6 +190,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
 
   resumoCard: {
     flexDirection: 'row',

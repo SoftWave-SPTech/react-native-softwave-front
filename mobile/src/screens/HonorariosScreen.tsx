@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BarraProgresso } from '../components/BarraProgresso';
 import { TagStatus } from '../components/TagStatus';
 import { BottomNav } from '../components/BottomNav';
 import { AccordionSelect, SelectOption } from '../components/AccordionSelect';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { fetchContratos } from '../services/resources';
+import type { ContratoApi } from '../types/api';
+import { formatCentavosBRL } from '../utils/money';
 
 type ContratoStatus = 'em-dia' | 'pendente' | 'atrasado' | 'encerrado';
 
@@ -23,20 +28,85 @@ type Contrato = {
   encerrado?: boolean;
 };
 
-const CONTRATOS: Contrato[] = [
-  { id: 1, cliente: 'João Silva', processo: 'Processo 1234/2025', tipoContrato: 'Êxito', status: 'em-dia', progresso: 60, vencimento: '15/03/2026', total: 'R$ 25.000,00', pago: 'R$ 15.000,00' },
-  { id: 2, cliente: 'Maria Santos', processo: 'Processo 5678/2025', tipoContrato: 'Parcelas', status: 'pendente', progresso: 33, vencimento: '20/02/2026', total: 'R$ 18.000,00', pago: 'R$ 6.000,00', reprovado: true },
-  { id: 3, cliente: 'Carlos Oliveira', processo: 'Processo 9012/2025', tipoContrato: 'Fixo Mensal', status: 'atrasado', progresso: 75, vencimento: '10/02/2026', total: 'R$ 12.000,00', pago: 'R$ 9.000,00' },
-  { id: 4, cliente: 'Ana Costa', processo: 'Processo 3456/2024', tipoContrato: 'Êxito', status: 'encerrado', progresso: 100, vencimento: '01/01/2025', total: 'R$ 8.000,00', pago: 'R$ 8.000,00', encerrado: true },
+const CONTRATOS_FALLBACK_API: ContratoApi[] = [
+  {
+    id: 1,
+    clienteId: 'cli_1',
+    cliente: 'João Silva',
+    processo: 'Processo 1234/2025',
+    tipoContrato: 'Êxito',
+    status: 'em-dia',
+    progresso: 60,
+    vencimento: '15/03/2026',
+    total: 2500000,
+    pago: 1500000,
+    encerrado: false,
+    reprovado: false,
+  },
+  {
+    id: 2,
+    clienteId: 'cli_2',
+    cliente: 'Maria Santos',
+    processo: 'Processo 5678/2025',
+    tipoContrato: 'Parcelas',
+    status: 'pendente',
+    progresso: 33,
+    vencimento: '20/02/2026',
+    total: 1800000,
+    pago: 600000,
+    encerrado: false,
+    reprovado: true,
+  },
+  {
+    id: 3,
+    clienteId: 'cli_3',
+    cliente: 'Carlos Oliveira',
+    processo: 'Processo 9012/2025',
+    tipoContrato: 'Fixo Mensal',
+    status: 'atrasado',
+    progresso: 75,
+    vencimento: '10/02/2026',
+    total: 1200000,
+    pago: 900000,
+    encerrado: false,
+  },
+  {
+    id: 4,
+    clienteId: 'cli_4',
+    cliente: 'Ana Costa',
+    processo: 'Processo 3456/2024',
+    tipoContrato: 'Êxito',
+    status: 'encerrado',
+    progresso: 100,
+    vencimento: '01/01/2025',
+    total: 800000,
+    pago: 800000,
+    encerrado: true,
+  },
 ];
 
-const CLIENTES_OPTIONS: SelectOption[] = [
-  { value: 'todos', label: 'Todos os Clientes' },
-  ...Array.from(new Set(CONTRATOS.map((c) => c.cliente))).map((nome) => ({
-    value: nome,
-    label: nome,
-  })),
-];
+function mapApiToContrato(c: ContratoApi): Contrato {
+  return {
+    id: c.id,
+    cliente: c.cliente,
+    processo: c.processo,
+    tipoContrato: c.tipoContrato,
+    status: c.status,
+    progresso: c.progresso,
+    vencimento: c.vencimento,
+    total: formatCentavosBRL(c.total),
+    pago: formatCentavosBRL(c.pago),
+    reprovado: c.reprovado,
+    encerrado: c.encerrado,
+  };
+}
+
+function resumoAtivos(rows: ContratoApi[]) {
+  const ativos = rows.filter((c) => !c.encerrado);
+  const recebido = ativos.reduce((s, c) => s + c.pago, 0);
+  const aReceber = ativos.reduce((s, c) => s + Math.max(0, c.total - c.pago), 0);
+  return { recebido: formatCentavosBRL(recebido), aReceber: formatCentavosBRL(aReceber) };
+}
 
 type Props = {
   onBack: () => void;
@@ -44,10 +114,52 @@ type Props = {
 };
 
 export function HonorariosScreen({ onBack, onNavigate }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [rowsApi, setRowsApi] = useState<ContratoApi[]>(CONTRATOS_FALLBACK_API);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!apiOn) {
+      setRowsApi(CONTRATOS_FALLBACK_API);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await fetchContratos(token);
+        if (!cancelled && data.length > 0) setRowsApi(data);
+      } catch {
+        if (!cancelled) setRowsApi(CONTRATOS_FALLBACK_API);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiOn, token]);
+
+  const lista = useMemo(() => rowsApi.map(mapApiToContrato), [rowsApi]);
+  const topo = useMemo(() => resumoAtivos(rowsApi), [rowsApi]);
+
   const [aba, setAba] = useState<'ativos' | 'encerrados'>('ativos');
   const [filtroCliente, setFiltroCliente] = useState('todos');
 
-  const contratosFiltrados = CONTRATOS.filter((c) => {
+  const CLIENTES_OPTIONS: SelectOption[] = useMemo(
+    () => [
+      { value: 'todos', label: 'Todos os Clientes' },
+      ...Array.from(new Set(lista.map((c) => c.cliente))).map((nome) => ({
+        value: nome,
+        label: nome,
+      })),
+    ],
+    [lista],
+  );
+
+  const contratosFiltrados = lista.filter((c) => {
     const matchCliente = filtroCliente === 'todos' || c.cliente === filtroCliente;
     const matchAba = aba === 'ativos' ? !c.encerrado : !!c.encerrado;
     return matchCliente && matchAba;
@@ -57,20 +169,24 @@ export function HonorariosScreen({ onBack, onNavigate }: Props) {
     <View style={styles.container}>
       <Header title="Honorários" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Carregando contratos…</Text>
+          </View>
+        )}
 
-        {/* Resumo */}
         <View style={styles.resumoRow}>
           <View style={styles.resumoVerde}>
             <Text style={styles.resumoLabel}>Total Recebido</Text>
-            <Text style={styles.resumoValue}>R$ 30.000</Text>
+            <Text style={styles.resumoValue}>{topo.recebido}</Text>
           </View>
           <View style={styles.resumoAzul}>
             <Text style={styles.resumoLabel}>A Receber</Text>
-            <Text style={styles.resumoValue}>R$ 25.000</Text>
+            <Text style={styles.resumoValue}>{topo.aReceber}</Text>
           </View>
         </View>
 
-        {/* Abas */}
         <View style={styles.tabs}>
           <Pressable onPress={() => setAba('ativos')} style={[styles.tab, aba === 'ativos' && styles.tabActive]}>
             <Text style={[styles.tabText, aba === 'ativos' && styles.tabTextActive]}>Ativos</Text>
@@ -80,7 +196,6 @@ export function HonorariosScreen({ onBack, onNavigate }: Props) {
           </Pressable>
         </View>
 
-        {/* Filtro de Cliente — Accordion inline */}
         <View style={styles.filtroWrap}>
           <AccordionSelect
             label="Filtrar por cliente"
@@ -92,7 +207,6 @@ export function HonorariosScreen({ onBack, onNavigate }: Props) {
           />
         </View>
 
-        {/* Lista de Contratos */}
         <View style={styles.list}>
           {contratosFiltrados.length === 0 ? (
             <View style={styles.emptyState}>
@@ -123,7 +237,7 @@ export function HonorariosScreen({ onBack, onNavigate }: Props) {
                       <Text style={styles.contratoTipo}>{c.tipoContrato}</Text>
                     </View>
                   </View>
-                  <TagStatus status={c.status as any} />
+                  <TagStatus status={c.status as 'em-dia' | 'pendente' | 'atrasado' | 'encerrado'} />
                 </View>
                 <BarraProgresso percentage={c.progresso} />
                 <View style={styles.contratoFooter}>
@@ -157,6 +271,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
   resumoRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   resumoVerde: { flex: 1, backgroundColor: '#16a34a', borderRadius: 16, padding: 16, shadowColor: '#16a34a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
   resumoAzul: { flex: 1, backgroundColor: '#2563eb', borderRadius: 16, padding: 16, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },

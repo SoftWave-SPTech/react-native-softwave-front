@@ -1,20 +1,24 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { CardTransacao } from '../components/CardTransacao';
 import { BottomNav } from '../components/BottomNav';
 import { FAB } from '../components/FAB';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { mapTransacaoApiToCard, type TransacaoCardModel } from '../mappers/transacao';
+import { fetchTransacoes } from '../services/resources';
 
 type TipoFiltro = 'todas' | 'receita' | 'despesa';
-type StatusFiltro = 'todos' | 'pago' | 'pendente' | 'atrasado' | 'em-dia';
+type StatusFiltro = 'todos' | 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
 
-const TRANSOES = [
-  { id: '1', icon: 'briefcase' as const, title: 'Honorários - Processo 1234', subtitle: 'João Silva', value: 'R$ 5.000,00', type: 'receita' as const, status: 'pago' as const },
-  { id: '2', icon: 'file-document' as const, title: 'Custas Judiciais', subtitle: 'Processo 5678', value: 'R$ 850,00', type: 'despesa' as const, status: 'pendente' as const },
-  { id: '3', icon: 'credit-card' as const, title: 'Honorários - Consultoria', subtitle: 'Maria Santos', value: 'R$ 3.200,00', type: 'receita' as const, status: 'atrasado' as const },
-  { id: '4', icon: 'receipt' as const, title: 'Aluguel do Escritório', subtitle: 'Despesa Fixa', value: 'R$ 4.500,00', type: 'despesa' as const, status: 'pago' as const },
-  { id: '5', icon: 'briefcase' as const, title: 'Honorários - Processo 9012', subtitle: 'Carlos Oliveira', value: 'R$ 8.000,00', type: 'receita' as const, status: 'em-dia' as const },
+const TRANSOES_FALLBACK: TransacaoCardModel[] = [
+  { id: '1', icon: 'briefcase', title: 'Honorários - Processo 1234', subtitle: 'João Silva', value: 'R$ 5.000,00', type: 'receita', status: 'pago' },
+  { id: '2', icon: 'file-document', title: 'Custas Judiciais', subtitle: 'Processo 5678', value: 'R$ 850,00', type: 'despesa', status: 'pendente' },
+  { id: '3', icon: 'credit-card', title: 'Honorários - Consultoria', subtitle: 'Maria Santos', value: 'R$ 3.200,00', type: 'receita', status: 'atrasado' },
+  { id: '4', icon: 'receipt', title: 'Aluguel do Escritório', subtitle: 'Despesa Fixa', value: 'R$ 4.500,00', type: 'despesa', status: 'pago' },
+  { id: '5', icon: 'briefcase', title: 'Honorários - Processo 9012', subtitle: 'Carlos Oliveira', value: 'R$ 8.000,00', type: 'receita', status: 'em-dia' },
 ];
 
 type Props = {
@@ -23,27 +27,57 @@ type Props = {
 };
 
 export function TransacoesScreen({ onBack, onNavigate }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [lista, setLista] = useState<TransacaoCardModel[]>(TRANSOES_FALLBACK);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!apiOn) {
+      setLista(TRANSOES_FALLBACK);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await fetchTransacoes(token);
+        if (!cancelled && data.length > 0) {
+          setLista(data.map(mapTransacaoApiToCard));
+        }
+      } catch {
+        if (!cancelled) setLista(TRANSOES_FALLBACK);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiOn, token]);
+
   const [busca, setBusca] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState<TipoFiltro>('todas');
   const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>('todos');
 
-  const transacoesFiltradas = TRANSOES.filter((t) => {
+  const transacoesFiltradas = lista.filter((t) => {
     const matchBusca = busca.trim() === '' || t.title.toLowerCase().includes(busca.toLowerCase()) || t.subtitle.toLowerCase().includes(busca.toLowerCase());
     const matchTipo = tipoFiltro === 'todas' || t.type === tipoFiltro;
     const matchStatus = statusFiltro === 'todos' || t.status === statusFiltro;
     return matchBusca && matchTipo && matchStatus;
   });
 
-  const totalReceitas = TRANSOES.filter(t => t.type === 'receita').reduce((acc, t) => acc + parseFloat(t.value.replace('R$ ', '').replace('.', '').replace(',', '.')), 0);
-  const totalDespesas = TRANSOES.filter(t => t.type === 'despesa').reduce((acc, t) => acc + parseFloat(t.value.replace('R$ ', '').replace('.', '').replace(',', '.')), 0);
-  const saldo = totalReceitas - totalDespesas;
-
-  const formatK = (val: number) => val >= 1000 ? `R$ ${(val / 1000).toFixed(1)}k` : `R$ ${val.toLocaleString('pt-BR')}`;
-
   return (
     <View style={styles.container}>
       <Header title="Transações" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Carregando transações…</Text>
+          </View>
+        )}
         <View style={styles.searchBox}>
           <MaterialCommunityIcons name="magnify" size={22} color="#9ca3af" />
           <TextInput value={busca} onChangeText={setBusca} placeholder="Buscar transação ou cliente" placeholderTextColor="#9ca3af" style={styles.searchInput} />
@@ -69,14 +103,24 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
         </View>
         <Text style={styles.filterLabel}>Status</Text>
         <View style={[styles.filterRow, { flexWrap: 'wrap' }]}>
-          {(['todos', 'pago', 'pendente', 'atrasado', 'em-dia'] as const).map((s) => (
+          {(['todos', 'pago', 'pendente', 'atrasado', 'em-dia', 'cancelado'] as const).map((s) => (
             <Pressable
               key={s}
               onPress={() => setStatusFiltro(s)}
               style={[styles.filterChip, statusFiltro === s && styles.chipAtivo]}
             >
               <Text style={[styles.filterChipText, statusFiltro === s && styles.chipTextActive]}>
-                {s === 'todos' ? 'Todos' : s === 'pago' ? 'Pago' : s === 'pendente' ? 'Pendente' : s === 'atrasado' ? 'Atrasado' : 'Em Dia'}
+                {s === 'todos'
+                  ? 'Todos'
+                  : s === 'pago'
+                    ? 'Pago'
+                    : s === 'pendente'
+                      ? 'Pendente'
+                      : s === 'atrasado'
+                        ? 'Atrasado'
+                        : s === 'em-dia'
+                          ? 'Em Dia'
+                          : 'Cancelado'}
               </Text>
             </Pressable>
           ))}
@@ -121,6 +165,8 @@ const styles = StyleSheet.create({
   chipAtivo: { backgroundColor: '#111827' },
   chipTextActive: { color: '#fff' },
   filterChipText: { fontSize: 14, color: '#6b7280' },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
   list: { gap: 12 },
   bottomNavWrap: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   emptyState: { alignItems: 'center', paddingVertical: 32, gap: 8 },
