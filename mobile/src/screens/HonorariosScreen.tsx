@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   resumoValue: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
   tabs: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, padding: 4, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
-  tabActive: { backgroundColor: '#0d9488' },
+  tabActive: { backgroundColor: '#111827' },
   tabText: { fontSize: 14, fontWeight: '500', color: '#6b7280' },
   tabTextActive: { color: '#fff' },
   filtroWrap: { marginBottom: 16 },

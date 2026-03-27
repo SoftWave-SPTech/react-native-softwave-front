@@ -1,0 +1,13 @@
+{
+  "name": "softwave-mock-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mock REST com json-server para testar o app mobile antes do backend real.",
+  "scripts": {
+    "start": "node server.cjs",
+    "dev": "node server.cjs"
+  },
+  "devDependencies": {
+    "json-server": "^0.17.4"
+  }
+}

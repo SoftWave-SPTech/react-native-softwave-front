@@ -1,0 +1,254 @@
+{
+  "usuarios": [
+    {
+      "id": "usr_1",
+      "email": "advogado@softwave.com",
+      "senha": "123456",
+      "nome": "Silva & Associados",
+      "tipo": "advogado",
+      "fotoPerfil": null
+    },
+    {
+      "id": "usr_2",
+      "email": "cliente@softwave.com",
+      "senha": "123456",
+      "nome": "João Silva",
+      "tipo": "cliente",
+      "fotoPerfil": null
+    }
+  ],
+  "dashboardResumo": [
+    {
+      "id": 1,
+      "valorDisponivel": 14523325,
+      "lucroLiquidoMes": 4250000,
+      "receitaMensal": 8540000,
+      "despesaMensal": 4290000,
+      "pendentes": 2830000,
+      "variacaoReceita": "+12%",
+      "variacaoPendentes": "-5%",
+      "variacaoDespesa": "+8%",
+      "variacaoLucro": "+15%",
+      "pagamentosParaConferir": 2
+    }
+  ],
+  "transacoes": [
+    {
+      "id": "txn_5",
+      "titulo": "Honorários - Processo 9012",
+      "subtitulo": "Carlos Oliveira",
+      "valor": 800000,
+      "tipo": "receita",
+      "status": "em-dia",
+      "categoria": "honorarios",
+      "clienteId": "cli_3",
+      "data": "2026-03-12",
+      "vencimento": "2026-03-25",
+      "icone": "briefcase",
+      "ordem": 5
+    },
+    {
+      "id": "txn_4",
+      "titulo": "Aluguel do Escritório",
+      "subtitulo": "Despesa Fixa",
+      "valor": 450000,
+      "tipo": "despesa",
+      "status": "pago",
+      "categoria": "aluguel",
+      "data": "2026-03-05",
+      "vencimento": "2026-03-05",
+      "icone": "receipt",
+      "ordem": 4
+    },
+    {
+      "id": "txn_1",
+      "titulo": "Honorários - Processo 1234",
+      "subtitulo": "João Silva",
+      "valor": 500000,
+      "tipo": "receita",
+      "status": "pago",
+      "categoria": "honorarios",
+      "clienteId": "cli_1",
+      "data": "2026-03-10",
+      "vencimento": "2026-03-15",
+      "icone": "briefcase",
+      "ordem": 3
+    },
+    {
+      "id": "txn_2",
+      "titulo": "Custas Judiciais",
+      "subtitulo": "Processo 5678",
+      "valor": 85000,
+      "tipo": "despesa",
+      "status": "pendente",
+      "categoria": "custas",
+      "data": "2026-03-08",
+      "vencimento": "2026-03-20",
+      "icone": "file-document",
+      "ordem": 2
+    },
+    {
+      "id": "txn_3",
+      "titulo": "Honorários - Consultoria",
+      "subtitulo": "Maria Santos",
+      "valor": 320000,
+      "tipo": "receita",
+      "status": "atrasado",
+      "categoria": "consultoria",
+      "clienteId": "cli_2",
+      "data": "2026-02-01",
+      "vencimento": "2026-02-10",
+      "icone": "credit-card",
+      "ordem": 1
+    }
+  ],
+  "contratos": [
+    {
+      "id": 1,
+      "clienteId": "cli_1",
+      "cliente": "João Silva",
+      "processo": "Processo 1234/2025",
+      "tipoContrato": "Êxito",
+      "status": "em-dia",
+      "progresso": 60,
+      "vencimento": "15/03/2026",
+      "total": 2500000,
+      "pago": 1500000,
+      "encerrado": false,
+      "reprovado": false
+    },
+    {
+      "id": 2,
+      "clienteId": "cli_2",
+      "cliente": "Maria Santos",
+      "processo": "Processo 5678/2025",
+      "tipoContrato": "Parcelas",
+      "status": "pendente",
+      "progresso": 33,
+      "vencimento": "20/02/2026",
+      "total": 1800000,
+      "pago": 600000,
+      "encerrado": false,
+      "reprovado": true
+    },
+    {
+      "id": 3,
+      "clienteId": "cli_3",
+      "cliente": "Carlos Oliveira",
+      "processo": "Processo 9012/2025",
+      "tipoContrato": "Fixo Mensal",
+      "status": "atrasado",
+      "progresso": 75,
+      "vencimento": "10/02/2026",
+      "total": 1200000,
+      "pago": 900000,
+      "encerrado": false,
+      "reprovado": false
+    },
+    {
+      "id": 4,
+      "clienteId": "cli_4",
+      "cliente": "Ana Costa",
+      "processo": "Processo 3456/2024",
+      "tipoContrato": "Êxito",
+      "status": "encerrado",
+      "progresso": 100,
+      "vencimento": "01/01/2025",
+      "total": 800000,
+      "pago": 800000,
+      "encerrado": true,
+      "reprovado": false
+    }
+  ],
+  "pagamentosParaConferir": [
+    {
+      "id": 1,
+      "cliente": "João Silva",
+      "processo": "Processo 1234/2025",
+      "valor": 600000,
+      "data": "15/02/2026",
+      "status": "pendente"
+    },
+    {
+      "id": 2,
+      "cliente": "Maria Santos",
+      "processo": "Processo 5678/2025",
+      "valor": 320000,
+      "data": "14/02/2026",
+      "status": "aprovado"
+    },
+    {
+      "id": 3,
+      "cliente": "Carlos Oliveira",
+      "processo": "Processo 9012/2025",
+      "valor": 550000,
+      "data": "13/02/2026",
+      "status": "pendente"
+    }
+  ],
+  "notificacoesAdvogado": [
+    {
+      "id": 1,
+      "tipo": "pagamento",
+      "titulo": "Novo pagamento recebido",
+      "mensagem": "João Silva realizou o pagamento de R$ 5.000,00",
+      "data": "Há 2 horas",
+      "lida": false
+    },
+    {
+      "id": 2,
+      "tipo": "alerta",
+      "titulo": "Pagamento pendente",
+      "mensagem": "Honorários de Maria Santos vence amanhã",
+      "data": "Há 4 horas",
+      "lida": false
+    },
+    {
+      "id": 3,
+      "tipo": "sucesso",
+      "titulo": "Pagamento confirmado",
+      "mensagem": "Comprovante aprovado para o processo #1234",
+      "data": "Ontem",
+      "lida": true
+    }
+  ],
+  "notificacoesCliente": [
+    {
+      "id": 1,
+      "tipo": "pagamento",
+      "titulo": "Pagamento confirmado",
+      "mensagem": "Seu pagamento de R$ 6.000,00 foi confirmado",
+      "data": "Hoje, 14:30",
+      "lida": false,
+      "icon": "check-circle-outline",
+      "color": "green"
+    },
+    {
+      "id": 2,
+      "tipo": "cobranca",
+      "titulo": "Nova cobrança disponível",
+      "mensagem": "Parcela de R$ 7.000,00 vence em 15/04/2026",
+      "data": "Hoje, 09:15",
+      "lida": false,
+      "icon": "currency-usd",
+      "color": "blue"
+    }
+  ],
+  "clienteDashboard": [
+    {
+      "id": 1,
+      "nome": "João Silva",
+      "totalPago": 1500000,
+      "totalPendente": 1000000,
+      "totalContrato": 2500000,
+      "percentualPago": 60,
+      "parcelasRestantes": 3,
+      "notificacoesNaoLidas": 2,
+      "ultimaCobranca": {
+        "parcelaLabel": "Parcela 3/4",
+        "vencimento": "15/03/2026",
+        "valor": 600000
+      }
+    }
+  ]
+}
