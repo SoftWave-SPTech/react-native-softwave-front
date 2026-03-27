@@ -56,15 +56,25 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
         <Text style={styles.filterLabel}>Tipo</Text>
         <View style={styles.filterRow}>
           {(['todas', 'receita', 'despesa'] as const).map((t) => (
-            <Pressable key={t} onPress={() => setTipoFiltro(t)} style={[styles.filterChip, tipoFiltro === t && (t === 'receita' ? styles.chipReceita : t === 'despesa' ? styles.chipDespesa : styles.chipAtivo)]}>
-              <Text style={[styles.filterChipText, tipoFiltro === t && styles.chipTextActive]}>{t === 'todas' ? 'Todas' : t === 'receita' ? 'Receita' : 'Despesa'}</Text>
+            <Pressable
+              key={t}
+              onPress={() => setTipoFiltro(t)}
+              style={[styles.filterChip, tipoFiltro === t && styles.chipAtivo]}
+            >
+              <Text style={[styles.filterChipText, tipoFiltro === t && styles.chipTextActive]}>
+                {t === 'todas' ? 'Todas' : t === 'receita' ? 'Receita' : 'Despesa'}
+              </Text>
             </Pressable>
           ))}
         </View>
         <Text style={styles.filterLabel}>Status</Text>
         <View style={[styles.filterRow, { flexWrap: 'wrap' }]}>
           {(['todos', 'pago', 'pendente', 'atrasado', 'em-dia'] as const).map((s) => (
-            <Pressable key={s} onPress={() => setStatusFiltro(s)} style={[styles.filterChip, statusFiltro === s && styles.chipStatusAtivo]}>
+            <Pressable
+              key={s}
+              onPress={() => setStatusFiltro(s)}
+              style={[styles.filterChip, statusFiltro === s && styles.chipAtivo]}
+            >
               <Text style={[styles.filterChipText, statusFiltro === s && styles.chipTextActive]}>
                 {s === 'todos' ? 'Todos' : s === 'pago' ? 'Pago' : s === 'pendente' ? 'Pendente' : s === 'atrasado' ? 'Atrasado' : 'Em Dia'}
               </Text>
@@ -108,10 +118,7 @@ const styles = StyleSheet.create({
   filterLabel: { fontSize: 14, color: '#6b7280', marginBottom: 8 },
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: '#fff' },
-  chipAtivo: { backgroundColor: '#2563eb' },
-  chipReceita: { backgroundColor: '#16a34a' },
-  chipDespesa: { backgroundColor: '#dc2626' },
-  chipStatusAtivo: { backgroundColor: '#111827' },
+  chipAtivo: { backgroundColor: '#111827' },
   chipTextActive: { color: '#fff' },
   filterChipText: { fontSize: 14, color: '#6b7280' },
   list: { gap: 12 },

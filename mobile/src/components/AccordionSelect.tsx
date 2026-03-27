@@ -37,18 +37,18 @@ export function AccordionSelect({
         style={[styles.trigger, open && styles.triggerOpen]}
       >
         <View style={styles.triggerLeft}>
-          <Text style={styles.label}>
+          <Text style={[styles.label, open && styles.labelOpen]}>
             {label}
             {required && <Text style={styles.required}> *</Text>}
           </Text>
-          <Text style={[styles.value, !selectedLabel && styles.placeholder]}>
+          <Text style={[styles.value, !selectedLabel && styles.placeholder, open && styles.valueOpen]}>
             {selectedLabel || placeholder}
           </Text>
         </View>
         <MaterialCommunityIcons
           name={open ? 'chevron-up' : 'chevron-down'}
           size={22}
-          color="#6b7280"
+          color={open ? '#fff' : '#6b7280'}
         />
       </Pressable>
 
@@ -64,13 +64,13 @@ export function AccordionSelect({
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                style={[styles.option, !isLast && styles.optionBorder]}
+                style={[styles.option, !isLast && styles.optionBorder, isSelected && styles.optionSelected]}
               >
                 <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
                   {opt.label}
                 </Text>
                 {isSelected && (
-                  <MaterialCommunityIcons name="check" size={18} color="#2563eb" />
+                  <MaterialCommunityIcons name="check" size={18} color="#fff" />
                 )}
               </Pressable>
             );
@@ -101,7 +101,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     elevation: 0,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: '#111827',
+    backgroundColor: '#111827',
   },
   triggerLeft: {
     flex: 1,
@@ -111,6 +112,9 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginBottom: 4,
   },
+  labelOpen: {
+    color: '#fff',
+  },
   required: {
     color: '#ef4444',
   },
@@ -118,6 +122,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#111827',
     fontWeight: '500',
+  },
+  valueOpen: {
+    color: '#fff',
   },
   placeholder: {
     color: '#9ca3af',
@@ -141,6 +148,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
+  optionSelected: {
+    backgroundColor: '#111827',
+  },
   optionBorder: {
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
@@ -150,7 +160,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   optionTextSelected: {
-    color: '#2563eb',
+    color: '#fff',
     fontWeight: '600',
   },
 });

@@ -111,6 +111,8 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
   );
 
   const filtroLabel = filtrosHistorico.find(f => f.value === filtroHistorico)?.label ?? 'Todos';
+  const filtroAtivo = filtroHistorico !== 'todos';
+  const corFiltro = filtroAtivo ? '#fff' : '#111827';
 
   const canSubmit = !!tipoAnalise && !!dataInicio && !!dataFim && !isLoading;
 
@@ -209,10 +211,13 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
               <MaterialCommunityIcons name="clock-outline" size={18} color="#374151" />
               <Text style={styles.sectionTitle}>Histórico de Insights</Text>
             </View>
-            <Pressable style={styles.filtroBtn} onPress={() => setModalFiltro(true)}>
-              <MaterialCommunityIcons name="filter-variant" size={16} color="#374151" />
-              <Text style={styles.filtroText}>{filtroLabel}</Text>
-              <MaterialCommunityIcons name="chevron-down" size={16} color="#374151" />
+            <Pressable
+              style={[styles.filtroBtn, filtroAtivo && styles.filtroBtnActive]}
+              onPress={() => setModalFiltro(true)}
+            >
+              <MaterialCommunityIcons name="filter-variant" size={16} color={corFiltro} />
+              <Text style={[styles.filtroText, filtroAtivo && styles.filtroTextActive]}>{filtroLabel}</Text>
+              <MaterialCommunityIcons name="chevron-down" size={16} color={corFiltro} />
             </Pressable>
           </View>
 
@@ -364,10 +369,16 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
   filtroBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb',
-    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  filtroText: { fontSize: 13, color: '#374151' },
+  filtroBtnActive: {
+    backgroundColor: '#111827',
+  },
+  filtroText: { fontSize: 13, color: '#111827', fontWeight: '500' },
+  filtroTextActive: { color: '#fff' },
 
   historicoCard: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12,
@@ -398,9 +409,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, marginBottom: 4,
   },
-  modalOptionActive: { backgroundColor: '#faf5ff' },
+  modalOptionActive: { backgroundColor: '#111827' },
   modalOptionText: { fontSize: 15, color: '#374151' },
-  modalOptionTextActive: { color: '#9333ea', fontWeight: '500' },
+  modalOptionTextActive: { color: '#fff', fontWeight: '600' },
   modalCancel: {
     marginTop: 8, paddingVertical: 14, backgroundColor: '#f3f4f6',
     borderRadius: 12, alignItems: 'center',
