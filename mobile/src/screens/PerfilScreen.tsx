@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Alert, Modal } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Alert, Modal, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { fetchPerfilEscritorio } from '../services/resources';
 
 type Props = {
   onBack: () => void;
@@ -11,12 +14,37 @@ type Props = {
 };
 
 export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [loading, setLoading] = useState(false);
   const [nome, setNome] = useState('Silva & Associados');
   const [email, setEmail] = useState('contato@silvaassociados.com.br');
   const [telefone, setTelefone] = useState('(11) 3456-7890');
   const [oab, setOab] = useState('OAB/SP 123.456');
   const [endereco, setEndereco] = useState('Av. Paulista, 1000 - São Paulo/SP');
   const [modalFoto, setModalFoto] = useState(false);
+
+  const carregar = useCallback(async () => {
+    if (!apiOn || !token) return;
+    setLoading(true);
+    try {
+      const p = await fetchPerfilEscritorio(token);
+      if (p) {
+        setNome(p.nome);
+        setEmail(p.email);
+        setTelefone(p.telefone);
+        setOab(p.oab);
+        setEndereco(p.endereco);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [apiOn, token]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja realmente sair do aplicativo?', [
@@ -29,6 +57,12 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
     <View style={styles.container}>
       <Header title="Meu Perfil" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Carregando perfil…</Text>
+          </View>
+        )}
         <View style={styles.avatarCard}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}><Text style={styles.avatarText}>SA</Text></View>
@@ -116,6 +150,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
   avatarCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   avatarWrap: { position: 'relative', marginBottom: 16 },
   avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' },

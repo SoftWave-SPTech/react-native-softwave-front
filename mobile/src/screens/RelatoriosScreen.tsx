@@ -1,10 +1,29 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Dimensions } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit';
 import { Header } from '../components/Header';
 import { CardKPI } from '../components/CardKPI';
 import { BottomNav } from '../components/BottomNav';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import {
+  fetchRelatorioDespesasMes,
+  fetchRelatorioInsights,
+  fetchRelatorioKpis,
+  fetchRelatorioRankingClientes,
+  fetchRelatorioReceitaCategoria,
+  fetchRelatorioReceitaDespesa,
+} from '../services/resources';
+import type {
+  RelatorioDespesasMesApi,
+  RelatorioInsightsApi,
+  RelatorioKpisApi,
+  RelatorioRankingClientesApi,
+  RelatorioReceitaCategoriaApi,
+  RelatorioReceitaDespesaApi,
+} from '../types/api';
+import { formatCentavosBRL } from '../utils/money';
 
 type Props = {
   onBack: () => void;
@@ -72,18 +91,140 @@ const CHART_CONFIG = {
   propsForDots: { r: '4', strokeWidth: '2', stroke: '#2563eb' },
 };
 
+const PIE_PALETTE = ['#2563eb', '#16a34a', '#f59e0b', '#8b5cf6', '#ec4899', '#0ea5e9'];
+
+function centavosParaReaisChart(v: number): number {
+  return Math.round((v / 100) * 100) / 100;
+}
+
 export function RelatoriosScreen({ onBack, onNavigate }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
   const [periodo, setPeriodo] = useState('mes');
   const [insightAberto, setInsightAberto] = useState<'linha' | 'pizza' | 'barra' | 'maioresClientes' | null>(null);
+
+  const [loading, setLoading] = useState(false);
+  const [rd, setRd] = useState<RelatorioReceitaDespesaApi | null>(null);
+  const [rc, setRc] = useState<RelatorioReceitaCategoriaApi | null>(null);
+  const [dm, setDm] = useState<RelatorioDespesasMesApi | null>(null);
+  const [kpis, setKpis] = useState<RelatorioKpisApi | null>(null);
+  const [ranking, setRanking] = useState<RelatorioRankingClientesApi | null>(null);
+  const [insightsApi, setInsightsApi] = useState<RelatorioInsightsApi | null>(null);
+
+  const carregar = useCallback(async () => {
+    if (!apiOn || !token) {
+      setRd(null);
+      setRc(null);
+      setDm(null);
+      setKpis(null);
+      setRanking(null);
+      setInsightsApi(null);
+      return;
+    }
+    setLoading(true);
+    try {
+      const [a, b, c, d, e, f] = await Promise.all([
+        fetchRelatorioReceitaDespesa(token, periodo),
+        fetchRelatorioReceitaCategoria(token, periodo),
+        fetchRelatorioDespesasMes(token, periodo),
+        fetchRelatorioKpis(token, periodo),
+        fetchRelatorioRankingClientes(token, periodo),
+        fetchRelatorioInsights(token, periodo),
+      ]);
+      setRd(a);
+      setRc(b);
+      setDm(c);
+      setKpis(d);
+      setRanking(e);
+      setInsightsApi(f);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiOn, token, periodo]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const dadosLinha = useMemo(() => {
+    if (rd?.labels?.length && rd.receita?.length && rd.despesa?.length) {
+      return {
+        labels: rd.labels,
+        datasets: [
+          { data: rd.receita.map(centavosParaReaisChart), color: () => '#16a34a', strokeWidth: 2 },
+          { data: rd.despesa.map(centavosParaReaisChart), color: () => '#dc2626', strokeWidth: 2 },
+        ],
+        legend: ['Receita', 'Despesa'],
+      };
+    }
+    return DADOS_LINHA;
+  }, [rd]);
+
+  const dadosPizza = useMemo(() => {
+    const cats = rc?.categorias;
+    if (cats && cats.length > 0) {
+      return cats.map((cat, i) => ({
+        name: cat.nome,
+        value: centavosParaReaisChart(cat.valor),
+        color: PIE_PALETTE[i % PIE_PALETTE.length],
+        legendFontColor: '#374151',
+        legendFontSize: 13,
+      }));
+    }
+    return DADOS_PIZZA;
+  }, [rc]);
+
+  const dadosBarra = useMemo(() => {
+    if (dm?.labels?.length && dm.despesas?.length) {
+      return {
+        labels: dm.labels,
+        datasets: [{ data: dm.despesas.map(centavosParaReaisChart) }],
+      };
+    }
+    return DADOS_BARRA;
+  }, [dm]);
+
+  const clientesRanking = useMemo(() => {
+    const list = ranking?.clientes;
+    if (list && list.length > 0) {
+      return list.map((c) => ({ nome: c.nome, valorLabel: formatCentavosBRL(c.valor) }));
+    }
+    return CLIENTES_RANKING.map((c) => ({
+      nome: c.nome,
+      valorLabel: `R$ ${c.valor.toLocaleString('pt-BR')}`,
+    }));
+  }, [ranking]);
+
+  const insights = useMemo(() => {
+    const maiores =
+      insightsApi?.maioresClientes && insightsApi.maioresClientes.length > 0
+        ? insightsApi.maioresClientes
+        : INSIGHTS.maioresClientes;
+    return {
+      linha: insightsApi?.linha?.length ? insightsApi.linha : INSIGHTS.linha,
+      pizza: insightsApi?.pizza?.length ? insightsApi.pizza : INSIGHTS.pizza,
+      barra: insightsApi?.barra?.length ? insightsApi.barra : INSIGHTS.barra,
+      maioresClientes: maiores,
+    };
+  }, [insightsApi]);
 
   const toggleInsight = (tipo: 'linha' | 'pizza' | 'barra' | 'maioresClientes' ) => {
     setInsightAberto((prev) => (prev === tipo ? null : tipo));
   };
 
+  const k = kpis;
+
   return (
     <View style={styles.container}>
       <Header title="Relatórios" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Atualizando relatórios…</Text>
+          </View>
+        )}
         <View style={styles.periodoCard}>
           <View style={styles.periodoHeader}>
             <MaterialCommunityIcons name="calendar" size={22} color="#6b7280" />
@@ -99,10 +240,42 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         </View>
 
         <View style={styles.kpiGrid}>
-          <View style={styles.kpiItem}><CardKPI icon="chart-line" title="Margem de Lucro" value="49.8%" variation="+2.3%" variationType="positive" /></View>
-          <View style={styles.kpiItem}><CardKPI icon="cash" title="Ticket Médio" value="R$ 8.540" variation="+5%" variationType="positive" /></View>
-          <View style={styles.kpiItem}><CardKPI icon="alert-circle" title="Inadimplência" value="12%" variation="-3%" variationType="positive" /></View>
-          <View style={styles.kpiItem}><CardKPI icon="trending-up" title="Crescimento" value="15%" variation="+8%" variationType="positive" /></View>
+          <View style={styles.kpiItem}>
+            <CardKPI
+              icon="chart-line"
+              title="Margem de Lucro"
+              value={k ? String(k.margemLucro.valor) : '49.8%'}
+              variation={k?.margemLucro.variacao}
+              variationType={k?.margemLucro.tipo === 'negativo' ? 'negative' : 'positive'}
+            />
+          </View>
+          <View style={styles.kpiItem}>
+            <CardKPI
+              icon="cash"
+              title="Ticket Médio"
+              value={k && typeof k.ticketMedio.valor === 'number' ? formatCentavosBRL(k.ticketMedio.valor) : 'R$ 8.540'}
+              variation={k?.ticketMedio.variacao}
+              variationType={k?.ticketMedio.tipo === 'negativo' ? 'negative' : 'positive'}
+            />
+          </View>
+          <View style={styles.kpiItem}>
+            <CardKPI
+              icon="alert-circle"
+              title="Inadimplência"
+              value={k ? String(k.inadimplencia.valor) : '12%'}
+              variation={k?.inadimplencia.variacao}
+              variationType={k?.inadimplencia.tipo === 'negativo' ? 'negative' : 'positive'}
+            />
+          </View>
+          <View style={styles.kpiItem}>
+            <CardKPI
+              icon="trending-up"
+              title="Crescimento"
+              value={k ? String(k.crescimento.valor) : '15%'}
+              variation={k?.crescimento.variacao}
+              variationType={k?.crescimento.tipo === 'negativo' ? 'negative' : 'positive'}
+            />
+          </View>
         </View>
 
         <Pressable onPress={() => onNavigate('AssistenteIA')} style={styles.iaBanner}>
@@ -133,7 +306,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             </Pressable>
           </View>
           <LineChart
-            data={DADOS_LINHA}
+            data={dadosLinha}
             width={SCREEN_WIDTH - 32}
             height={180}
             chartConfig={CHART_CONFIG}
@@ -146,7 +319,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             <View style={styles.legendaItem}><View style={[styles.legendaDot, { backgroundColor: '#16a34a' }]} /><Text style={styles.legendaText}>Receita</Text></View>
             <View style={styles.legendaItem}><View style={[styles.legendaDot, { backgroundColor: '#dc2626' }]} /><Text style={styles.legendaText}>Despesa</Text></View>
           </View>
-          {insightAberto === 'linha' && <InsightCard bullets={INSIGHTS.linha} />}
+          {insightAberto === 'linha' && <InsightCard bullets={insights.linha} />}
         </View>
 
         {/* PieChart — Receita por Categoria */}
@@ -158,7 +331,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             </Pressable>
           </View>
           <PieChart
-            data={DADOS_PIZZA}
+            data={dadosPizza}
             width={SCREEN_WIDTH - 32}
             height={180}
             chartConfig={CHART_CONFIG}
@@ -168,7 +341,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             absolute={false}
             style={styles.chart}
           />
-          {insightAberto === 'pizza' && <InsightCard bullets={INSIGHTS.pizza} />}
+          {insightAberto === 'pizza' && <InsightCard bullets={insights.pizza} />}
         </View>
 
         {/* BarChart — Despesa por Mês */}
@@ -180,7 +353,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             </Pressable>
           </View>
           <BarChart
-            data={DADOS_BARRA}
+            data={dadosBarra}
             width={SCREEN_WIDTH - 32}
             height={180}
             chartConfig={{ ...CHART_CONFIG, color: (opacity = 1) => `rgba(220, 38, 38, ${opacity})` }}
@@ -190,7 +363,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             yAxisLabel="R$"
             yAxisSuffix=""
           />
-          {insightAberto === 'barra' && <InsightCard bullets={INSIGHTS.barra} />}
+          {insightAberto === 'barra' && <InsightCard bullets={insights.barra} />}
         </View>
 
         <View style={styles.card}>
@@ -200,14 +373,14 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
               <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'maioresClientes' ? '#fff' : '#f59e0b'} />
             </Pressable>
             </View>
-          {CLIENTES_RANKING.map((c, i) => (
+          {clientesRanking.map((c, i) => (
             <View key={i} style={styles.clienteRow}>
               <View style={styles.clienteRank}><Text style={styles.clienteRankText}>{i + 1}</Text></View>
               <Text style={styles.clienteNome}>{c.nome}</Text>
-              <Text style={styles.clienteValor}>R$ {c.valor.toLocaleString('pt-BR')}</Text>
+              <Text style={styles.clienteValor}>{c.valorLabel}</Text>
             </View>
           ))}
-          {insightAberto === 'maioresClientes' && <InsightCard bullets={INSIGHTS.maioresClientes} />}
+          {insightAberto === 'maioresClientes' && <InsightCard bullets={insights.maioresClientes} />}
         </View>
 
         <View style={{ height: 80 }} />
@@ -240,6 +413,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
   periodoCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   periodoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   periodoLabel: { fontSize: 14, color: '#6b7280' },

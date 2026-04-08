@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Modal } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Modal, ActivityIndicator } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { fetchCobrancaDetalhe, fetchCobrancaPix, fetchEscritorioDadosBancarios } from '../services/resources';
+import { formatCentavosBRL, formatDateIsoToBR } from '../utils/money';
 
-const PIX_CODE = '00020126580014BR.GOV.BCB.PIX0136a1b2c3d4-e5f6-7890-abcd-ef1234567890520400005303986540525.005802BR5925SILVA E ASSOCIADOS LTDA6014SAO PAULO62070503***6304ABCD';
+const PIX_FALLBACK =
+  '00020126580014BR.GOV.BCB.PIX0136a1b2c3d4-e5f6-7890-abcd-ef1234567890520400005303986540525.005802BR5925SILVA E ASSOCIADOS LTDA6014SAO PAULO62070503***6304ABCD';
 
 type Props = {
   cobrancaId: string;
@@ -12,15 +17,55 @@ type Props = {
 };
 
 export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [loading, setLoading] = useState(false);
+  const [valorFmt, setValorFmt] = useState('R$ 6.000,00');
+  const [vencFmt, setVencFmt] = useState('15/03/2026');
+  const [pixCode, setPixCode] = useState(PIX_FALLBACK);
+  const [banco, setBanco] = useState({ banco: 'Banco do Brasil', agencia: '1234-5', conta: '67890-1', favorecido: 'Silva & Associados', cnpj: '12.345.678/0001-90' });
+
   const [copiado, setCopiado] = useState(false);
   const [comprovanteAnexado, setComprovanteAnexado] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [arquivoSelecionado, setArquivoSelecionado] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
+  const carregar = useCallback(async () => {
+    if (!apiOn || !token) {
+      setValorFmt('R$ 6.000,00');
+      setVencFmt('15/03/2026');
+      setPixCode(PIX_FALLBACK);
+      return;
+    }
+    setLoading(true);
+    try {
+      const [det, pix, esc] = await Promise.all([
+        fetchCobrancaDetalhe(token, cobrancaId),
+        fetchCobrancaPix(token, cobrancaId),
+        fetchEscritorioDadosBancarios(token),
+      ]);
+      if (det) {
+        setValorFmt(formatCentavosBRL(det.valor));
+        setVencFmt(/^\d{4}-\d{2}-\d{2}/.test(det.vencimento) ? formatDateIsoToBR(det.vencimento) : det.vencimento);
+      }
+      if (pix?.pixCopiaCola) setPixCode(pix.pixCopiaCola);
+      if (esc) setBanco(esc);
+    } catch {
+      /* mantém fallback */
+    } finally {
+      setLoading(false);
+    }
+  }, [apiOn, token, cobrancaId]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
   const copiarPix = async () => {
     try {
-      await Clipboard.setStringAsync(PIX_CODE);
+      await Clipboard.setStringAsync(pixCode);
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
     } catch {
@@ -53,10 +98,16 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
     <View style={styles.container}>
       <Header title="Realizar Pagamento" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Carregando dados do pagamento…</Text>
+          </View>
+        )}
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>Valor a pagar</Text>
-          <Text style={styles.heroValor}>R$ 6.000,00</Text>
-          <Text style={styles.heroVenc}>Vencimento: 15/03/2026</Text>
+          <Text style={styles.heroValor}>{valorFmt}</Text>
+          <Text style={styles.heroVenc}>Vencimento: {vencFmt}</Text>
         </View>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>QR Code Pix</Text>
@@ -68,7 +119,7 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Pix Copia e Cola</Text>
           <View style={styles.pixCodeWrap}>
-            <Text style={styles.pixCode} numberOfLines={3}>{PIX_CODE}</Text>
+            <Text style={styles.pixCode} numberOfLines={3}>{pixCode}</Text>
           </View>
           <Pressable onPress={copiarPix} style={[styles.btnPix, copiado && styles.btnPixCopiado]}>
             <MaterialCommunityIcons name={copiado ? 'check-circle' : 'content-copy'} size={22} color="#fff" />
@@ -80,11 +131,11 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
             <MaterialCommunityIcons name="bank" size={22} color="#6b7280" />
             <Text style={styles.cardTitle}>Dados Bancários</Text>
           </View>
-          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Banco:</Text><Text style={styles.dadosValue}>Banco do Brasil</Text></View>
-          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Agência:</Text><Text style={styles.dadosValue}>1234-5</Text></View>
-          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Conta:</Text><Text style={styles.dadosValue}>67890-1</Text></View>
-          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Favorecido:</Text><Text style={styles.dadosValue}>Silva & Associados</Text></View>
-          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>CNPJ:</Text><Text style={styles.dadosValue}>12.345.678/0001-90</Text></View>
+          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Banco:</Text><Text style={styles.dadosValue}>{banco.banco}</Text></View>
+          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Agência:</Text><Text style={styles.dadosValue}>{banco.agencia}</Text></View>
+          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Conta:</Text><Text style={styles.dadosValue}>{banco.conta}</Text></View>
+          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Favorecido:</Text><Text style={styles.dadosValue}>{banco.favorecido}</Text></View>
+          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>CNPJ:</Text><Text style={styles.dadosValue}>{banco.cnpj}</Text></View>
         </View>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Comprovante</Text>
@@ -187,6 +238,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
   heroCard: { backgroundColor: '#2563eb', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 16, shadowColor: '#1e3a8a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 5 },
   heroLabel: { fontSize: 14, color: '#93c5fd', marginBottom: 8 },
   heroValor: { fontSize: 36, fontWeight: 'bold', color: '#fff', marginBottom: 8 },

@@ -29,7 +29,7 @@
       "variacaoPendentes": "-5%",
       "variacaoDespesa": "+8%",
       "variacaoLucro": "+15%",
-      "pagamentosParaConferir": 2
+      "pagamentosParaConferir": 1
     }
   ],
   "transacoes": [
@@ -100,6 +100,19 @@
       "vencimento": "2026-02-10",
       "icone": "credit-card",
       "ordem": 1
+    },
+    {
+      "id": "txn_1775677287004",
+      "titulo": "Nova transação ",
+      "subtitulo": "Receita",
+      "valor": 100000,
+      "tipo": "receita",
+      "status": "pendente",
+      "categoria": "honorarios",
+      "data": "2026-06-01",
+      "vencimento": "2026-06-01",
+      "icone": "briefcase",
+      "ordem": 6
     }
   ],
   "contratos": [
@@ -183,7 +196,7 @@
       "processo": "Processo 9012/2025",
       "valor": 550000,
       "data": "13/02/2026",
-      "status": "pendente"
+      "status": "aprovado"
     }
   ],
   "notificacoesAdvogado": [

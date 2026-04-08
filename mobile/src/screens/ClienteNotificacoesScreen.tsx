@@ -5,12 +5,13 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
-import { fetchNotificacoesCliente } from '../services/resources';
+import { fetchNotificacoesCliente, putClienteNotificacaoLida } from '../services/resources';
 
 type Props = {
   onBack: () => void;
@@ -128,6 +129,17 @@ export function ClienteNotificacoesScreen({ onBack }: Props) {
     };
   }, [apiOn, token]);
 
+  const marcarComoLida = async (id: number) => {
+    const anterior = notificacoes;
+    setNotificacoes((prev) => prev.map((n) => (n.id === id ? { ...n, lida: true } : n)));
+    if (!apiOn || !token) return;
+    try {
+      await putClienteNotificacaoLida(token, id);
+    } catch {
+      setNotificacoes(anterior);
+    }
+  };
+
   const naoLidas = notificacoes.filter(n => !n.lida).length;
 
   return (
@@ -158,8 +170,9 @@ export function ClienteNotificacoesScreen({ onBack }: Props) {
 
         {/* Lista de Notificações */}
         {notificacoes.map(notif => (
-          <View
+          <Pressable
             key={notif.id}
+            onPress={() => marcarComoLida(notif.id)}
             style={[styles.notifCard, notif.lida ? styles.notifCardLida : styles.notifCardNaoLida]}
           >
             <View style={styles.notifContent}>
@@ -181,7 +194,7 @@ export function ClienteNotificacoesScreen({ onBack }: Props) {
                 <Text style={styles.notifData}>{notif.data}</Text>
               </View>
             </View>
-          </View>
+          </Pressable>
         ))}
 
         {/* Estado Vazio */}

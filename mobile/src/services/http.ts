@@ -57,6 +57,19 @@ export async function apiPatchJson<T>(path: string, token: string | null, body: 
   return res.json() as Promise<T>;
 }
 
+export async function apiPutJson<T>(path: string, token: string | null, body?: unknown): Promise<T> {
+  const res = await apiFetch(path, {
+    method: 'PUT',
+    token,
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new ApiError(text || res.statusText, res.status);
+  }
+  return res.json() as Promise<T>;
+}
+
 export async function apiPostJson<T>(path: string, token: string | null, body: unknown): Promise<T> {
   const res = await apiFetch(path, {
     method: 'POST',

@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { TagStatus } from '../components/TagStatus';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { fetchClienteCobrancas } from '../services/resources';
+import type { CobrancaClienteApi } from '../types/api';
+import { formatCentavosBRL, formatDateIsoToBR } from '../utils/money';
 
-const COBRANCAS = [
-  { id: 3, processo: 'Processo 1234/2025', valor: 'R$ 6.000,00', vencimento: '15/03/2026', status: 'pendente' as const, parcela: 4, totalParcelas: 5, percentualPago: 60 },
-  { id: 4, processo: 'Processo 1234/2025', valor: 'R$ 7.000,00', vencimento: '15/04/2026', status: 'pendente' as const, parcela: 5, totalParcelas: 5, percentualPago: 60 },
-  { id: 1, processo: 'Processo 1234/2025', valor: 'R$ 6.000,00', vencimento: '15/01/2026', status: 'pago' as const, parcela: 1, totalParcelas: 5, percentualPago: 20 },
-  { id: 2, processo: 'Processo 1234/2025', valor: 'R$ 6.000,00', vencimento: '15/02/2026', status: 'pago' as const, parcela: 2, totalParcelas: 5, percentualPago: 40 },
+const COBRANCAS_FALLBACK: CobrancaClienteApi[] = [
+  { id: 'cob_003', processo: 'Processo 1234/2025', valor: 600000, vencimento: '2026-03-15', status: 'pendente', parcela: 3, totalParcelas: 4, percentualPago: 50 },
+  { id: 'cob_004', processo: 'Processo 1234/2025', valor: 600000, vencimento: '2026-04-15', status: 'pendente', parcela: 4, totalParcelas: 4, percentualPago: 50 },
+  { id: 'cob_001', processo: 'Processo 1234/2025', valor: 600000, vencimento: '2026-01-15', status: 'pago', parcela: 1, totalParcelas: 4, percentualPago: 25 },
+  { id: 'cob_002', processo: 'Processo 1234/2025', valor: 600000, vencimento: '2026-02-15', status: 'pago', parcela: 2, totalParcelas: 4, percentualPago: 50 },
 ];
 
 type Props = {
@@ -16,14 +21,52 @@ type Props = {
   onNavigate: (screen: string, id?: string) => void;
 };
 
+function vencimentoLabel(iso: string) {
+  if (/^\d{4}-\d{2}-\d{2}/.test(iso)) return formatDateIsoToBR(iso);
+  return iso;
+}
+
 export function ClienteCobrancasScreen({ onBack, onNavigate }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [lista, setLista] = useState<CobrancaClienteApi[]>(COBRANCAS_FALLBACK);
+  const [loading, setLoading] = useState(false);
+
+  const carregar = useCallback(async () => {
+    if (!apiOn || !token) {
+      setLista(COBRANCAS_FALLBACK);
+      return;
+    }
+    setLoading(true);
+    try {
+      const rows = await fetchClienteCobrancas(token);
+      if (rows.length > 0) setLista(rows);
+      else setLista(COBRANCAS_FALLBACK);
+    } catch {
+      setLista(COBRANCAS_FALLBACK);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiOn, token]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
   const [filtro, setFiltro] = useState<'pendentes' | 'pagas'>('pendentes');
-  const cobrancasFiltradas = COBRANCAS.filter((c) => (filtro === 'pendentes' ? c.status === 'pendente' : c.status === 'pago'));
+  const cobrancasFiltradas = lista.filter((c) => (filtro === 'pendentes' ? c.status === 'pendente' : c.status === 'pago'));
 
   return (
     <View style={styles.container}>
       <Header title="Minhas Cobranças" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Carregando…</Text>
+          </View>
+        )}
         <View style={styles.tabs}>
           <Pressable onPress={() => setFiltro('pendentes')} style={[styles.tab, filtro === 'pendentes' && styles.tabPendentes]}>
             <Text style={[styles.tabText, filtro === 'pendentes' && styles.tabTextActive]}>Pendentes</Text>
@@ -40,11 +83,11 @@ export function ClienteCobrancasScreen({ onBack, onNavigate }: Props) {
                 <View style={styles.cardHeader}>
                   <View style={styles.cardLeft}>
                     <Text style={styles.cardProcesso}>{c.processo}</Text>
-                    <Text style={styles.cardVenc}>Vencimento: {c.vencimento}</Text>
+                    <Text style={styles.cardVenc}>Vencimento: {vencimentoLabel(c.vencimento)}</Text>
                   </View>
                   <TagStatus status={c.status} />
                 </View>
-                <Text style={styles.cardValor}>{c.valor}</Text>
+                <Text style={styles.cardValor}>{formatCentavosBRL(c.valor)}</Text>
                 <View style={styles.progressoWrap}>
                   <View style={styles.progressoHeader}>
                     <Text style={styles.progressoLabel}>Parcela {c.parcela} de {c.totalParcelas}</Text>
@@ -68,6 +111,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
   tabs: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, padding: 4, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   tab: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   tabPendentes: { backgroundColor: '#111827' },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { fetchIaHistorico, postIaAnalise } from '../services/resources';
 
 type Props = {
   onBack: () => void;
@@ -19,12 +22,68 @@ type Props = {
 };
 
 interface HistoricoItem {
-  id: number;
-  tipo: string;
+  id: string;
+  tipoAnalise: string;
+  tipoLabel: string;
   periodo: string;
   resposta: string;
   data: string;
 }
+
+function brDatasParaIso(inicio: string, fim: string): { dataInicio: string; dataFim: string } {
+  const p = (s: string) => s.split('/').map((x) => x.trim());
+  const [d1, m1, y1] = p(inicio);
+  const [d2, m2, y2] = p(fim);
+  if (y1 && m1 && d1 && y2 && m2 && d2) {
+    return {
+      dataInicio: `${y1}-${m1.padStart(2, '0')}-${d1.padStart(2, '0')}`,
+      dataFim: `${y2}-${m2.padStart(2, '0')}-${d2.padStart(2, '0')}`,
+    };
+  }
+  return { dataInicio: inicio, dataFim: fim };
+}
+
+function formatGeradoEm(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+const HISTORICO_FALLBACK: HistoricoItem[] = [
+  {
+    id: 'local_1',
+    tipoAnalise: 'receita-despesa',
+    tipoLabel: 'Receita vs Despesa',
+    periodo: '01/01/2024 - 31/03/2024',
+    resposta:
+      'Sua receita cresceu 17% de Janeiro a Março. Despesas aumentaram apenas 7%, mantendo boa margem. Tendência positiva: lucro líquido crescente.',
+    data: '22/02/2024 14:30',
+  },
+  {
+    id: 'local_2',
+    tipoAnalise: 'maiores-clientes',
+    tipoLabel: 'Maiores Clientes',
+    periodo: '01/02/2024 - 28/02/2024',
+    resposta:
+      'Top 2 clientes representam 68% da receita. João Silva é responsável por 40% do faturamento. Risco: alta dependência de poucos clientes.',
+    data: '20/02/2024 09:15',
+  },
+  {
+    id: 'local_3',
+    tipoAnalise: 'despesa-categoria',
+    tipoLabel: 'Despesa por Categoria',
+    periodo: '01/01/2024 - 31/01/2024',
+    resposta:
+      'Aluguel representa 35% das despesas fixas. Custas judiciais com volume acima da média. Oportunidade de reduzir custos operacionais em 15%.',
+    data: '15/02/2024 16:45',
+  },
+];
 
 const tiposAnalise = [
   { value: 'receita-despesa', label: 'Receita vs Despesa' },
@@ -50,6 +109,9 @@ const filtrosHistorico = [
 ];
 
 export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
   const [tipoAnalise, setTipoAnalise] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
@@ -59,41 +121,50 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
   const [modalTipo, setModalTipo] = useState(false);
   const [modalFiltro, setModalFiltro] = useState(false);
 
-  const [historico, setHistorico] = useState<HistoricoItem[]>([
-    {
-      id: 1,
-      tipo: 'Receita vs Despesa',
-      periodo: '01/01/2024 - 31/03/2024',
-      resposta: 'Sua receita cresceu 17% de Janeiro a Março. Despesas aumentaram apenas 7%, mantendo boa margem. Tendência positiva: lucro líquido crescente.',
-      data: '22/02/2024 14:30',
-    },
-    {
-      id: 2,
-      tipo: 'Maiores Clientes',
-      periodo: '01/02/2024 - 28/02/2024',
-      resposta: 'Top 2 clientes representam 68% da receita. João Silva é responsável por 40% do faturamento. Risco: alta dependência de poucos clientes.',
-      data: '20/02/2024 09:15',
-    },
-    {
-      id: 3,
-      tipo: 'Despesa por Categoria',
-      periodo: '01/01/2024 - 31/01/2024',
-      resposta: 'Aluguel representa 35% das despesas fixas. Custas judiciais com volume acima da média. Oportunidade de reduzir custos operacionais em 15%.',
-      data: '15/02/2024 16:45',
-    },
-  ]);
+  const [historico, setHistorico] = useState<HistoricoItem[]>(HISTORICO_FALLBACK);
+
+  useEffect(() => {
+    if (!apiOn || !token) {
+      setHistorico(HISTORICO_FALLBACK);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const env = await fetchIaHistorico(token);
+      if (cancelled) return;
+      if (env?.historico?.length) {
+        setHistorico(
+          env.historico.map((h) => ({
+            id: h.id,
+            tipoAnalise: h.tipoAnalise,
+            tipoLabel: tiposAnalise.find((t) => t.value === h.tipoAnalise)?.label ?? h.tipoAnalise,
+            periodo: h.periodo,
+            resposta: h.resposta,
+            data: formatGeradoEm(h.geradoEm),
+          })),
+        );
+      } else {
+        setHistorico(HISTORICO_FALLBACK);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiOn, token]);
 
   const tipoLabel = tiposAnalise.find(t => t.value === tipoAnalise)?.label ?? '';
 
   const handleGerarInsight = () => {
     if (!tipoAnalise || !dataInicio || !dataFim) return;
     setIsLoading(true);
-    setTimeout(() => {
+
+    const aplicarRespostaLocal = () => {
       const resposta = respostasIA[tipoAnalise] ?? 'Análise não disponível.';
       setRespostaIA(resposta);
       const novoItem: HistoricoItem = {
-        id: historico.length + 1,
-        tipo: tipoLabel,
+        id: `local_${Date.now()}`,
+        tipoAnalise,
+        tipoLabel,
         periodo: `${dataInicio} - ${dataFim}`,
         resposta,
         data: new Date().toLocaleString('pt-BR', {
@@ -101,13 +172,39 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
           hour: '2-digit', minute: '2-digit',
         }),
       };
-      setHistorico(prev => [novoItem, ...prev]);
+      setHistorico((prev) => [novoItem, ...prev]);
       setIsLoading(false);
-    }, 1500);
+    };
+
+    if (apiOn && token) {
+      const { dataInicio: di, dataFim: df } = brDatasParaIso(dataInicio, dataFim);
+      void (async () => {
+        const resp = await postIaAnalise(token, { tipoAnalise, dataInicio: di, dataFim: df });
+        if (resp) {
+          setRespostaIA(resp.resposta);
+          const novoItem: HistoricoItem = {
+            id: resp.id,
+            tipoAnalise: resp.tipoAnalise,
+            tipoLabel: tiposAnalise.find((t) => t.value === resp.tipoAnalise)?.label ?? tipoLabel,
+            periodo: resp.periodo,
+            resposta: resp.resposta,
+            data: formatGeradoEm(resp.geradoEm),
+          };
+          setHistorico((prev) => [novoItem, ...prev]);
+        } else {
+          aplicarRespostaLocal();
+          return;
+        }
+        setIsLoading(false);
+      })();
+      return;
+    }
+
+    setTimeout(aplicarRespostaLocal, 1500);
   };
 
   const historicoFiltrado = historico.filter(
-    item => filtroHistorico === 'todos' || item.tipo === filtroHistorico,
+    item => filtroHistorico === 'todos' || item.tipoAnalise === filtroHistorico,
   );
 
   const filtroLabel = filtrosHistorico.find(f => f.value === filtroHistorico)?.label ?? 'Todos';
@@ -225,7 +322,7 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
             <View key={item.id} style={styles.historicoCard}>
               <View style={styles.historicoTop}>
                 <View style={styles.tipoTag}>
-                  <Text style={styles.tipoTagText}>{item.tipo}</Text>
+                  <Text style={styles.tipoTagText}>{item.tipoLabel}</Text>
                 </View>
                 <Text style={styles.historicoData}>{item.data}</Text>
               </View>

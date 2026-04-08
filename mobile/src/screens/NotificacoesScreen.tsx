@@ -5,8 +5,7 @@ import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
 import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
-import { apiPatchJson } from '../services/http';
-import { fetchNotificacoesAdvogado } from '../services/resources';
+import { fetchNotificacoesAdvogado, putNotificacaoAdvLida } from '../services/resources';
 
 type Tipo = 'pagamento' | 'alerta' | 'sucesso' | 'lembrete' | 'insight';
 
@@ -83,7 +82,7 @@ export function NotificacoesScreen({ onBack, onNavigate }: Props) {
       setLoading(true);
       try {
         const rows = await fetchNotificacoesAdvogado(token);
-        if (!cancelled && rows.length > 0) {
+        if (!cancelled) {
           setNotificacoes(
             rows.map((r) => ({
               id: r.id,
@@ -111,7 +110,7 @@ export function NotificacoesScreen({ onBack, onNavigate }: Props) {
     setNotificacoes((prev) => prev.map((n) => (n.id === id ? { ...n, lida: true } : n)));
     if (!apiOn) return;
     try {
-      await apiPatchJson(`/notificacoesAdvogado/${id}`, token, { lida: true });
+      await putNotificacaoAdvLida(token, id);
     } catch {
       setNotificacoes(anterior);
     }

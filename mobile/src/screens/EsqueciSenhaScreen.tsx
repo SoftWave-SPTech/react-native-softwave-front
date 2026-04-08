@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getApiBaseUrl } from '../config/api';
+import { postEsqueciSenha } from '../services/resources';
 
 type Etapa = 'email' | 'token' | 'novaSenha';
 
@@ -16,8 +18,23 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
   const [token, setToken] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmaSenha, setConfirmaSenha] = useState('');
+  const [enviandoEmail, setEnviandoEmail] = useState(false);
 
-  const handleEnviarEmail = () => setEtapa('token');
+  const handleEnviarEmail = async () => {
+    if (getApiBaseUrl()) {
+      try {
+        setEnviandoEmail(true);
+        await postEsqueciSenha(email.trim());
+      } catch {
+        Alert.alert('Erro', 'Não foi possível enviar a solicitação. Verifique a URL da API e tente de novo.');
+        setEnviandoEmail(false);
+        return;
+      } finally {
+        setEnviandoEmail(false);
+      }
+    }
+    setEtapa('token');
+  };
   const handleValidarToken = () => setEtapa('novaSenha');
   const handleRedefinirSenha = () => onSuccess();
 
@@ -55,8 +72,12 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>💡 Enviaremos um código de 6 dígitos para você redefinir sua senha.</Text>
           </View>
-          <Pressable onPress={handleEnviarEmail} disabled={!email} style={[styles.button, !email && styles.buttonDisabled]}>
-            <Text style={styles.buttonText}>Enviar Código</Text>
+          <Pressable onPress={handleEnviarEmail} disabled={!email || enviandoEmail} style={[styles.button, (!email || enviandoEmail) && styles.buttonDisabled]}>
+            {enviandoEmail ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Enviar Código</Text>
+            )}
           </Pressable>
           <Pressable onPress={onBack} style={styles.linkWrap}>
             <Text><Text style={styles.linkText}>Lembrou sua senha? </Text><Text style={styles.linkBold}>Fazer login</Text></Text>

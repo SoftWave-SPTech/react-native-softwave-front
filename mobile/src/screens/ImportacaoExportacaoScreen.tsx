@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,18 @@ import {
   Modal,
   ActivityIndicator,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import {
+  fetchExportacaoTransacoesCsv,
+  fetchImportacaoHistorico,
+  postImportacaoUpload,
+} from '../services/resources';
 
 type Props = {
   onBack: () => void;
@@ -21,7 +29,7 @@ type TipoImportacao = 'extrato' | 'transacoes' | 'clientes';
 type StatusImportacao = 'pendente' | 'processando' | 'concluido' | 'erro';
 
 interface Importacao {
-  id: number;
+  id: string;
   tipo: TipoImportacao;
   arquivo: string;
   data: string;
@@ -32,9 +40,9 @@ interface Importacao {
   erros: number;
 }
 
-const historicoImportacoes: Importacao[] = [
+const HISTORICO_FALLBACK: Importacao[] = [
   {
-    id: 1,
+    id: '1',
     tipo: 'extrato',
     arquivo: 'extrato_janeiro_2026.csv',
     data: '15/02/2026',
@@ -45,7 +53,7 @@ const historicoImportacoes: Importacao[] = [
     erros: 0,
   },
   {
-    id: 2,
+    id: '2',
     tipo: 'transacoes',
     arquivo: 'transacoes_backup.xlsx',
     data: '10/02/2026',
@@ -56,7 +64,7 @@ const historicoImportacoes: Importacao[] = [
     erros: 0,
   },
   {
-    id: 3,
+    id: '3',
     tipo: 'extrato',
     arquivo: 'extrato_dezembro_2025.csv',
     data: '05/02/2026',
@@ -68,6 +76,18 @@ const historicoImportacoes: Importacao[] = [
   },
 ];
 
+function asTipoImportacao(t: string): TipoImportacao {
+  if (t === 'transacoes' || t === 'clientes' || t === 'extrato') return t;
+  return 'extrato';
+}
+
+function formatDataImp(isoOrBr: string): string {
+  if (!isoOrBr || isoOrBr.includes('/')) return isoOrBr;
+  const d = new Date(isoOrBr);
+  if (Number.isNaN(d.getTime())) return isoOrBr;
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 const tipoLabels: Record<TipoImportacao, string> = {
   extrato: 'Extrato Bancário',
   transacoes: 'Transações',
@@ -75,21 +95,80 @@ const tipoLabels: Record<TipoImportacao, string> = {
 };
 
 export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
+  void onNavigate;
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
   const [modalUpload, setModalUpload] = useState(false);
   const [tipoUpload, setTipoUpload] = useState<TipoImportacao>('extrato');
   const [processando, setProcessando] = useState(false);
   const [modalExportar, setModalExportar] = useState(false);
+  const [historicoImportacoes, setHistoricoImportacoes] = useState<Importacao[]>(HISTORICO_FALLBACK);
+
+  const carregarHistorico = useCallback(async () => {
+    if (!apiOn || !token) {
+      setHistoricoImportacoes(HISTORICO_FALLBACK);
+      return;
+    }
+    const rows = await fetchImportacaoHistorico(token);
+    if (!rows.length) {
+      setHistoricoImportacoes([]);
+      return;
+    }
+    setHistoricoImportacoes(
+      rows.map((r) => ({
+        id: String(r.id),
+        tipo: asTipoImportacao(r.tipo),
+        arquivo: r.arquivo,
+        data: formatDataImp(r.data),
+        status: r.status,
+        registros: r.registros,
+        novos: r.novos,
+        atualizados: r.atualizados,
+        erros: r.erros,
+      })),
+    );
+  }, [apiOn, token]);
+
+  useEffect(() => {
+    carregarHistorico();
+  }, [carregarHistorico]);
 
   const handleImportar = () => {
     setProcessando(true);
-    setTimeout(() => {
-      setProcessando(false);
-      setModalUpload(false);
-    }, 3000);
+    void (async () => {
+      if (apiOn && token) {
+        const nomeArquivo =
+          tipoUpload === 'extrato' ? 'extrato_upload_simulado.csv' : 'transacoes_upload_simulado.xlsx';
+        const res = await postImportacaoUpload(token, { tipo: tipoUpload, arquivoNome: nomeArquivo });
+        await carregarHistorico();
+        setProcessando(false);
+        setModalUpload(false);
+        Alert.alert(
+          res ? 'Importação' : 'Aviso',
+          res?.mensagem ?? 'Não foi possível contactar o servidor. Dados locais inalterados.',
+        );
+        return;
+      }
+      setTimeout(() => {
+        setProcessando(false);
+        setModalUpload(false);
+      }, 3000);
+    })();
   };
 
   const handleExportar = (tipo: string) => {
     setModalExportar(false);
+    void (async () => {
+      if (tipo === 'transacoes' && apiOn && token) {
+        const csv = await fetchExportacaoTransacoesCsv(token);
+        if (csv) {
+          Alert.alert('Exportação (mock)', `CSV gerado (${csv.split('\n').length} linhas).`);
+          return;
+        }
+      }
+      Alert.alert('Exportação', 'No mock, apenas exportação de transações em CSV está disponível.');
+    })();
   };
 
   const getStatusIcon = (status: StatusImportacao) => {
@@ -192,7 +271,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
                   <Text style={styles.historicoArquivo} numberOfLines={1}>{imp.arquivo}</Text>
                   <View style={styles.historicoMeta}>
                     <View style={getStatusStyle(imp.status)}>
-                      <Text style={getStatusTextStyle(imp.status)}>{tipoLabels[imp.tipo]}</Text>
+                      <Text style={getStatusTextStyle(imp.status)}>{tipoLabels[imp.tipo]} · {imp.status}</Text>
                     </View>
                     <Text style={styles.historicoData}>{imp.data}</Text>
                   </View>

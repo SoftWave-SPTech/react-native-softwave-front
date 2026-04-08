@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,15 @@ import {
   Pressable,
   Modal,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { fetchClientePerfil } from '../services/resources';
+import type { ClientePerfilApi } from '../types/api';
+import { formatCentavosBRL } from '../utils/money';
 
 type Props = {
   onBack: () => void;
@@ -23,7 +29,7 @@ interface DadoPessoal {
   value: string;
 }
 
-const dadosPessoais: DadoPessoal[] = [
+const DADOS_FALLBACK: DadoPessoal[] = [
   { icon: 'account', label: 'Nome Completo', value: 'João Silva' },
   { icon: 'email-outline', label: 'E-mail', value: 'joao.silva@email.com' },
   { icon: 'phone-outline', label: 'Telefone', value: '(11) 98765-4321' },
@@ -31,28 +37,122 @@ const dadosPessoais: DadoPessoal[] = [
   { icon: 'card-account-details-outline', label: 'CPF', value: '123.456.789-00' },
 ];
 
+function iniciais(nome: string) {
+  const p = nome.trim().split(/\s+/).filter(Boolean);
+  if (p.length === 0) return '?';
+  if (p.length === 1) return p[0].slice(0, 2).toUpperCase();
+  return (p[0][0] + p[p.length - 1][0]).toUpperCase();
+}
+
+function perfilParaDados(p: ClientePerfilApi): DadoPessoal[] {
+  return [
+    { icon: 'account', label: 'Nome Completo', value: p.nome },
+    { icon: 'email-outline', label: 'E-mail', value: p.email },
+    { icon: 'phone-outline', label: 'Telefone', value: p.telefone },
+    { icon: 'map-marker-outline', label: 'Endereço', value: p.endereco },
+    { icon: 'card-account-details-outline', label: 'CPF', value: p.cpf },
+  ];
+}
+
+type ProcessoAtivoUi = NonNullable<ClientePerfilApi['processoAtivo']>;
+
 export function ClientePerfilScreen({ onBack, onLogout }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [loading, setLoading] = useState(false);
+  const [dadosPessoais, setDadosPessoais] = useState<DadoPessoal[]>(DADOS_FALLBACK);
+  const [nomeTopo, setNomeTopo] = useState('João Silva');
+  const [sinceTopo, setSinceTopo] = useState('Cliente desde Fev/2024');
+  const [proc, setProc] = useState<ProcessoAtivoUi>({
+    id: 'proc_001',
+    titulo: 'Processo 1234/2025',
+    subtitulo: 'Advocacia Cível - Honorários',
+    progressoPago: 60,
+    valorPago: 1500000,
+    valorTotal: 2500000,
+  });
   const [notificacoesAtivas, setNotificacoesAtivas] = useState(true);
   const [modalFoto, setModalFoto] = useState(false);
+
+  const carregar = useCallback(async () => {
+    if (!apiOn || !token) {
+      setDadosPessoais(DADOS_FALLBACK);
+      setNomeTopo('João Silva');
+      setSinceTopo('Cliente desde Fev/2024');
+      setProc({
+        id: 'proc_001',
+        titulo: 'Processo 1234/2025',
+        subtitulo: 'Advocacia Cível - Honorários',
+        progressoPago: 60,
+        valorPago: 1500000,
+        valorTotal: 2500000,
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      const p = await fetchClientePerfil(token);
+      if (p) {
+        setDadosPessoais(perfilParaDados(p));
+        setNomeTopo(p.nome);
+        setSinceTopo(`Cliente desde ${p.clienteDesde}`);
+        setProc(
+          p.processoAtivo ?? {
+            id: 'proc_001',
+            titulo: 'Processo 1234/2025',
+            subtitulo: 'Advocacia Cível - Honorários',
+            progressoPago: 60,
+            valorPago: 1500000,
+            valorTotal: 2500000,
+          },
+        );
+        setNotificacoesAtivas(p.preferencias?.notificacoesAtivas ?? true);
+      } else {
+        setProc({
+          id: 'proc_001',
+          titulo: 'Processo 1234/2025',
+          subtitulo: 'Advocacia Cível - Honorários',
+          progressoPago: 60,
+          valorPago: 1500000,
+          valorTotal: 2500000,
+        });
+      }
+    } catch {
+      /* fallback visual */
+    } finally {
+      setLoading(false);
+    }
+  }, [apiOn, token]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
   return (
     <View style={styles.container}>
       <Header title="Meu Perfil" showBack onBack={onBack} />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Carregando perfil…</Text>
+          </View>
+        )}
         {/* Avatar */}
         <View style={styles.card}>
           <View style={styles.avatarSection}>
             <View style={styles.avatarWrap}>
               <View style={styles.avatarCircle}>
-                <Text style={styles.avatarInitials}>JS</Text>
+                <Text style={styles.avatarInitials}>{iniciais(nomeTopo)}</Text>
               </View>
               <Pressable style={styles.cameraBtn} onPress={() => setModalFoto(true)}>
                 <MaterialCommunityIcons name="camera" size={16} color="#fff" />
               </Pressable>
             </View>
-            <Text style={styles.avatarName}>João Silva</Text>
-            <Text style={styles.avatarSince}>Cliente desde Fev/2024</Text>
+            <Text style={styles.avatarName}>{nomeTopo}</Text>
+            <Text style={styles.avatarSince}>{sinceTopo}</Text>
           </View>
         </View>
 
@@ -120,27 +220,29 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
 
         {/* Processo Ativo */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Processo Ativo</Text>
-          <View style={styles.processoWrap}>
-            <View style={styles.processoIconWrap}>
-              <MaterialCommunityIcons name="file-document-outline" size={20} color="#2563eb" />
-            </View>
-            <View style={styles.processoInfo}>
-              <Text style={styles.processoTitulo}>Processo 1234/2025</Text>
-              <Text style={styles.processoSubtitulo}>Advocacia Cível - Honorários</Text>
-              <View style={styles.progressoSection}>
-                <View style={styles.progressoLabelRow}>
-                  <Text style={styles.progressoLabel}>Progresso</Text>
-                  <Text style={styles.progressoPercent}>60%</Text>
+            <Text style={styles.cardTitle}>Processo Ativo</Text>
+            <View style={styles.processoWrap}>
+              <View style={styles.processoIconWrap}>
+                <MaterialCommunityIcons name="file-document-outline" size={20} color="#2563eb" />
+              </View>
+              <View style={styles.processoInfo}>
+                <Text style={styles.processoTitulo}>{proc.titulo}</Text>
+                <Text style={styles.processoSubtitulo}>{proc.subtitulo}</Text>
+                <View style={styles.progressoSection}>
+                  <View style={styles.progressoLabelRow}>
+                    <Text style={styles.progressoLabel}>Progresso</Text>
+                    <Text style={styles.progressoPercent}>{proc.progressoPago}%</Text>
+                  </View>
+                  <View style={styles.progressoBarBg}>
+                    <View style={[styles.progressoBarFill, { width: `${proc.progressoPago}%` }]} />
+                  </View>
+                  <Text style={styles.progressoValor}>
+                    {formatCentavosBRL(proc.valorPago)} pagos de {formatCentavosBRL(proc.valorTotal)} total
+                  </Text>
                 </View>
-                <View style={styles.progressoBarBg}>
-                  <View style={[styles.progressoBarFill, { width: '60%' }]} />
-                </View>
-                <Text style={styles.progressoValor}>R$ 15.000 pagos de R$ 25.000 total</Text>
               </View>
             </View>
           </View>
-        </View>
 
         {/* Sair */}
         <Pressable style={styles.logoutBtn} onPress={onLogout}>
@@ -196,6 +298,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
 
   card: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16,
