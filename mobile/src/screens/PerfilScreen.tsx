@@ -105,12 +105,12 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Alterar Foto de Perfil</Text>
             <Pressable style={styles.sheetOption} onPress={() => { setModalFoto(false); Alert.alert('Câmera', 'Funcionalidade de câmera disponível após permissões.'); }}>
-              <View style={styles.sheetOptionIcon}><MaterialCommunityIcons name="camera" size={24} color="#2563eb" /></View>
+              <View style={styles.sheetOptionIcon}><MaterialCommunityIcons name="camera" size={24} color="#0d9488" /></View>
               <Text style={styles.sheetOptionText}>Tirar Foto</Text>
               <MaterialCommunityIcons name="chevron-right" size={22} color="#9ca3af" />
             </Pressable>
             <Pressable style={styles.sheetOption} onPress={() => { setModalFoto(false); Alert.alert('Galeria', 'Funcionalidade de galeria disponível após permissões.'); }}>
-              <View style={styles.sheetOptionIcon}><MaterialCommunityIcons name="image" size={24} color="#2563eb" /></View>
+              <View style={styles.sheetOptionIcon}><MaterialCommunityIcons name="image" size={24} color="#0d9488" /></View>
               <Text style={styles.sheetOptionText}>Escolher da Galeria</Text>
               <MaterialCommunityIcons name="chevron-right" size={22} color="#9ca3af" />
             </Pressable>
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 13, color: '#6b7280' },
   avatarCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   avatarWrap: { position: 'relative', marginBottom: 16 },
-  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#0d9488', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
   cameraBtn: { position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: '#374151', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
   nome: { fontSize: 20, fontWeight: '600', color: '#111827', marginBottom: 4 },
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, paddingHorizontal: 12 },
   inputIcon: { marginRight: 8 },
   input: { flex: 1, paddingVertical: 12, fontSize: 16, color: '#111827' },
-  saveBtn: { backgroundColor: '#2563eb', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  saveBtn: { backgroundColor: '#0d9488', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '500' },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   menuItemText: { flex: 1, fontSize: 16, color: '#111827', marginLeft: 12 },
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', alignSelf: 'center', marginBottom: 20 },
   sheetTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 20, textAlign: 'center' },
   sheetOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  sheetOptionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  sheetOptionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   sheetOptionText: { flex: 1, fontSize: 16, color: '#111827' },
   sheetCancel: { marginTop: 16, paddingVertical: 14, backgroundColor: '#f3f4f6', borderRadius: 14, alignItems: 'center' },
   sheetCancelText: { fontSize: 16, fontWeight: '500', color: '#6b7280' },

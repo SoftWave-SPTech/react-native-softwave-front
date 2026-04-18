@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BarraProgresso } from '../components/BarraProgresso';
@@ -181,10 +182,15 @@ export function HonorariosScreen({ onBack, onNavigate }: Props) {
             <Text style={styles.resumoLabel}>Total Recebido</Text>
             <Text style={styles.resumoValue}>{topo.recebido}</Text>
           </View>
-          <View style={styles.resumoAzul}>
+          <LinearGradient
+            colors={['#14b8a6', '#0d9488']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.resumoAzul}
+          >
             <Text style={styles.resumoLabel}>A Receber</Text>
             <Text style={styles.resumoValue}>{topo.aReceber}</Text>
-          </View>
+          </LinearGradient>
         </View>
 
         <View style={styles.tabs}>
@@ -219,7 +225,7 @@ export function HonorariosScreen({ onBack, onNavigate }: Props) {
                 <View style={styles.contratoHeader}>
                   <View style={styles.contratoLeft}>
                     <View style={styles.contratoIcon}>
-                      <MaterialCommunityIcons name="briefcase" size={22} color="#2563eb" />
+                      <MaterialCommunityIcons name="briefcase" size={22} color="#0d9488" />
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={styles.contratoClienteRow}>
@@ -275,7 +281,7 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 13, color: '#6b7280' },
   resumoRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   resumoVerde: { flex: 1, backgroundColor: '#16a34a', borderRadius: 16, padding: 16, shadowColor: '#16a34a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
-  resumoAzul: { flex: 1, backgroundColor: '#2563eb', borderRadius: 16, padding: 16, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  resumoAzul: { flex: 1, borderRadius: 16, padding: 16, shadowColor: '#0d9488', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
   resumoLabel: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4 },
   resumoValue: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
   tabs: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, padding: 4, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
@@ -288,7 +294,7 @@ const styles = StyleSheet.create({
   contratoCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   contratoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   contratoLeft: { flexDirection: 'row', gap: 12, flex: 1 },
-  contratoIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
+  contratoIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center' },
   contratoClienteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   contratoCliente: { fontSize: 16, fontWeight: '600', color: '#111827' },
   reprovadoBadge: { backgroundColor: '#fee2e2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
@@ -302,7 +308,7 @@ const styles = StyleSheet.create({
   contratoFooterLabel: { fontSize: 12, color: '#6b7280', marginBottom: 4 },
   contratoFooterValue: { fontSize: 14, fontWeight: '500', color: '#111827' },
   contratoPago: { fontSize: 14, fontWeight: '600', color: '#16a34a' },
-  contratoTotal: { fontSize: 14, fontWeight: '600', color: '#2563eb' },
+  contratoTotal: { fontSize: 14, fontWeight: '600', color: '#0d9488' },
   bottomNavWrap: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   emptyState: { alignItems: 'center', paddingVertical: 32, gap: 8 },
   emptyText: { fontSize: 14, color: '#9ca3af' },

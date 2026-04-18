@@ -126,11 +126,11 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
           </View>
         )}
 
-        <LinearGradient colors={['#3b82f6', '#374151']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
+        <LinearGradient colors={['#14b8a6', '#0e7490']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
           <Text style={styles.heroLabel}>Valor disponível</Text>
           <Text style={styles.heroValue}>{heroValor}</Text>
           <View style={styles.heroRow}>
-            <MaterialCommunityIcons name="trending-up" size={16} color="#bfdbfe" />
+            <MaterialCommunityIcons name="trending-up" size={16} color="#ccfbf1" />
             <Text style={styles.heroSubtext}>Lucro líquido do mês: {heroLucro}</Text>
           </View>
         </LinearGradient>
@@ -176,7 +176,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
 
         <View style={styles.insightsCard}>
           <View style={styles.insightsIconWrap}>
-            <MaterialCommunityIcons name="lightbulb-outline" size={20} color="#b45309" />
+            <MaterialCommunityIcons name="lightbulb-outline" size={20} color="#0d9488" />
           </View>
           <View style={styles.insightsContent}>
             <Text style={styles.insightsTitle}>Insights Inteligentes</Text>
@@ -211,6 +211,40 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
             ))}
           </View>
         </View>
+
+        {/* Ações Rápidas */}
+        {/* <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Ações Rápidas</Text>
+          <View style={styles.actionsGrid}>
+            <Pressable style={styles.actionCard} onPress={() => onNavigate('Honorarios')}>
+              <View style={[styles.actionIcon, styles.actionIconBlue]}>
+                <MaterialCommunityIcons name="briefcase" size={20} color="#0d9488" />
+              </View>
+              <Text style={styles.actionLabel}>Honorários</Text>
+            </Pressable>
+            <Pressable style={styles.actionCard} onPress={() => onNavigate('Relatorios')}>
+              <View style={[styles.actionIcon, styles.actionIconGreen]}>
+                <MaterialCommunityIcons name="trending-up" size={20} color="#16a34a" />
+              </View>
+              <Text style={styles.actionLabel}>Relatórios</Text>
+            </Pressable>
+            <Pressable style={[styles.actionCard, styles.actionCardBadge]} onPress={() => onNavigate('PagamentosConferir')}>
+              <View style={[styles.actionIcon, styles.actionIconAmber]}>
+                <MaterialCommunityIcons name="file-document" size={20} color="#d97706" />
+              </View>
+              <Text style={styles.actionLabel}>Pagamentos</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>3</Text>
+              </View>
+            </Pressable>
+            <Pressable style={styles.actionCard} onPress={() => onNavigate('NovaTransacao')}>
+              <View style={[styles.actionIcon, styles.actionIconPurple]}>
+                <MaterialCommunityIcons name="credit-card" size={20} color="#0d9488" />
+              </View>
+              <Text style={styles.actionLabel}>Nova Transação</Text>
+            </Pressable>
+          </View>
+        </View> */}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -247,7 +281,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     marginBottom: 16,
-    shadowColor: '#1e3a8a',
+    shadowColor: '#115e59',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -255,7 +289,7 @@ const styles = StyleSheet.create({
   },
   heroLabel: {
     fontSize: 14,
-    color: '#bfdbfe',
+    color: '#ccfbf1',
     marginBottom: 8,
   },
   heroValue: {
@@ -271,7 +305,7 @@ const styles = StyleSheet.create({
   },
   heroSubtext: {
     fontSize: 14,
-    color: '#bfdbfe',
+    color: '#ccfbf1',
   },
   kpiGrid: {
     flexDirection: 'row',
@@ -284,15 +318,15 @@ const styles = StyleSheet.create({
   },
   insightsCard: {
     flexDirection: 'row',
-    backgroundColor: '#fffbeb',
+    backgroundColor: '#f0fdfa',
     borderWidth: 1,
-    borderColor: '#fde68a',
+    borderColor: '#99f6e4',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#92400e',
+    shadowColor: '#115e59',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   },
@@ -300,7 +334,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#fef3c7',
+    backgroundColor: '#ccfbf1',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -326,12 +360,12 @@ const styles = StyleSheet.create({
   },
   insightsLinkText: {
     fontSize: 14,
-    color: '#b45309',
+    color: '#0f766e',
     fontWeight: '500',
   },
   insightsLinkArrow: {
     fontSize: 18,
-    color: '#b45309',
+    color: '#115e59',
   },
   section: {
     marginBottom: 16,
@@ -350,10 +384,62 @@ const styles = StyleSheet.create({
   },
   sectionLink: {
     fontSize: 14,
-    color: '#2563eb',
+    color: '#0d9488',
   },
   transactionsList: {
     gap: 12,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  actionCard: {
+    width: '47%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  actionCardBadge: {
+    position: 'relative',
+  },
+  actionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  actionIconBlue: { backgroundColor: '#ccfbf1' },
+  actionIconGreen: { backgroundColor: '#dcfce7' },
+  actionIconAmber: { backgroundColor: '#fef3c7' },
+  actionIconPurple: { backgroundColor: '#ccfbf1' },
+  actionLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  badge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
   },
   bottomNavWrap: {
     position: 'absolute',

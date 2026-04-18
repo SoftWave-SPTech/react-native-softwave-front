@@ -12,6 +12,10 @@ npm start
 
 O servidor sobe na porta **3000** (ou a variável `PORT`).
 
+## Dados seed (`db.json`)
+
+O arquivo cobre os recursos usados pelo app e pelas rotas customizadas do `server.cjs`, para que **não falte retorno** ao testar com o mock: `usuarios`, `dashboardResumo`, `transacoes`, `contratos` (com `descricao`/`criadoEm`), `parcelas`, `pagamentosParaConferir`, `notificacoesAdvogado`, `notificacoesCliente`, `clienteDashboard`, `relatoriosCache`, **`cobrancas`**, **`escritorioDadosBancarios`**, **`clientePerfil`** (`usuarioId` = `usr_2`), **`perfilEscritorio`** (`usuarioId` = `usr_1`), **`iaHistorico`**, **`importacaoHistorico`**. Reiniciar o mock recarrega o arquivo.
+
 ## Prioridade (telas × especificação)
 
 | Prioridade | Telas no mobile | Rotas do `API_SPEC` cobertas no mock |

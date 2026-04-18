@@ -331,7 +331,7 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
                 />
                 {getPreviewRecorrencia() !== '' && (
                   <View style={styles.previewCard}>
-                    <MaterialCommunityIcons name="information" size={16} color="#2563eb" />
+                    <MaterialCommunityIcons name="information" size={16} color="#0d9488" />
                     <Text style={styles.previewText}>{getPreviewRecorrencia()}</Text>
                   </View>
                 )}
@@ -348,11 +348,11 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
           <Text style={styles.fieldLabel}>Comprovante</Text>
           <View style={styles.comprovanteRow}>
             <Pressable style={styles.comprovanteBtn}>
-              <MaterialCommunityIcons name="camera" size={22} color="#2563eb" />
+              <MaterialCommunityIcons name="camera" size={22} color="#0d9488" />
               <Text style={styles.comprovanteBtnText}>Câmera</Text>
             </Pressable>
             <Pressable style={styles.comprovanteBtn}>
-              <MaterialCommunityIcons name="upload" size={22} color="#2563eb" />
+              <MaterialCommunityIcons name="upload" size={22} color="#0d9488" />
               <Text style={styles.comprovanteBtnText}>Galeria</Text>
             </Pressable>
           </View>
@@ -408,14 +408,18 @@ const styles = StyleSheet.create({
   recorrenciaTitle: { fontSize: 14, color: '#374151', fontWeight: '500' },
   recorrenciaExtra: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
   duracaoInput: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 12, fontSize: 16, color: '#111827', marginBottom: 8 },
-  previewCard: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#dbeafe', borderRadius: 12, padding: 12, marginBottom: 8 },
-  previewText: { fontSize: 14, color: '#1e40af', fontWeight: '500' },
-  infoCard: { backgroundColor: '#eff6ff', borderRadius: 12, padding: 12 },
-  infoCardText: { fontSize: 13, color: '#1e40af', lineHeight: 18 },
+  previewCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#f0fdfa', borderWidth: 1, borderColor: '#99f6e4',
+    borderRadius: 12, padding: 12, marginBottom: 8,
+  },
+  previewText: { fontSize: 14, color: '#0f766e', fontWeight: '500' },
+  infoCard: { backgroundColor: '#f0fdfa', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#99f6e4' },
+  infoCardText: { fontSize: 13, color: '#0f766e', lineHeight: 18 },
   comprovanteRow: { flexDirection: 'row', gap: 12 },
-  comprovanteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#dbeafe', borderRadius: 12 },
-  comprovanteBtnText: { fontSize: 14, color: '#2563eb', fontWeight: '500' },
-  saveBtn: { backgroundColor: '#2563eb', borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 8, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 5 },
+  comprovanteBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#ccfbf1', borderRadius: 12 },
+  comprovanteBtnText: { fontSize: 14, color: '#0d9488', fontWeight: '500' },
+  saveBtn: { backgroundColor: '#0d9488', borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 8, shadowColor: '#0d9488', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 5 },
   saveBtnDisabled: { opacity: 0.7 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

@@ -162,7 +162,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
           {dadosPessoais.map((dado, index) => (
             <View key={index} style={styles.dadoItem}>
               <View style={styles.dadoIconWrap}>
-                <MaterialCommunityIcons name={dado.icon} size={16} color="#2563eb" />
+                <MaterialCommunityIcons name={dado.icon} size={16} color="#0d9488" />
               </View>
               <View style={styles.dadoText}>
                 <Text style={styles.dadoLabel}>{dado.label}</Text>
@@ -223,7 +223,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
             <Text style={styles.cardTitle}>Processo Ativo</Text>
             <View style={styles.processoWrap}>
               <View style={styles.processoIconWrap}>
-                <MaterialCommunityIcons name="file-document-outline" size={20} color="#2563eb" />
+                <MaterialCommunityIcons name="file-document-outline" size={20} color="#0d9488" />
               </View>
               <View style={styles.processoInfo}>
                 <Text style={styles.processoTitulo}>{proc.titulo}</Text>
@@ -265,8 +265,8 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
             </View>
 
             <Pressable style={styles.fotoOption} onPress={() => setModalFoto(false)}>
-              <View style={[styles.fotoIconWrap, { backgroundColor: '#dbeafe' }]}>
-                <MaterialCommunityIcons name="camera" size={24} color="#2563eb" />
+              <View style={[styles.fotoIconWrap, { backgroundColor: '#ccfbf1' }]}>
+                <MaterialCommunityIcons name="camera" size={24} color="#0d9488" />
               </View>
               <View style={styles.fotoText}>
                 <Text style={styles.fotoOptionTitle}>Tirar Foto</Text>
@@ -312,13 +312,13 @@ const styles = StyleSheet.create({
   avatarWrap: { position: 'relative', marginBottom: 16 },
   avatarCircle: {
     width: 96, height: 96, borderRadius: 48,
-    backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#0d9488', alignItems: 'center', justifyContent: 'center',
   },
   avatarInitials: { fontSize: 30, fontWeight: 'bold', color: '#fff' },
   cameraBtn: {
     position: 'absolute', bottom: 0, right: 0,
     width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#0d9488', alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: '#fff',
   },
   avatarName: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
   dadoItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: 4 },
   dadoIconWrap: {
     width: 32, height: 32, borderRadius: 8,
-    backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#f0fdfa', alignItems: 'center', justifyContent: 'center',
   },
   dadoText: { flex: 1 },
   dadoLabel: { fontSize: 11, color: '#9ca3af' },
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     width: 48, height: 26, borderRadius: 13,
     justifyContent: 'center', paddingHorizontal: 2,
   },
-  toggleActive: { backgroundColor: '#2563eb' },
+  toggleActive: { backgroundColor: '#0d9488' },
   toggleInactive: { backgroundColor: '#d1d5db' },
   toggleThumb: {
     width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
@@ -364,12 +364,12 @@ const styles = StyleSheet.create({
   toggleThumbInactive: { alignSelf: 'flex-start' },
 
   processoWrap: {
-    backgroundColor: '#eff6ff', borderRadius: 12, padding: 16,
+    backgroundColor: '#f0fdfa', borderRadius: 12, padding: 16,
     flexDirection: 'row', gap: 12,
   },
   processoIconWrap: {
     width: 40, height: 40, borderRadius: 8,
-    backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center',
   },
   processoInfo: { flex: 1 },
   processoTitulo: { fontSize: 15, fontWeight: '600', color: '#111827' },
@@ -377,12 +377,12 @@ const styles = StyleSheet.create({
   progressoSection: {},
   progressoLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   progressoLabel: { fontSize: 13, color: '#6b7280' },
-  progressoPercent: { fontSize: 13, fontWeight: '600', color: '#2563eb' },
+  progressoPercent: { fontSize: 13, fontWeight: '600', color: '#0d9488' },
   progressoBarBg: {
-    height: 8, backgroundColor: '#bfdbfe', borderRadius: 4, overflow: 'hidden',
+    height: 8, backgroundColor: '#99f6e4', borderRadius: 4, overflow: 'hidden',
   },
   progressoBarFill: {
-    height: 8, backgroundColor: '#2563eb', borderRadius: 4,
+    height: 8, backgroundColor: '#0d9488', borderRadius: 4,
   },
   progressoValor: { fontSize: 12, color: '#9ca3af', marginTop: 6 },
 

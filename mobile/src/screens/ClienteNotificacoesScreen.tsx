@@ -75,16 +75,16 @@ const NOTIFICACOES_FALLBACK: Notificacao[] = [
 
 const iconBgColors: Record<string, string> = {
   green: '#f0fdf4',
-  blue: '#eff6ff',
+  blue: '#f0fdfa',
   yellow: '#fefce8',
-  purple: '#faf5ff',
+  purple: '#ccfbf1',
 };
 
 const iconColors: Record<string, string> = {
   green: '#16a34a',
-  blue: '#2563eb',
+  blue: '#0d9488',
   yellow: '#ca8a04',
-  purple: '#9333ea',
+  purple: '#0d9488',
 };
 
 export function ClienteNotificacoesScreen({ onBack }: Props) {
@@ -157,7 +157,7 @@ export function ClienteNotificacoesScreen({ onBack }: Props) {
         {naoLidas > 0 && (
           <View style={styles.resumoCard}>
             <View style={styles.resumoIconWrap}>
-              <MaterialCommunityIcons name="bell-outline" size={20} color="#2563eb" />
+              <MaterialCommunityIcons name="bell-outline" size={20} color="#0d9488" />
             </View>
             <View>
               <Text style={styles.resumoTitle}>
@@ -222,15 +222,15 @@ const styles = StyleSheet.create({
 
   resumoCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe',
+    backgroundColor: '#f0fdfa', borderWidth: 1, borderColor: '#99f6e4',
     borderRadius: 16, padding: 16, marginBottom: 16,
   },
   resumoIconWrap: {
     width: 40, height: 40, borderRadius: 10,
-    backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center',
   },
-  resumoTitle: { fontSize: 15, fontWeight: '600', color: '#1e3a8a' },
-  resumoDesc: { fontSize: 13, color: '#1d4ed8', marginTop: 2 },
+  resumoTitle: { fontSize: 15, fontWeight: '600', color: '#115e59' },
+  resumoDesc: { fontSize: 13, color: '#0f766e', marginTop: 2 },
 
   notifCard: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#e5e7eb',
   },
   notifCardNaoLida: {
-    borderWidth: 2, borderColor: '#bfdbfe',
+    borderWidth: 2, borderColor: '#99f6e4',
   },
   notifContent: { flexDirection: 'row', gap: 12 },
   notifIconWrap: {
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   notifTituloNaoLido: { fontWeight: '700' },
   dotIndicator: {
     width: 8, height: 8, borderRadius: 4,
-    backgroundColor: '#2563eb', marginTop: 4, flexShrink: 0,
+    backgroundColor: '#0d9488', marginTop: 4, flexShrink: 0,
   },
   notifMensagem: { fontSize: 14, color: '#6b7280', marginBottom: 4, lineHeight: 20 },
   notifData: { fontSize: 12, color: '#9ca3af' },

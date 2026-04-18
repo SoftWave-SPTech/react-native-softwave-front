@@ -78,7 +78,7 @@ export function ClienteCobrancasScreen({ onBack, onNavigate }: Props) {
         {cobrancasFiltradas.map((c) => (
           <Pressable key={c.id} onPress={() => onNavigate('ClientePagamento', String(c.id))} style={styles.card}>
             <View style={styles.cardRow}>
-              <View style={styles.cardIcon}><MaterialCommunityIcons name="file-document" size={22} color="#2563eb" /></View>
+              <View style={styles.cardIcon}><MaterialCommunityIcons name="file-document" size={22} color="#0d9488" /></View>
               <View style={styles.cardContent}>
                 <View style={styles.cardHeader}>
                   <View style={styles.cardLeft}>
@@ -121,17 +121,17 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#fff' },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardRow: { flexDirection: 'row', gap: 12 },
-  cardIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
+  cardIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center' },
   cardContent: { flex: 1 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   cardLeft: { flex: 1 },
   cardProcesso: { fontSize: 16, fontWeight: '500', color: '#111827' },
   cardVenc: { fontSize: 14, color: '#6b7280', marginTop: 4 },
-  cardValor: { fontSize: 20, fontWeight: '600', color: '#2563eb', marginBottom: 12 },
+  cardValor: { fontSize: 20, fontWeight: '600', color: '#0d9488', marginBottom: 12 },
   progressoWrap: { backgroundColor: '#f3f4f6', borderRadius: 12, padding: 12 },
   progressoHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   progressoLabel: { fontSize: 12, color: '#6b7280' },
   progressoPct: { fontSize: 12, fontWeight: '600', color: '#111827' },
   progressoTrack: { height: 8, backgroundColor: '#e5e7eb', borderRadius: 4, overflow: 'hidden' },
-  progressoFill: { height: '100%', backgroundColor: '#2563eb', borderRadius: 4 },
+  progressoFill: { height: '100%', backgroundColor: '#0d9488', borderRadius: 4 },
 });

@@ -176,7 +176,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
       case 'concluido':
         return <MaterialCommunityIcons name="check-circle-outline" size={20} color="#16a34a" />;
       case 'processando':
-        return <ActivityIndicator size="small" color="#2563eb" />;
+        return <ActivityIndicator size="small" color="#0d9488" />;
       case 'erro':
         return <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#dc2626" />;
       default:
@@ -222,7 +222,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
         <View style={styles.actionsRow}>
           <Pressable style={styles.actionCard} onPress={() => setModalUpload(true)}>
             <View style={[styles.actionIcon, styles.actionIconBlue]}>
-              <MaterialCommunityIcons name="upload" size={24} color="#2563eb" />
+              <MaterialCommunityIcons name="upload" size={24} color="#0d9488" />
             </View>
             <Text style={styles.actionTitle}>Importar</Text>
             <Text style={styles.actionDesc}>Upload de arquivos</Text>
@@ -250,8 +250,8 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
             </View>
           </View>
           <View style={styles.formatItem}>
-            <View style={[styles.formatIcon, { backgroundColor: '#eff6ff' }]}>
-              <MaterialCommunityIcons name="file-document-outline" size={18} color="#2563eb" />
+            <View style={[styles.formatIcon, { backgroundColor: '#f0fdfa' }]}>
+              <MaterialCommunityIcons name="file-document-outline" size={18} color="#0d9488" />
             </View>
             <View>
               <Text style={styles.formatName}>OFX / OFC</Text>
@@ -290,7 +290,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
                   </View>
                   <View style={styles.statItem}>
                     <Text style={styles.statLabel}>Atualizados</Text>
-                    <Text style={[styles.statValue, { color: '#2563eb' }]}>{imp.atualizados}</Text>
+                    <Text style={[styles.statValue, { color: '#0d9488' }]}>{imp.atualizados}</Text>
                   </View>
                 </View>
               )}
@@ -340,7 +340,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
 
             {processando ? (
               <View style={styles.processandoContainer}>
-                <ActivityIndicator size="large" color="#2563eb" />
+                <ActivityIndicator size="large" color="#0d9488" />
                 <Text style={styles.processandoTitle}>Processando arquivo...</Text>
                 <Text style={styles.processandoDesc}>Analisando e reconciliando dados</Text>
               </View>
@@ -416,14 +416,14 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
             ))}
 
             <Pressable style={styles.exportOptionBlue} onPress={() => handleExportar('completo')}>
-              <View style={[styles.exportIcon, { backgroundColor: '#dbeafe' }]}>
-                <MaterialCommunityIcons name="download" size={20} color="#2563eb" />
+              <View style={[styles.exportIcon, { backgroundColor: '#ccfbf1' }]}>
+                <MaterialCommunityIcons name="download" size={20} color="#0d9488" />
               </View>
               <View style={styles.exportOptionText}>
-                <Text style={[styles.exportOptionTitle, { color: '#1e3a8a' }]}>Backup Completo</Text>
-                <Text style={[styles.exportOptionDesc, { color: '#1d4ed8' }]}>Todos os dados do sistema</Text>
+                <Text style={[styles.exportOptionTitle, { color: '#115e59' }]}>Backup Completo</Text>
+                <Text style={[styles.exportOptionDesc, { color: '#0f766e' }]}>Todos os dados do sistema</Text>
               </View>
-              <MaterialCommunityIcons name="arrow-right" size={18} color="#2563eb" />
+              <MaterialCommunityIcons name="arrow-right" size={18} color="#0d9488" />
             </Pressable>
 
             <Pressable style={styles.cancelBtn} onPress={() => setModalExportar(false)}>
@@ -442,14 +442,14 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
 
   infoBanner: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0d9488',
     borderRadius: 16, padding: 20,
     flexDirection: 'row', gap: 12,
     marginBottom: 16,
   },
   infoBannerText: { flex: 1 },
   infoBannerTitle: { fontSize: 16, fontWeight: '600', color: '#fff', marginBottom: 6 },
-  infoBannerDesc: { fontSize: 13, color: '#bfdbfe', lineHeight: 19 },
+  infoBannerDesc: { fontSize: 13, color: '#ccfbf1', lineHeight: 19 },
 
   actionsRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   actionCard: {
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
     width: 48, height: 48, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  actionIconBlue: { backgroundColor: '#dbeafe' },
+  actionIconBlue: { backgroundColor: '#ccfbf1' },
   actionIconGreen: { backgroundColor: '#dcfce7' },
   actionTitle: { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 4 },
   actionDesc: { fontSize: 12, color: '#9ca3af' },
@@ -490,11 +490,11 @@ const styles = StyleSheet.create({
 
   statusTag: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   statusConcluido: { backgroundColor: '#f0fdf4' },
-  statusProcessando: { backgroundColor: '#eff6ff' },
+  statusProcessando: { backgroundColor: '#f0fdfa' },
   statusErro: { backgroundColor: '#fef2f2' },
   statusPendente: { backgroundColor: '#f9fafb' },
   statusTextConcluido: { fontSize: 11, color: '#16a34a', fontWeight: '500' },
-  statusTextProcessando: { fontSize: 11, color: '#2563eb', fontWeight: '500' },
+  statusTextProcessando: { fontSize: 11, color: '#0d9488', fontWeight: '500' },
   statusTextErro: { fontSize: 11, color: '#dc2626', fontWeight: '500' },
   statusTextPendente: { fontSize: 11, color: '#9ca3af', fontWeight: '500' },
 
@@ -516,12 +516,12 @@ const styles = StyleSheet.create({
   },
 
   infoCard: {
-    backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe',
+    backgroundColor: '#f0fdfa', borderWidth: 1, borderColor: '#99f6e4',
     borderRadius: 16, padding: 16, marginBottom: 16,
   },
   infoCardTitle: { fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 12 },
   stepRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  stepNumber: { fontSize: 14, fontWeight: '600', color: '#2563eb' },
+  stepNumber: { fontSize: 14, fontWeight: '600', color: '#0d9488' },
   stepText: { flex: 1, fontSize: 14, color: '#374151', lineHeight: 20 },
 
   bottomNavWrap: { position: 'absolute', bottom: 0, left: 0, right: 0 },
@@ -544,14 +544,14 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: '#e5e7eb', borderRadius: 12,
     padding: 12, marginBottom: 10,
   },
-  radioOptionActive: { borderColor: '#2563eb' },
+  radioOptionActive: { borderColor: '#0d9488' },
   radioCircle: {
     width: 18, height: 18, borderRadius: 9,
     borderWidth: 2, borderColor: '#d1d5db',
     alignItems: 'center', justifyContent: 'center',
   },
-  radioCircleActive: { borderColor: '#2563eb' },
-  radioInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563eb' },
+  radioCircleActive: { borderColor: '#0d9488' },
+  radioInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#0d9488' },
   radioTitle: { fontSize: 14, fontWeight: '500', color: '#111827' },
   radioDesc: { fontSize: 12, color: '#9ca3af' },
 
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: { fontSize: 15, fontWeight: '600', color: '#374151' },
   confirmBtn: {
-    flex: 1, paddingVertical: 14, backgroundColor: '#2563eb',
+    flex: 1, paddingVertical: 14, backgroundColor: '#0d9488',
     borderRadius: 12, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 8,
   },
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
   },
   exportOptionBlue: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 2, borderColor: '#2563eb', backgroundColor: '#eff6ff',
+    borderWidth: 2, borderColor: '#0d9488', backgroundColor: '#f0fdfa',
     borderRadius: 12, padding: 12, marginBottom: 12,
   },
   exportIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

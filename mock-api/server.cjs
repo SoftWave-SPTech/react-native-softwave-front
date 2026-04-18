@@ -104,6 +104,96 @@ server.get('/contratos/:contratoId/parcelas', (req, res) => {
   return res.json({ parcelas: lista });
 });
 
+function isoParaBR(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+  if (!m) return String(iso || '');
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+function inicioDoDia(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+/** Recalcula pago, progresso, encerrado, status e próximo vencimento a partir das parcelas. */
+function sincronizarContratoAPartirDasParcelas(contratoIdNum) {
+  const parcelas = (router.db.get('parcelas').value() || []).filter((p) => Number(p.contratoId) === contratoIdNum);
+  const rows = router.db.get('contratos').value() || [];
+  const contrato = rows.find((c) => Number(c.id) === contratoIdNum);
+  if (!contrato) return;
+
+  const totalCentavos = parcelas.reduce((s, p) => s + Number(p.valor || 0), 0);
+  const pagoCentavos = parcelas.filter((p) => p.status === 'pago').reduce((s, p) => s + Number(p.valor || 0), 0);
+  /* Quitação total: comparar valores evita ficar em 99% por arredondamento. */
+  const encerrado = totalCentavos > 0 && pagoCentavos >= totalCentavos;
+  const progresso =
+    totalCentavos > 0 ? Math.min(100, Math.round((pagoCentavos / totalCentavos) * 100)) : encerrado ? 100 : Number(contrato.progresso || 0);
+  const progressoFinal = encerrado ? 100 : progresso;
+
+  const hoje = inicioDoDia(new Date());
+  let status = 'em-dia';
+  if (encerrado) {
+    status = 'encerrado';
+  } else {
+    const pendentes = parcelas.filter((p) => p.status === 'pendente');
+    const temAtrasada = pendentes.some((p) => {
+      const d = new Date(String(p.vencimento));
+      return !Number.isNaN(d.getTime()) && inicioDoDia(d) < hoje;
+    });
+    if (temAtrasada) status = 'atrasado';
+    else if (pendentes.length > 0) status = 'pendente';
+    else status = 'em-dia';
+  }
+
+  const pendentesOrd = parcelas
+    .filter((p) => p.status === 'pendente')
+    .map((p) => p.vencimento)
+    .filter(Boolean)
+    .sort();
+  const vencimentoExibir =
+    pendentesOrd[0] != null
+      ? isoParaBR(pendentesOrd[0])
+      : parcelas.length
+        ? isoParaBR([...parcelas].sort((a, b) => String(a.vencimento).localeCompare(String(b.vencimento))).pop().vencimento)
+        : contrato.vencimento;
+
+  /* lowdb: find().assign() em alguns casos não persiste; gravar o estado inteiro garante GET /contratos atualizado. */
+  const state = router.db.getState();
+  const lista = state.contratos;
+  if (!Array.isArray(lista)) return;
+  const idx = lista.findIndex((c) => Number(c.id) === contratoIdNum);
+  if (idx < 0) return;
+  const contratos = [...lista];
+  contratos[idx] = {
+    ...contratos[idx],
+    pago: pagoCentavos,
+    progresso: progressoFinal,
+    encerrado,
+    status,
+    vencimento: vencimentoExibir,
+  };
+  router.db.setState({ ...state, contratos });
+  router.db.write();
+}
+
+/** PATCH parcela — json-server não sincroniza o contrato; fazemos aqui (advogado). */
+server.patch('/parcelas/:id', (req, res) => {
+  if (!requireAdvogado(req, res)) return;
+  const parcelaId = req.params.id;
+  const status = req.body && req.body.status;
+  if (status !== 'pago' && status !== 'pendente') {
+    return res.status(400).json({ erro: true, mensagem: 'Informe status: pago ou pendente.' });
+  }
+  const all = router.db.get('parcelas').value() || [];
+  const row = all.find((p) => String(p.id) === String(parcelaId));
+  if (!row) return res.status(404).json({ erro: true, mensagem: 'Parcela não encontrada.' });
+  router.db.get('parcelas').find({ id: row.id }).assign({ status }).write();
+  sincronizarContratoAPartirDasParcelas(Number(row.contratoId));
+  const updated = router.db.get('parcelas').find({ id: row.id }).value();
+  return res.json(updated);
+});
+
 /** API_SPEC §4 — gerar cobrança (stub) */
 server.post('/parcelas/:id/gerar-cobranca', (req, res) => {
   return res.json({
@@ -217,10 +307,10 @@ server.get('/relatorios/kpis', (req, res) => {
   const cache = router.db.get('relatoriosCache').value() || {};
   return res.json(
     cache.kpis || {
-      margemLucro: { valor: '0%', variacao: '0%', tipo: 'positivo' },
-      ticketMedio: { valor: 0, variacao: '0%', tipo: 'positivo' },
-      inadimplencia: { valor: '0%', variacao: '0%', tipo: 'positivo' },
-      crescimento: { valor: '0%', variacao: '0%', tipo: 'positivo' },
+      margemLucro: { valor: '49.8%', variacao: '+2.3%', tipo: 'positivo' },
+      ticketMedio: { valor: 854000, variacao: '+5%', tipo: 'positivo' },
+      inadimplencia: { valor: '12%', variacao: '-3%', tipo: 'positivo' },
+      crescimento: { valor: '15%', variacao: '+8%', tipo: 'positivo' },
     },
   );
 });

@@ -120,7 +120,7 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
         {pendentes.map((p) => (
           <View key={p.id} style={styles.card}>
             <View style={styles.cardHeader}>
-              <View style={styles.cardIcon}><MaterialCommunityIcons name="file-image-outline" size={24} color="#2563eb" /></View>
+              <View style={styles.cardIcon}><MaterialCommunityIcons name="file-image-outline" size={24} color="#0d9488" /></View>
               <View style={styles.cardContent}>
                 <Text style={styles.cardCliente}>{p.cliente}</Text>
                 <View style={styles.cardProcesso}><MaterialCommunityIcons name="file-document" size={14} color="#6b7280" /><Text style={styles.cardProcessoText}>{p.processo}</Text></View>
@@ -199,18 +199,18 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   loadingText: { fontSize: 13, color: '#6b7280' },
-  alertBox: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#92400e', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
-  alertText: { fontSize: 14, color: '#92400e' },
+  alertBox: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#64748b', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  alertText: { fontSize: 14, color: '#334155' },
   alertBold: { fontWeight: '600' },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardHeader: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  cardIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
+  cardIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center' },
   cardContent: { flex: 1 },
   cardCliente: { fontSize: 16, fontWeight: '600', color: '#111827' },
   cardProcesso: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   cardProcessoText: { fontSize: 14, color: '#6b7280' },
   cardData: { fontSize: 12, color: '#6b7280', marginTop: 4 },
-  cardValor: { fontSize: 18, fontWeight: '600', color: '#2563eb', marginTop: 8 },
+  cardValor: { fontSize: 18, fontWeight: '600', color: '#0d9488', marginTop: 8 },
   verBtn: { paddingVertical: 10, backgroundColor: '#f3f4f6', borderRadius: 12, alignItems: 'center', marginBottom: 12 },
   verBtnText: { fontSize: 14, color: '#6b7280' },
   actionsRow: { flexDirection: 'row', gap: 8 },
@@ -237,6 +237,6 @@ const styles = StyleSheet.create({
   sucessoIcon: { alignItems: 'center', marginBottom: 16 },
   sucessoTitle: { fontSize: 20, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 8 },
   sucessoSubtitle: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 24 },
-  btnConcluir: { backgroundColor: '#2563eb', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  btnConcluir: { backgroundColor: '#0d9488', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   btnConcluirText: { fontSize: 16, fontWeight: '600', color: '#fff' },
 });

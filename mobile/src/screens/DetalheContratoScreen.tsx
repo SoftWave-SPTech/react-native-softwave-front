@@ -171,7 +171,7 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
             {p.status === 'pendente' && (
               <View style={styles.parcelaActions}>
                 <Pressable onPress={() => gerarCobranca(p)} style={styles.btnGerar}>
-                  <MaterialCommunityIcons name="send" size={18} color="#2563eb" />
+                  <MaterialCommunityIcons name="send" size={18} color="#0d9488" />
                   <Text style={styles.btnGerarText}>Gerar Cobrança</Text>
                 </Pressable>
                 <Pressable onPress={() => marcarPago(p)} style={styles.btnPago}>
@@ -201,10 +201,10 @@ const styles = StyleSheet.create({
   resumoCliente: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 4 },
   resumoValor: { fontSize: 24, fontWeight: 'bold', color: '#111827', textAlign: 'center', marginBottom: 8 },
   resumoTipo: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 16 },
-  progressoWrap: { backgroundColor: '#dbeafe', borderRadius: 12, padding: 16 },
+  progressoWrap: { backgroundColor: '#ccfbf1', borderRadius: 12, padding: 16 },
   progressoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   progressoLabel: { fontSize: 14, color: '#6b7280' },
-  progressoPct: { fontSize: 18, fontWeight: '600', color: '#2563eb' },
+  progressoPct: { fontSize: 18, fontWeight: '600', color: '#0d9488' },
   sectionTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 12 },
   parcelaCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   parcelaHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
@@ -218,8 +218,8 @@ const styles = StyleSheet.create({
   parcelaValor: { fontSize: 16, fontWeight: '500', color: '#111827' },
   parcelaVenc: { fontSize: 14, color: '#6b7280', marginTop: 4 },
   parcelaActions: { flexDirection: 'row', gap: 8, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  btnGerar: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, backgroundColor: '#dbeafe', borderRadius: 12 },
-  btnGerarText: { fontSize: 14, color: '#2563eb', fontWeight: '500' },
+  btnGerar: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, backgroundColor: '#ccfbf1', borderRadius: 12 },
+  btnGerarText: { fontSize: 14, color: '#0d9488', fontWeight: '500' },
   btnPago: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, backgroundColor: '#dcfce7', borderRadius: 12 },
   btnPagoText: { fontSize: 14, color: '#16a34a', fontWeight: '500' },
 });
