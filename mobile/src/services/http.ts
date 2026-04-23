@@ -36,7 +36,7 @@ export async function apiFetch(
 }
 
 export async function apiGetJson<T>(path: string, token: string | null): Promise<T> {
-  const res = await apiFetch(path, { method: 'GET', token });
+  const res = await apiFetch(path, { method: 'GET', token, cache: 'no-store' });
   if (!res.ok) {
     const body = await res.text();
     throw new ApiError(body || res.statusText, res.status);

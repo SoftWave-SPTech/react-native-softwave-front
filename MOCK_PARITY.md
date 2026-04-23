@@ -2,6 +2,8 @@
 
 Referência principal: `API_SPEC.md`. O mock (`mock-api/server.cjs` + `db.json`) implementa um subconjunto alinhado ao contrato; o app (`mobile`) usa `EXPO_PUBLIC_API_URL` quando configurado.
 
+O `db.json` inclui seed para **cobranças do cliente**, **dados bancários do escritório**, **perfis** (cliente/advogado), **histórico de IA** e **histórico de importação**, além de contratos com parcelas e `relatoriosCache`, para evitar respostas vazias ou 404 durante o desenvolvimento.
+
 | Rota (API_SPEC) | Mock (`server.cjs`) | Mobile (`resources.ts` / tela) |
 |-----------------|---------------------|--------------------------------|
 | `GET /relatorios/receita-despesa` | Sim, lê `relatoriosCache` | `fetchRelatorioReceitaDespesa` → `RelatoriosScreen` |

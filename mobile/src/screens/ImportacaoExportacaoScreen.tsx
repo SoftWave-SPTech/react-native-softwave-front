@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
+  Image,
+  type ImageSourcePropType,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
@@ -25,12 +27,57 @@ type Props = {
   onNavigate: (screen: string, id?: string) => void;
 };
 
-type TipoImportacao = 'extrato' | 'transacoes' | 'clientes';
 type StatusImportacao = 'pendente' | 'processando' | 'concluido' | 'erro';
+
+/** Apenas extratos destes bancos na importação (layout do arquivo). */
+type BancoExtratoId = 'c6' | 'bradesco' | 'itau';
+
+const BANCOS_EXTRATO: { id: BancoExtratoId; nome: string; descricao: string; logo: ImageSourcePropType }[] = [
+  {
+    id: 'c6',
+    nome: 'C6 Bank',
+    descricao: 'Aceita somente CSV',
+    logo: require('../../assets/c6Logo.png'),
+  },
+  {
+    id: 'bradesco',
+    nome: 'Bradesco',
+    descricao: 'Aceita somente CSV',
+    logo: require('../../assets/bradescoLogo.png'),
+  },
+  {
+    id: 'itau',
+    nome: 'Itaú',
+    descricao: 'Aceita somente PDF',
+    logo: require('../../assets/itauLogo.png'),
+  },
+];
+
+function tipoUploadParaApi(banco: BancoExtratoId): string {
+  return `extrato_${banco}`;
+}
+
+function arquivoNomeExtratoSimulado(banco: BancoExtratoId): string {
+  const extensao = banco === 'itau' ? 'pdf' : 'csv';
+  return `extrato_${banco}_${Date.now()}.${extensao}`;
+}
+
+/** Rótulo para histórico (API pode devolver extrato_c6, extrato, etc.). */
+function labelTipoImportacao(t: string): string {
+  const mapa: Record<string, string> = {
+    extrato_c6: 'Extrato · C6 Bank',
+    extrato_bradesco: 'Extrato · Bradesco',
+    extrato_itau: 'Extrato · Itaú',
+    extrato: 'Extrato Bancário',
+    transacoes: 'Transações',
+    clientes: 'Clientes',
+  };
+  return mapa[t] ?? t;
+}
 
 interface Importacao {
   id: string;
-  tipo: TipoImportacao;
+  tipo: string;
   arquivo: string;
   data: string;
   status: StatusImportacao;
@@ -76,11 +123,6 @@ const HISTORICO_FALLBACK: Importacao[] = [
   },
 ];
 
-function asTipoImportacao(t: string): TipoImportacao {
-  if (t === 'transacoes' || t === 'clientes' || t === 'extrato') return t;
-  return 'extrato';
-}
-
 function formatDataImp(isoOrBr: string): string {
   if (!isoOrBr || isoOrBr.includes('/')) return isoOrBr;
   const d = new Date(isoOrBr);
@@ -88,19 +130,13 @@ function formatDataImp(isoOrBr: string): string {
   return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-const tipoLabels: Record<TipoImportacao, string> = {
-  extrato: 'Extrato Bancário',
-  transacoes: 'Transações',
-  clientes: 'Clientes',
-};
-
 export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
   void onNavigate;
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [modalUpload, setModalUpload] = useState(false);
-  const [tipoUpload, setTipoUpload] = useState<TipoImportacao>('extrato');
+  const [bancoExtrato, setBancoExtrato] = useState<BancoExtratoId>('c6');
   const [processando, setProcessando] = useState(false);
   const [modalExportar, setModalExportar] = useState(false);
   const [historicoImportacoes, setHistoricoImportacoes] = useState<Importacao[]>(HISTORICO_FALLBACK);
@@ -118,7 +154,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
     setHistoricoImportacoes(
       rows.map((r) => ({
         id: String(r.id),
-        tipo: asTipoImportacao(r.tipo),
+        tipo: String(r.tipo),
         arquivo: r.arquivo,
         data: formatDataImp(r.data),
         status: r.status,
@@ -138,9 +174,9 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
     setProcessando(true);
     void (async () => {
       if (apiOn && token) {
-        const nomeArquivo =
-          tipoUpload === 'extrato' ? 'extrato_upload_simulado.csv' : 'transacoes_upload_simulado.xlsx';
-        const res = await postImportacaoUpload(token, { tipo: tipoUpload, arquivoNome: nomeArquivo });
+        const tipoApi = tipoUploadParaApi(bancoExtrato);
+        const nomeArquivo = arquivoNomeExtratoSimulado(bancoExtrato);
+        const res = await postImportacaoUpload(token, { tipo: tipoApi, arquivoNome: nomeArquivo });
         await carregarHistorico();
         setProcessando(false);
         setModalUpload(false);
@@ -213,7 +249,8 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
           <View style={styles.infoBannerText}>
             <Text style={styles.infoBannerTitle}>Processamento de dados</Text>
             <Text style={styles.infoBannerDesc}>
-              Importe extratos bancários para reconciliação automática ou exporte seus dados para backup e análise.
+              Importe extratos (C6, Bradesco ou Itaú) para reconciliação automática ou exporte seus dados para backup e
+              análise.
             </Text>
           </View>
         </View>
@@ -245,17 +282,17 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
               <MaterialCommunityIcons name="file-excel" size={18} color="#16a34a" />
             </View>
             <View>
-              <Text style={styles.formatName}>CSV / Excel</Text>
-              <Text style={styles.formatDesc}>Extratos e planilhas</Text>
+              <Text style={styles.formatName}>C6 e Bradesco</Text>
+              <Text style={styles.formatDesc}>Apenas arquivos CSV</Text>
             </View>
           </View>
           <View style={styles.formatItem}>
-            <View style={[styles.formatIcon, { backgroundColor: '#f0fdfa' }]}>
-              <MaterialCommunityIcons name="file-document-outline" size={18} color="#0d9488" />
+            <View style={[styles.formatIcon, { backgroundColor: '#eff6ff' }]}>
+              <MaterialCommunityIcons name="file-pdf-box" size={18} color="#2563eb" />
             </View>
             <View>
-              <Text style={styles.formatName}>OFX / OFC</Text>
-              <Text style={styles.formatDesc}>Arquivos bancários</Text>
+              <Text style={styles.formatName}>Itaú</Text>
+              <Text style={styles.formatDesc}>Apenas arquivos PDF</Text>
             </View>
           </View>
         </View>
@@ -271,7 +308,9 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
                   <Text style={styles.historicoArquivo} numberOfLines={1}>{imp.arquivo}</Text>
                   <View style={styles.historicoMeta}>
                     <View style={getStatusStyle(imp.status)}>
-                      <Text style={getStatusTextStyle(imp.status)}>{tipoLabels[imp.tipo]} · {imp.status}</Text>
+                      <Text style={getStatusTextStyle(imp.status)}>
+                        {labelTipoImportacao(String(imp.tipo))} · {imp.status}
+                      </Text>
                     </View>
                     <Text style={styles.historicoData}>{imp.data}</Text>
                   </View>
@@ -306,7 +345,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
         <View style={styles.infoCard}>
           <Text style={styles.infoCardTitle}>Como funciona a reconciliação?</Text>
           {[
-            'Upload do extrato bancário (CSV, Excel ou OFX)',
+            'Escolha o banco e envie o extrato no formato correto (C6/Bradesco = CSV, Itaú = PDF)',
             'O sistema compara com transações cadastradas',
             'Reconciliação automática por valor, data e descrição',
             'Sugestões de lançamentos para movimentos não cadastrados',
@@ -346,21 +385,22 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
               </View>
             ) : (
               <>
-                <Text style={styles.uploadLabel}>Tipo de Arquivo</Text>
-                {(['extrato', 'transacoes'] as TipoImportacao[]).map(tipo => (
+                <Text style={styles.uploadLabel}>Extrato bancário (layout do arquivo)</Text>
+                {BANCOS_EXTRATO.map((b) => (
                   <Pressable
-                    key={tipo}
-                    style={[styles.radioOption, tipoUpload === tipo && styles.radioOptionActive]}
-                    onPress={() => setTipoUpload(tipo)}
+                    key={b.id}
+                    style={[styles.radioOption, bancoExtrato === b.id && styles.radioOptionActive]}
+                    onPress={() => setBancoExtrato(b.id)}
                   >
-                    <View style={[styles.radioCircle, tipoUpload === tipo && styles.radioCircleActive]}>
-                      {tipoUpload === tipo && <View style={styles.radioInner} />}
+                    <View style={[styles.radioCircle, bancoExtrato === b.id && styles.radioCircleActive]}>
+                      {bancoExtrato === b.id && <View style={styles.radioInner} />}
                     </View>
-                    <View>
-                      <Text style={styles.radioTitle}>{tipoLabels[tipo]}</Text>
-                      <Text style={styles.radioDesc}>
-                        {tipo === 'extrato' ? 'Para reconciliação automática' : 'Importar transações em lote'}
-                      </Text>
+                    <View style={styles.bankLogoWrap}>
+                      <Image source={b.logo} style={styles.bankLogo} resizeMode="contain" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.radioTitle}>{b.nome}</Text>
+                      <Text style={styles.radioDesc}>{b.descricao}</Text>
                     </View>
                   </Pressable>
                 ))}
@@ -368,7 +408,9 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
                 <View style={styles.dropZone}>
                   <MaterialCommunityIcons name="upload" size={40} color="#9ca3af" />
                   <Text style={styles.dropZoneTitle}>Toque para selecionar</Text>
-                  <Text style={styles.dropZoneDesc}>CSV, Excel, OFX ou OFC</Text>
+                  <Text style={styles.dropZoneDesc}>
+                    {bancoExtrato === 'itau' ? 'Somente PDF para Itaú' : 'Somente CSV para C6 e Bradesco'}
+                  </Text>
                 </View>
 
                 <View style={styles.modalButtons}>
@@ -552,6 +594,17 @@ const styles = StyleSheet.create({
   },
   radioCircleActive: { borderColor: '#0d9488' },
   radioInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#0d9488' },
+  bankLogoWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bankLogo: { width: 22, height: 22 },
   radioTitle: { fontSize: 14, fontWeight: '500', color: '#111827' },
   radioDesc: { fontSize: 12, color: '#9ca3af' },
 

@@ -97,6 +97,21 @@ function centavosParaReaisChart(v: number): number {
   return Math.round((v / 100) * 100) / 100;
 }
 
+/** Exibe valor principal do KPI com fallback quando a API omite campos ou usa formato alternativo. */
+function valorPrincipalKpi(
+  k: RelatorioKpisApi | null,
+  chave: keyof RelatorioKpisApi,
+  fallback: string,
+): string {
+  if (!k) return fallback;
+  const item = k[chave];
+  if (!item || item.valor === undefined || item.valor === null) return fallback;
+  if (chave === 'ticketMedio' && typeof item.valor === 'number') {
+    return formatCentavosBRL(item.valor);
+  }
+  return String(item.valor);
+}
+
 export function RelatoriosScreen({ onBack, onNavigate }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
@@ -244,36 +259,36 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             <CardKPI
               icon="chart-line"
               title="Margem de Lucro"
-              value={k ? String(k.margemLucro.valor) : '49.8%'}
-              variation={k?.margemLucro.variacao}
-              variationType={k?.margemLucro.tipo === 'negativo' ? 'negative' : 'positive'}
+              value={valorPrincipalKpi(k, 'margemLucro', '49.8%')}
+              variation={k?.margemLucro?.variacao}
+              variationType={k?.margemLucro?.tipo === 'negativo' ? 'negative' : 'positive'}
             />
           </View>
           <View style={styles.kpiItem}>
             <CardKPI
               icon="cash"
               title="Ticket Médio"
-              value={k && typeof k.ticketMedio.valor === 'number' ? formatCentavosBRL(k.ticketMedio.valor) : 'R$ 8.540'}
-              variation={k?.ticketMedio.variacao}
-              variationType={k?.ticketMedio.tipo === 'negativo' ? 'negative' : 'positive'}
+              value={valorPrincipalKpi(k, 'ticketMedio', 'R$ 8.540,00')}
+              variation={k?.ticketMedio?.variacao}
+              variationType={k?.ticketMedio?.tipo === 'negativo' ? 'negative' : 'positive'}
             />
           </View>
           <View style={styles.kpiItem}>
             <CardKPI
               icon="alert-circle"
               title="Inadimplência"
-              value={k ? String(k.inadimplencia.valor) : '12%'}
-              variation={k?.inadimplencia.variacao}
-              variationType={k?.inadimplencia.tipo === 'negativo' ? 'negative' : 'positive'}
+              value={valorPrincipalKpi(k, 'inadimplencia', '12%')}
+              variation={k?.inadimplencia?.variacao}
+              variationType={k?.inadimplencia?.tipo === 'negativo' ? 'negative' : 'positive'}
             />
           </View>
           <View style={styles.kpiItem}>
             <CardKPI
               icon="trending-up"
               title="Crescimento"
-              value={k ? String(k.crescimento.valor) : '15%'}
-              variation={k?.crescimento.variacao}
-              variationType={k?.crescimento.tipo === 'negativo' ? 'negative' : 'positive'}
+              value={valorPrincipalKpi(k, 'crescimento', '15%')}
+              variation={k?.crescimento?.variacao}
+              variationType={k?.crescimento?.tipo === 'negativo' ? 'negative' : 'positive'}
             />
           </View>
         </View>

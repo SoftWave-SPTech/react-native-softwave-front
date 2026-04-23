@@ -110,22 +110,32 @@ function resumoAtivos(rows: ContratoApi[]) {
 }
 
 type Props = {
+  /** Foco da rota (ex.: `useIsFocused` em `app/(tabs)/honorarios.tsx`) — recarrega lista ao voltar do detalhe. */
+  isFocused?: boolean;
+  /**
+   * Path da rota (ex.: `usePathname()` no `app/(tabs)/honorarios.tsx`). Quando contém `honorarios`, dispara GET.
+   * No `App.tsx` legado, use `routePath="honorarios"`.
+   */
+  routePath?: string;
   onBack: () => void;
   onNavigate: (screen: string, id?: string) => void;
 };
 
-export function HonorariosScreen({ onBack, onNavigate }: Props) {
+export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onNavigate }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [rowsApi, setRowsApi] = useState<ContratoApi[]>(CONTRATOS_FALLBACK_API);
   const [loading, setLoading] = useState(false);
 
+  const emTelaHonorarios = routePath.includes('honorarios');
+
   useEffect(() => {
     if (!apiOn) {
       setRowsApi(CONTRATOS_FALLBACK_API);
-      return;
+      return undefined;
     }
+    if (!isFocused || !emTelaHonorarios) return undefined;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -141,7 +151,7 @@ export function HonorariosScreen({ onBack, onNavigate }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [apiOn, token]);
+  }, [routePath, emTelaHonorarios, isFocused, apiOn, token]);
 
   const lista = useMemo(() => rowsApi.map(mapApiToContrato), [rowsApi]);
   const topo = useMemo(() => resumoAtivos(rowsApi), [rowsApi]);

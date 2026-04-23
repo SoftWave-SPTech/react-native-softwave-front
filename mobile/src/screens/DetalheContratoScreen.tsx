@@ -21,7 +21,9 @@ type ParcelaUi = {
   apiId: string;
   numero: number;
   valor: string;
+  valorCentavos: number;
   vencimento: string;
+  vencimentoIso: string;
   status: ParcelaStatus;
 };
 
@@ -32,16 +34,53 @@ function mapParcelasToUi(rows: ParcelaApi[]): ParcelaUi[] {
       apiId: p.id,
       numero: p.numero,
       valor: formatCentavosBRL(p.valor),
+      valorCentavos: p.valor,
       vencimento: formatDateIsoToBR(p.vencimento),
+      vencimentoIso: p.vencimento,
       status: p.status,
     }));
 }
 
+/** Percentual pago pelo valor das parcelas (alinha barra ao marcar parcela). */
+function progressoPorValorParcelas(rows: ParcelaUi[]): number {
+  const total = rows.reduce((s, p) => s + p.valorCentavos, 0);
+  if (total <= 0) return 0;
+  const pago = rows.filter((p) => p.status === 'pago').reduce((s, p) => s + p.valorCentavos, 0);
+  if (pago >= total) return 100;
+  return Math.min(100, Math.round((pago / total) * 100));
+}
+
+function inicioDia(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+/** Situação do contrato para tag (espelha regra do mock / backend). */
+function inferirStatusContrato(
+  rows: ParcelaUi[],
+  progresso: number,
+): 'em-dia' | 'pendente' | 'atrasado' | 'encerrado' {
+  const totalC = rows.reduce((s, p) => s + p.valorCentavos, 0);
+  const pagoC = rows.filter((p) => p.status === 'pago').reduce((s, p) => s + p.valorCentavos, 0);
+  if (totalC > 0 && pagoC >= totalC) return 'encerrado';
+  if (progresso >= 100) return 'encerrado';
+  const hoje = inicioDia(new Date());
+  const pendentes = rows.filter((p) => p.status === 'pendente');
+  const temAtrasada = pendentes.some((p) => {
+    const d = new Date(p.vencimentoIso);
+    return !Number.isNaN(d.getTime()) && inicioDia(d) < hoje;
+  });
+  if (temAtrasada) return 'atrasado';
+  if (pendentes.length > 0) return 'pendente';
+  return 'em-dia';
+}
+
 const PARCELAS_FALLBACK: ParcelaUi[] = [
-  { apiId: '', numero: 1, valor: 'R$ 6.000,00', vencimento: '15/01/2026', status: 'pago' },
-  { apiId: '', numero: 2, valor: 'R$ 6.000,00', vencimento: '15/02/2026', status: 'pago' },
-  { apiId: '', numero: 3, valor: 'R$ 6.000,00', vencimento: '15/03/2026', status: 'pendente' },
-  { apiId: '', numero: 4, valor: 'R$ 6.000,00', vencimento: '15/04/2026', status: 'pendente' },
+  { apiId: '', numero: 1, valor: 'R$ 6.000,00', valorCentavos: 600000, vencimento: '15/01/2026', vencimentoIso: '2026-01-15', status: 'pago' },
+  { apiId: '', numero: 2, valor: 'R$ 6.000,00', valorCentavos: 600000, vencimento: '15/02/2026', vencimentoIso: '2026-02-15', status: 'pago' },
+  { apiId: '', numero: 3, valor: 'R$ 6.000,00', valorCentavos: 600000, vencimento: '15/03/2026', vencimentoIso: '2026-03-15', status: 'pendente' },
+  { apiId: '', numero: 4, valor: 'R$ 6.000,00', valorCentavos: 600000, vencimento: '15/04/2026', vencimentoIso: '2026-04-15', status: 'pendente' },
 ];
 
 type Props = {
@@ -70,8 +109,14 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
         fetchParcelasContrato(token, contratoId),
       ]);
       setContrato(c);
-      if (par.length > 0) setParcelas(mapParcelasToUi(par));
-      else setParcelas(PARCELAS_FALLBACK);
+      if (par.length > 0) {
+        setParcelas(mapParcelasToUi(par));
+      } else if (c) {
+        /* API sem parcelas: não usar fallback genérico (evita valores divergentes da lista). */
+        setParcelas([]);
+      } else {
+        setParcelas(PARCELAS_FALLBACK);
+      }
     } catch {
       setContrato(null);
       setParcelas(PARCELAS_FALLBACK);
@@ -84,14 +129,16 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
     carregar();
   }, [carregar]);
 
-  const totalParcelas = parcelas.length || 1;
-  const parcelasPagas = parcelas.filter((p) => p.status === 'pago').length;
-  const percentualPago = Math.round((parcelasPagas / totalParcelas) * 100);
+  const progressoContrato =
+    parcelas.length > 0 ? progressoPorValorParcelas(parcelas) : (contrato?.progresso ?? 0);
 
   const clienteNome = contrato?.cliente ?? 'Cliente';
   const valorTitulo = contrato ? formatCentavosBRL(contrato.total) : 'R$ 25.000,00';
   const tipoTxt = contrato?.tipoContrato ?? 'Contrato';
-  const progressoContrato = contrato?.progresso ?? percentualPago;
+  const statusContratoTag =
+    parcelas.length > 0
+      ? inferirStatusContrato(parcelas, progressoContrato)
+      : (contrato?.status ?? 'em-dia');
 
   const marcarPago = async (p: ParcelaUi) => {
     if (!p.apiId) {
@@ -138,7 +185,10 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
         <View style={styles.resumoCard}>
           <Text style={styles.resumoCliente}>{clienteNome}</Text>
           <Text style={styles.resumoValor}>{valorTitulo}</Text>
-          <Text style={styles.resumoTipo}>{tipoTxt}</Text>
+          <View style={styles.tipoRow}>
+            <Text style={styles.resumoTipo}>{tipoTxt}</Text>
+            <TagStatus status={statusContratoTag} />
+          </View>
           <View style={styles.progressoWrap}>
             <View style={styles.progressoHeader}>
               <Text style={styles.progressoLabel}>Percentual Pago</Text>
@@ -154,8 +204,14 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
           </View>
         ) : null}
         <Text style={styles.sectionTitle}>Parcelas</Text>
+        {parcelas.length === 0 && contrato ? (
+          <View style={styles.emptyParcelas}>
+            <MaterialCommunityIcons name="clipboard-text-off-outline" size={36} color="#9ca3af" />
+            <Text style={styles.emptyParcelasText}>Nenhuma parcela cadastrada para este contrato.</Text>
+          </View>
+        ) : null}
         {parcelas.map((p) => (
-          <View key={p.numero} style={styles.parcelaCard}>
+          <View key={p.apiId || `n-${p.numero}`} style={styles.parcelaCard}>
             <View style={styles.parcelaHeader}>
               <View style={styles.parcelaLeft}>
                 <View style={[styles.parcelaNum, p.status === 'pago' ? styles.parcelaNumPago : styles.parcelaNumPendente]}>
@@ -200,12 +256,32 @@ const styles = StyleSheet.create({
   resumoCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   resumoCliente: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 4 },
   resumoValor: { fontSize: 24, fontWeight: 'bold', color: '#111827', textAlign: 'center', marginBottom: 8 },
-  resumoTipo: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 16 },
+  tipoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+  },
+  resumoTipo: { fontSize: 14, color: '#6b7280', textAlign: 'center' },
   progressoWrap: { backgroundColor: '#ccfbf1', borderRadius: 12, padding: 16 },
   progressoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   progressoLabel: { fontSize: 14, color: '#6b7280' },
   progressoPct: { fontSize: 18, fontWeight: '600', color: '#0d9488' },
   sectionTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 12 },
+  emptyParcelas: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    gap: 8,
+  },
+  emptyParcelasText: { fontSize: 14, color: '#6b7280', textAlign: 'center' },
   parcelaCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   parcelaHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   parcelaLeft: { flexDirection: 'row', gap: 12 },

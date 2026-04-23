@@ -104,6 +104,39 @@ server.get('/contratos/:contratoId/parcelas', (req, res) => {
   return res.json({ parcelas: lista });
 });
 
+/**
+ * Lista e detalhe de contratos direto do estado lowdb (fonte única após PATCH parcelas).
+ * Assim GET /contratos não depende do handler plural do json-server com cópias defasadas.
+ */
+server.get('/contratos', (req, res) => {
+  const state = router.db.getState();
+  let list = [...(state.contratos || [])];
+  const sortField = req.query._sort || 'id';
+  const asc = String(req.query._order || 'asc').toLowerCase() !== 'desc';
+  list.sort((a, b) => {
+    const va = a[sortField];
+    const vb = b[sortField];
+    if (va === vb) return 0;
+    if (va == null || va === undefined) return asc ? 1 : -1;
+    if (vb == null || vb === undefined) return asc ? -1 : 1;
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
+  });
+  return res.json(list);
+});
+
+server.get('/contratos/:id', (req, res, next) => {
+  const rawId = req.params.id;
+  if (rawId === 'parcelas') return next();
+  const state = router.db.getState();
+  const row = (state.contratos || []).find(
+    (c) => String(c.id) === String(rawId) || Number(c.id) === Number(rawId),
+  );
+  if (!row) return res.status(404).json({ erro: true, mensagem: 'Contrato não encontrado.' });
+  return res.json(row);
+});
+
 function isoParaBR(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
   if (!m) return String(iso || '');
@@ -118,8 +151,9 @@ function inicioDoDia(d) {
 
 /** Recalcula pago, progresso, encerrado, status e próximo vencimento a partir das parcelas. */
 function sincronizarContratoAPartirDasParcelas(contratoIdNum) {
-  const parcelas = (router.db.get('parcelas').value() || []).filter((p) => Number(p.contratoId) === contratoIdNum);
-  const rows = router.db.get('contratos').value() || [];
+  const snap = router.db.getState();
+  const parcelas = (snap.parcelas || []).filter((p) => Number(p.contratoId) === contratoIdNum);
+  const rows = snap.contratos || [];
   const contrato = rows.find((c) => Number(c.id) === contratoIdNum);
   if (!contrato) return;
 

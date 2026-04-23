@@ -161,6 +161,7 @@ export default function App() {
   if (screen === 'Honorarios') {
     return (
       <HonorariosScreen
+        routePath="honorarios"
         onBack={goBack}
         onNavigate={navigateAny}
       />
