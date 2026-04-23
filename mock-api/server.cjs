@@ -10,6 +10,10 @@ const router = jsonServer.router(path.join(__dirname, 'db.json'));
 const middlewares = jsonServer.defaults();
 
 const PORT = Number(process.env.PORT) || 3000;
+/** Se `1` ou `true`, rotas protegidas aceitam sem Bearer (apenas para testes locais). */
+const MOCK_SKIP_AUTH =
+  String(process.env.MOCK_SKIP_AUTH || '').toLowerCase() === '1' ||
+  process.env.MOCK_SKIP_AUTH === 'true';
 const MOCK_PIX =
   '00020126580014BR.GOV.BCB.PIX0136a1b2c3d4-e5f6-7890-abcd-ef1234567890520400005303986540525.005802BR5925SILVA E ASSOCIADOS LTDA6014SAO PAULO62070503***6304ABCD';
 
@@ -21,6 +25,7 @@ function usuarioDoToken(req) {
 }
 
 function requireAdvogado(req, res) {
+  if (MOCK_SKIP_AUTH) return { tipo: 'advogado', id: 'dev_skip_auth' };
   const u = usuarioDoToken(req);
   if (!u || u.tipo !== 'advogado') {
     res.status(401).json({ erro: true, mensagem: 'Não autorizado.' });
@@ -30,6 +35,7 @@ function requireAdvogado(req, res) {
 }
 
 function requireCliente(req, res) {
+  if (MOCK_SKIP_AUTH) return { tipo: 'cliente', id: 'dev_skip_auth' };
   const u = usuarioDoToken(req);
   if (!u || u.tipo !== 'cliente') {
     res.status(401).json({ erro: true, mensagem: 'Não autorizado.' });
@@ -560,6 +566,10 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  Mock API (json-server) → http://localhost:${PORT}`);
   // eslint-disable-next-line no-console
   console.log(`  Login: POST /auth/login`);
+  if (MOCK_SKIP_AUTH) {
+    // eslint-disable-next-line no-console
+    console.log(`  ⚠ MOCK_SKIP_AUTH=1 — rotas protegidas aceitam sem Bearer (só desenvolvimento).`);
+  }
   // eslint-disable-next-line no-console
   console.log(`  Ver mock-api/README.md para rotas do API_SPEC.\n`);
 });
