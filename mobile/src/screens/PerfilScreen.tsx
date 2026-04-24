@@ -18,11 +18,11 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [loading, setLoading] = useState(false);
-  const [nome, setNome] = useState('Silva & Associados');
-  const [email, setEmail] = useState('contato@silvaassociados.com.br');
-  const [telefone, setTelefone] = useState('(11) 3456-7890');
-  const [oab, setOab] = useState('OAB/SP 123.456');
-  const [endereco, setEndereco] = useState('Av. Paulista, 1000 - São Paulo/SP');
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [oab, setOab] = useState('');
+  const [endereco, setEndereco] = useState('');
   const [modalFoto, setModalFoto] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -65,7 +65,17 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
         )}
         <View style={styles.avatarCard}>
           <View style={styles.avatarWrap}>
-            <View style={styles.avatar}><Text style={styles.avatarText}>SA</Text></View>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {(nome || '?')
+                  .trim()
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((w) => w[0]?.toUpperCase() ?? '')
+                  .join('') || '?'}
+              </Text>
+            </View>
             <Pressable onPress={() => setModalFoto(true)} style={styles.cameraBtn}>
               <MaterialCommunityIcons name="camera" size={16} color="#fff" />
             </Pressable>

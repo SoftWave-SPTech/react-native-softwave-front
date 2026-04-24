@@ -76,13 +76,6 @@ function inferirStatusContrato(
   return 'em-dia';
 }
 
-const PARCELAS_FALLBACK: ParcelaUi[] = [
-  { apiId: '', numero: 1, valor: 'R$ 6.000,00', valorCentavos: 600000, vencimento: '15/01/2026', vencimentoIso: '2026-01-15', status: 'pago' },
-  { apiId: '', numero: 2, valor: 'R$ 6.000,00', valorCentavos: 600000, vencimento: '15/02/2026', vencimentoIso: '2026-02-15', status: 'pago' },
-  { apiId: '', numero: 3, valor: 'R$ 6.000,00', valorCentavos: 600000, vencimento: '15/03/2026', vencimentoIso: '2026-03-15', status: 'pendente' },
-  { apiId: '', numero: 4, valor: 'R$ 6.000,00', valorCentavos: 600000, vencimento: '15/04/2026', vencimentoIso: '2026-04-15', status: 'pendente' },
-];
-
 type Props = {
   contratoId: string;
   onBack: () => void;
@@ -94,12 +87,12 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
 
   const [loading, setLoading] = useState(false);
   const [contrato, setContrato] = useState<ContratoApi | null>(null);
-  const [parcelas, setParcelas] = useState<ParcelaUi[]>(PARCELAS_FALLBACK);
+  const [parcelas, setParcelas] = useState<ParcelaUi[]>([]);
 
   const carregar = useCallback(async () => {
     if (!apiOn || !token) {
       setContrato(null);
-      setParcelas(PARCELAS_FALLBACK);
+      setParcelas([]);
       return;
     }
     setLoading(true);
@@ -115,11 +108,11 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
         /* API sem parcelas: não usar fallback genérico (evita valores divergentes da lista). */
         setParcelas([]);
       } else {
-        setParcelas(PARCELAS_FALLBACK);
+        setParcelas([]);
       }
     } catch {
       setContrato(null);
-      setParcelas(PARCELAS_FALLBACK);
+      setParcelas([]);
     } finally {
       setLoading(false);
     }
@@ -133,7 +126,7 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
     parcelas.length > 0 ? progressoPorValorParcelas(parcelas) : (contrato?.progresso ?? 0);
 
   const clienteNome = contrato?.cliente ?? 'Cliente';
-  const valorTitulo = contrato ? formatCentavosBRL(contrato.total) : 'R$ 25.000,00';
+  const valorTitulo = contrato ? formatCentavosBRL(contrato.total) : '—';
   const tipoTxt = contrato?.tipoContrato ?? 'Contrato';
   const statusContratoTag =
     parcelas.length > 0

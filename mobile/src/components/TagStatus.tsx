@@ -4,7 +4,7 @@ import { View, Text, StyleSheet } from 'react-native';
 type Status = 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado' | 'encerrado';
 
 type Props = {
-  status: Status;
+  status: Status | string;
 };
 
 const statusConfig: Record<Status, { bg: string; text: string }> = {
@@ -25,11 +25,43 @@ const labels: Record<Status, string> = {
   encerrado: 'Encerrado',
 };
 
+function normalizeStatus(input: string): Status {
+  const normalized = String(input || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/_/g, '-');
+
+  const aliases: Record<string, Status> = {
+    pago: 'pago',
+    paga: 'pago',
+    paid: 'pago',
+    pendente: 'pendente',
+    pending: 'pendente',
+    atrasado: 'atrasado',
+    vencido: 'atrasado',
+    overdue: 'atrasado',
+    'em-dia': 'em-dia',
+    emdia: 'em-dia',
+    'em-dia.': 'em-dia',
+    adimplente: 'em-dia',
+    cancelado: 'cancelado',
+    cancelada: 'cancelado',
+    encerrado: 'encerrado',
+    encerrada: 'encerrado',
+  };
+
+  return aliases[normalized] ?? 'pendente';
+}
+
 export function TagStatus({ status }: Props) {
-  const { bg, text } = statusConfig[status];
+  const safeStatus = normalizeStatus(status);
+  const { bg, text } = statusConfig[safeStatus];
   return (
     <View style={[styles.tag, { backgroundColor: bg }]}>
-      <Text style={[styles.label, { color: text }]}>{labels[status]}</Text>
+      <Text style={[styles.label, { color: text }]}>{labels[safeStatus]}</Text>
     </View>
   );
 }

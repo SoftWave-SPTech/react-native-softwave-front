@@ -30,49 +30,6 @@ interface Notificacao {
   color: string;
 }
 
-const NOTIFICACOES_FALLBACK: Notificacao[] = [
-  {
-    id: 1,
-    tipo: 'pagamento',
-    titulo: 'Pagamento confirmado',
-    mensagem: 'Seu pagamento de R$ 6.000,00 foi confirmado',
-    data: 'Hoje, 14:30',
-    lida: false,
-    icon: 'check-circle-outline',
-    color: 'green',
-  },
-  {
-    id: 2,
-    tipo: 'cobranca',
-    titulo: 'Nova cobrança disponível',
-    mensagem: 'Parcela de R$ 7.000,00 vence em 15/04/2026',
-    data: 'Hoje, 09:15',
-    lida: false,
-    icon: 'currency-usd',
-    color: 'blue',
-  },
-  {
-    id: 3,
-    tipo: 'vencimento',
-    titulo: 'Cobrança próxima ao vencimento',
-    mensagem: 'Sua parcela vence em 3 dias',
-    data: 'Ontem, 10:00',
-    lida: true,
-    icon: 'alert-circle-outline',
-    color: 'yellow',
-  },
-  {
-    id: 4,
-    tipo: 'processo',
-    titulo: 'Atualização no processo',
-    mensagem: 'Processo 1234/2025 teve movimentação',
-    data: '23/02/2026',
-    lida: true,
-    icon: 'file-document-outline',
-    color: 'purple',
-  },
-];
-
 const iconBgColors: Record<string, string> = {
   green: '#f0fdf4',
   blue: '#f0fdfa',
@@ -91,12 +48,12 @@ export function ClienteNotificacoesScreen({ onBack }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
 
-  const [notificacoes, setNotificacoes] = useState<Notificacao[]>(NOTIFICACOES_FALLBACK);
+  const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!apiOn) {
-      setNotificacoes(NOTIFICACOES_FALLBACK);
+      setNotificacoes([]);
       return;
     }
     let cancelled = false;
@@ -104,7 +61,7 @@ export function ClienteNotificacoesScreen({ onBack }: Props) {
       setLoading(true);
       try {
         const rows = await fetchNotificacoesCliente(token);
-        if (!cancelled && rows.length > 0) {
+        if (!cancelled) {
           setNotificacoes(
             rows.map((r) => ({
               id: r.id,
@@ -119,7 +76,7 @@ export function ClienteNotificacoesScreen({ onBack }: Props) {
           );
         }
       } catch {
-        if (!cancelled) setNotificacoes(NOTIFICACOES_FALLBACK);
+        if (!cancelled) setNotificacoes([]);
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -9,8 +9,13 @@ import { useAuth } from '../context/AuthContext';
 import { fetchCobrancaDetalhe, fetchCobrancaPix, fetchEscritorioDadosBancarios } from '../services/resources';
 import { formatCentavosBRL, formatDateIsoToBR } from '../utils/money';
 
-const PIX_FALLBACK =
-  '00020126580014BR.GOV.BCB.PIX0136a1b2c3d4-e5f6-7890-abcd-ef1234567890520400005303986540525.005802BR5925SILVA E ASSOCIADOS LTDA6014SAO PAULO62070503***6304ABCD';
+const BANCO_VAZIO = {
+  banco: '',
+  agencia: '',
+  conta: '',
+  favorecido: '',
+  cnpj: '',
+};
 
 type Props = {
   cobrancaId: string;
@@ -22,10 +27,10 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [loading, setLoading] = useState(false);
-  const [valorFmt, setValorFmt] = useState('R$ 6.000,00');
-  const [vencFmt, setVencFmt] = useState('15/03/2026');
-  const [pixCode, setPixCode] = useState(PIX_FALLBACK);
-  const [banco, setBanco] = useState({ banco: 'Banco do Brasil', agencia: '1234-5', conta: '67890-1', favorecido: 'Silva & Associados', cnpj: '12.345.678/0001-90' });
+  const [valorFmt, setValorFmt] = useState('—');
+  const [vencFmt, setVencFmt] = useState('—');
+  const [pixCode, setPixCode] = useState('');
+  const [banco, setBanco] = useState(BANCO_VAZIO);
 
   const [copiado, setCopiado] = useState(false);
   const [comprovanteAnexado, setComprovanteAnexado] = useState(false);
@@ -35,9 +40,10 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
 
   const carregar = useCallback(async () => {
     if (!apiOn || !token) {
-      setValorFmt('R$ 6.000,00');
-      setVencFmt('15/03/2026');
-      setPixCode(PIX_FALLBACK);
+      setValorFmt('—');
+      setVencFmt('—');
+      setPixCode('');
+      setBanco(BANCO_VAZIO);
       return;
     }
     setLoading(true);
@@ -54,7 +60,10 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
       if (pix?.pixCopiaCola) setPixCode(pix.pixCopiaCola);
       if (esc) setBanco(esc);
     } catch {
-      /* mantém fallback */
+      setValorFmt('—');
+      setVencFmt('—');
+      setPixCode('');
+      setBanco(BANCO_VAZIO);
     } finally {
       setLoading(false);
     }

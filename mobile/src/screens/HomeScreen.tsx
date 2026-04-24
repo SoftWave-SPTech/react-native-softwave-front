@@ -19,27 +19,20 @@ type Props = {
   onNavigate: (screen: string, id?: string) => void;
 };
 
-/** Fallback local (centavos) quando não há API ou falha de rede */
-const MOCK_DASHBOARD: DashboardResumoApi = {
+/** Placeholder só para layout quando a API ainda não devolveu o resumo (valores zerados). */
+const DASHBOARD_VAZIO: DashboardResumoApi = {
   id: 0,
-  valorDisponivel: 14528000,
-  lucroLiquidoMes: 4250000,
-  receitaMensal: 8540000,
-  despesaMensal: 4290000,
-  pendentes: 2830000,
-  variacaoReceita: '+12%',
-  variacaoPendentes: '-5%',
-  variacaoDespesa: '+8%',
-  variacaoLucro: '+15%',
-  pagamentosParaConferir: 3,
+  valorDisponivel: 0,
+  lucroLiquidoMes: 0,
+  receitaMensal: 0,
+  despesaMensal: 0,
+  pendentes: 0,
+  variacaoReceita: '—',
+  variacaoPendentes: '—',
+  variacaoDespesa: '—',
+  variacaoLucro: '—',
+  pagamentosParaConferir: 0,
 };
-
-const MOCK_RECENT: TransacaoCardModel[] = [
-  { id: '1', icon: 'briefcase', title: 'Honorários - Processo 1234', subtitle: 'João Silva', value: 'R$ 5.000,00', type: 'receita', status: 'pago' },
-  { id: '2', icon: 'file-document', title: 'Custas Judiciais', subtitle: 'Processo 5678', value: 'R$ 850,00', type: 'despesa', status: 'pendente' },
-  { id: '3', icon: 'credit-card', title: 'Honorários - Consultoria', subtitle: 'Maria Santos', value: 'R$ 3.200,00', type: 'receita', status: 'atrasado' },
-  { id: '4', icon: 'credit-card', title: 'Honorários - Consultoria Premium', subtitle: 'Carlos Oliveira', value: 'R$ 8.000,00', type: 'receita', status: 'em-dia' },
-];
 
 function variationTypeFromString(s: string): 'positive' | 'negative' {
   return s.trim().startsWith('-') ? 'negative' : 'positive';
@@ -50,15 +43,15 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [dash, setDash] = useState<DashboardResumoApi | null>(null);
-  const [recent, setRecent] = useState<TransacaoCardModel[]>(MOCK_RECENT);
+  const [recent, setRecent] = useState<TransacaoCardModel[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const effectiveDash = dash ?? MOCK_DASHBOARD;
+  const effectiveDash = dash ?? DASHBOARD_VAZIO;
 
   useEffect(() => {
     if (!apiOn) {
       setDash(null);
-      setRecent(MOCK_RECENT);
+      setRecent([]);
       return;
     }
     let cancelled = false;
@@ -84,7 +77,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
       } catch {
         if (!cancelled) {
           setDash(null);
-          setRecent(MOCK_RECENT);
+          setRecent([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -180,8 +173,9 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
           </View>
           <View style={styles.insightsContent}>
             <Text style={styles.insightsTitle}>Insights Inteligentes</Text>
-            <Text style={styles.insightsText}>60% da receita vem de 2 clientes principais</Text>
-            <Text style={styles.insightsText}>Você possui R$ 40.000 a receber nos próximos 30 dias</Text>
+            <Text style={styles.insightsText}>
+              Os resumos aparecem conforme os dados retornados pela API.
+            </Text>
             <Pressable onPress={() => onNavigate('AssistenteIA')} style={styles.insightsLink}>
               <Text style={styles.insightsLinkText}>Ver Assistente IA</Text>
               <Text style={styles.insightsLinkArrow}>→</Text>
@@ -197,18 +191,22 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
             </Pressable>
           </View>
           <View style={styles.transactionsList}>
-            {recent.map((t) => (
-              <CardTransacao
-                key={t.id}
-                icon={t.icon}
-                title={t.title}
-                subtitle={t.subtitle}
-                value={t.value}
-                type={t.type}
-                status={t.status}
-                onPress={() => onNavigate('DetalheTransacao', t.id)}
-              />
-            ))}
+            {recent.length === 0 ? (
+              <Text style={styles.emptyRecent}>Nenhuma transação recente.</Text>
+            ) : (
+              recent.map((t) => (
+                <CardTransacao
+                  key={t.id}
+                  icon={t.icon}
+                  title={t.title}
+                  subtitle={t.subtitle}
+                  value={t.value}
+                  type={t.type}
+                  status={t.status}
+                  onPress={() => onNavigate('DetalheTransacao', t.id)}
+                />
+              ))
+            )}
           </View>
         </View>
 
@@ -388,6 +386,11 @@ const styles = StyleSheet.create({
   },
   transactionsList: {
     gap: 12,
+  },
+  emptyRecent: {
+    fontSize: 14,
+    color: '#9ca3af',
+    paddingVertical: 8,
   },
   actionsGrid: {
     flexDirection: 'row',

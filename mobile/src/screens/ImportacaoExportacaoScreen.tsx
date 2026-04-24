@@ -87,42 +87,6 @@ interface Importacao {
   erros: number;
 }
 
-const HISTORICO_FALLBACK: Importacao[] = [
-  {
-    id: '1',
-    tipo: 'extrato',
-    arquivo: 'extrato_janeiro_2026.csv',
-    data: '15/02/2026',
-    status: 'concluido',
-    registros: 45,
-    novos: 32,
-    atualizados: 13,
-    erros: 0,
-  },
-  {
-    id: '2',
-    tipo: 'transacoes',
-    arquivo: 'transacoes_backup.xlsx',
-    data: '10/02/2026',
-    status: 'concluido',
-    registros: 120,
-    novos: 0,
-    atualizados: 120,
-    erros: 0,
-  },
-  {
-    id: '3',
-    tipo: 'extrato',
-    arquivo: 'extrato_dezembro_2025.csv',
-    data: '05/02/2026',
-    status: 'erro',
-    registros: 0,
-    novos: 0,
-    atualizados: 0,
-    erros: 15,
-  },
-];
-
 function formatDataImp(isoOrBr: string): string {
   if (!isoOrBr || isoOrBr.includes('/')) return isoOrBr;
   const d = new Date(isoOrBr);
@@ -139,11 +103,11 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
   const [bancoExtrato, setBancoExtrato] = useState<BancoExtratoId>('c6');
   const [processando, setProcessando] = useState(false);
   const [modalExportar, setModalExportar] = useState(false);
-  const [historicoImportacoes, setHistoricoImportacoes] = useState<Importacao[]>(HISTORICO_FALLBACK);
+  const [historicoImportacoes, setHistoricoImportacoes] = useState<Importacao[]>([]);
 
   const carregarHistorico = useCallback(async () => {
     if (!apiOn || !token) {
-      setHistoricoImportacoes(HISTORICO_FALLBACK);
+      setHistoricoImportacoes([]);
       return;
     }
     const rows = await fetchImportacaoHistorico(token);
@@ -199,11 +163,11 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
       if (tipo === 'transacoes' && apiOn && token) {
         const csv = await fetchExportacaoTransacoesCsv(token);
         if (csv) {
-          Alert.alert('Exportação (mock)', `CSV gerado (${csv.split('\n').length} linhas).`);
+          Alert.alert('Exportação', `CSV gerado (${csv.split('\n').length} linhas).`);
           return;
         }
       }
-      Alert.alert('Exportação', 'No mock, apenas exportação de transações em CSV está disponível.');
+      Alert.alert('Exportação', 'Apenas exportação de transações em CSV está disponível neste fluxo.');
     })();
   };
 
@@ -300,6 +264,9 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
         {/* Histórico de Importações */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Histórico de Importações</Text>
+          {historicoImportacoes.length === 0 ? (
+            <Text style={styles.historicoVazio}>Nenhuma importação registrada ainda.</Text>
+          ) : null}
           {historicoImportacoes.map(imp => (
             <View key={imp.id} style={styles.historicoItem}>
               <View style={styles.historicoTop}>
@@ -516,6 +483,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   cardTitle: { fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 12 },
+  historicoVazio: { fontSize: 14, color: '#9ca3af', marginBottom: 8 },
 
   formatItem: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
   formatIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },

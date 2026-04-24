@@ -13,14 +13,6 @@ import { fetchTransacoes } from '../services/resources';
 type TipoFiltro = 'todas' | 'receita' | 'despesa';
 type StatusFiltro = 'todos' | 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
 
-const TRANSOES_FALLBACK: TransacaoCardModel[] = [
-  { id: '1', icon: 'briefcase', title: 'Honorários - Processo 1234', subtitle: 'João Silva', value: 'R$ 5.000,00', type: 'receita', status: 'pago' },
-  { id: '2', icon: 'file-document', title: 'Custas Judiciais', subtitle: 'Processo 5678', value: 'R$ 850,00', type: 'despesa', status: 'pendente' },
-  { id: '3', icon: 'credit-card', title: 'Honorários - Consultoria', subtitle: 'Maria Santos', value: 'R$ 3.200,00', type: 'receita', status: 'atrasado' },
-  { id: '4', icon: 'receipt', title: 'Aluguel do Escritório', subtitle: 'Despesa Fixa', value: 'R$ 4.500,00', type: 'despesa', status: 'pago' },
-  { id: '5', icon: 'briefcase', title: 'Honorários - Processo 9012', subtitle: 'Carlos Oliveira', value: 'R$ 8.000,00', type: 'receita', status: 'em-dia' },
-];
-
 type Props = {
   onBack: () => void;
   onNavigate: (screen: string, id?: string) => void;
@@ -30,12 +22,12 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
 
-  const [lista, setLista] = useState<TransacaoCardModel[]>(TRANSOES_FALLBACK);
+  const [lista, setLista] = useState<TransacaoCardModel[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!apiOn) {
-      setLista(TRANSOES_FALLBACK);
+      setLista([]);
       return;
     }
     let cancelled = false;
@@ -43,11 +35,9 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
       setLoading(true);
       try {
         const data = await fetchTransacoes(token);
-        if (!cancelled && data.length > 0) {
-          setLista(data.map(mapTransacaoApiToCard));
-        }
+        if (!cancelled) setLista(data.map(mapTransacaoApiToCard));
       } catch {
-        if (!cancelled) setLista(TRANSOES_FALLBACK);
+        if (!cancelled) setLista([]);
       } finally {
         if (!cancelled) setLoading(false);
       }

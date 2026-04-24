@@ -134,6 +134,9 @@ Invalida o token atual.
 ### `GET /dashboard/resumo`
 Retorna os KPIs exibidos na Home do advogado.
 
+> Compatibilidade mobile atual: o app consome `GET /dashboardResumo` (coleção JSON Server) e usa o primeiro item.
+> Também usa `PATCH /dashboardResumo/1` para sincronizar `pagamentosParaConferir`.
+
 **Query params:** `?periodo=mes` _(opcional — `semana | mes | ano`, padrão: `mes`)_
 
 **Response `200`:**
@@ -210,34 +213,24 @@ Lista todas as transações com filtros.
 | `page` | `number` | Paginação (padrão: 1) |
 | `limit` | `number` | Itens por página (padrão: 20) |
 
-**Response `200`:**
+**Response `200` (consumido pelo mobile):**
 ```json
-{
-  "total": 45,
-  "page": 1,
-  "limit": 20,
-  "resumo": {
-    "totalReceitas": 8540000,
-    "totalDespesas": 4290000,
-    "saldo": 4250000
-  },
-  "transacoes": [
-    {
-      "id": "txn_001",
-      "titulo": "Honorários - Processo 1234",
-      "subtitulo": "João Silva",
-      "valor": 500000,
-      "tipo": "receita",
-      "status": "pago",
-      "categoria": "honorarios",
-      "clienteId": "cli_001",
-      "processoId": "proc_001",
-      "data": "2026-03-10",
-      "vencimento": "2026-03-15",
-      "icone": "cash"
-    }
-  ]
-}
+[
+  {
+    "id": "txn_001",
+    "titulo": "Honorários - Processo 1234",
+    "subtitulo": "João Silva",
+    "valor": 500000,
+    "tipo": "receita",
+    "status": "pago",
+    "categoria": "honorarios",
+    "clienteId": "cli_001",
+    "processoId": "proc_001",
+    "data": "2026-03-10",
+    "vencimento": "2026-03-15",
+    "icone": "cash"
+  }
+]
 ```
 
 ---
@@ -300,10 +293,10 @@ Cria uma nova transação.
 
 ---
 
-### `PUT /transacoes/:id`
-Edita uma transação existente.
+### `PATCH /transacoes/:id`
+Edita uma transação existente (atualização parcial).
 
-**Request Body:** mesmo formato do `POST /transacoes`
+**Request Body:** campos parciais do formato do `POST /transacoes`
 
 **Response `200`:**
 ```json
@@ -453,8 +446,8 @@ Lista as parcelas de um contrato.
 
 ---
 
-### `PUT /parcelas/:id/status`
-Marca uma parcela como paga.
+### `PATCH /parcelas/:id`
+Atualiza status de uma parcela.
 
 **Request Body:**
 ```json
@@ -485,6 +478,8 @@ Dispara uma cobrança ao cliente referente a uma parcela.
 
 ### `GET /pagamentos/pendentes`
 Lista os pagamentos submetidos pelos clientes aguardando aprovação.
+
+> Compatibilidade mobile atual: fallback em `GET /pagamentosParaConferir?status=pendente&_sort=id&_order=desc`.
 
 **Response `200`:**
 ```json
@@ -648,6 +643,8 @@ Insights gerados pela IA para cada gráfico.
 ### `GET /notificacoes`
 Lista as notificações do advogado.
 
+> Compatibilidade mobile atual: fallback em `GET /notificacoesAdvogado?_sort=id&_order=desc` (lista simples).
+
 **Query params:** `?page=1&limit=20`
 
 **Response `200`:**
@@ -755,13 +752,18 @@ Retorna o histórico de análises geradas.
 ## 9. Importação & Exportação
 
 ### `POST /importacao/upload`
-Envia um arquivo para importação (extrato bancário ou lista de transações).
+Envia referência de arquivo para importação de extrato bancário (fluxo atual da UI).
 
-**Request:** `multipart/form-data`
+**Request:** `application/json`
 | Campo | Tipo | Descrição |
 |---|---|---|
-| `tipo` | `extrato \| transacoes \| clientes` | Tipo do arquivo |
-| `arquivo` | `File` (csv, xlsx, ofx) | Arquivo a importar |
+| `tipo` | `extrato_c6 \| extrato_bradesco \| extrato_itau` | Banco/layout do extrato |
+| `arquivoNome` | `string` | Nome do arquivo selecionado |
+
+> Regras de formato no UI:
+> - `extrato_c6`: somente **CSV**
+> - `extrato_bradesco`: somente **CSV**
+> - `extrato_itau`: somente **PDF**
 
 **Response `200`:**
 ```json
@@ -783,8 +785,8 @@ Lista o histórico de importações realizadas.
   "importacoes": [
     {
       "id": "imp_001",
-      "tipo": "extrato",
-      "arquivo": "extrato_bb_fev2026.csv",
+      "tipo": "extrato_bradesco",
+      "arquivo": "extrato_bradesco_fev2026.csv",
       "data": "2026-03-01T10:00:00Z",
       "status": "concluido",
       "registros": 45,
@@ -801,9 +803,9 @@ Lista o histórico de importações realizadas.
 ---
 
 ### `GET /exportacao/transacoes`
-Download das transações em CSV/Excel.
+Download das transações.
 
-**Query params:** `?formato=csv` _(csv | xlsx, padrão: csv)_ e filtros opcionais de data.
+**Query params (consumido pelo mobile):** `?formato=csv`
 
 **Response `200`:** arquivo binário com header `Content-Disposition: attachment; filename="transacoes.csv"`
 
@@ -926,6 +928,8 @@ Lista todos os clientes do escritório (usado em filtros e selects).
 
 ### `GET /cliente/dashboard`
 Retorna os dados da Home do cliente.
+
+> Compatibilidade mobile atual: fallback em `GET /clienteDashboard` (coleção JSON Server, app usa o primeiro item).
 
 **Response `200`:**
 ```json
@@ -1057,6 +1061,8 @@ Cliente envia o comprovante de pagamento.
 
 ### `GET /cliente/notificacoes`
 Lista as notificações do cliente logado.
+
+> Compatibilidade mobile atual: o app consome `GET /notificacoesCliente?_sort=id&_order=desc` (lista simples).
 
 **Response `200`:**
 ```json
@@ -1282,7 +1288,7 @@ type Cliente = {
 ```typescript
 type Importacao = {
   id: string;
-  tipo: 'extrato' | 'transacoes' | 'clientes';
+  tipo: 'extrato_c6' | 'extrato_bradesco' | 'extrato_itau' | string;
   arquivo: string;
   data: string;
   status: 'pendente' | 'processando' | 'concluido' | 'erro';

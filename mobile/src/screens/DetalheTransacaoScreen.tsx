@@ -17,36 +17,6 @@ type Props = {
   onEditarComDados?: (params: Record<string, string>) => void;
 };
 
-type OfflineDetalhe = {
-  tipo: 'receita' | 'despesa';
-  titulo: string;
-  valor: string;
-  status: 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
-  categoria: string;
-  cliente: string;
-  processo: string;
-  data: string;
-  vencimento: string;
-  dataPagamento: string;
-  descricao: string;
-  observacoes?: string;
-};
-
-const OFFLINE_MOCK: OfflineDetalhe = {
-  tipo: 'receita',
-  titulo: 'Honorários - Processo 1234',
-  valor: 'R$ 5.000,00',
-  status: 'pendente',
-  categoria: 'Honorários',
-  cliente: 'João Silva',
-  processo: 'Processo 1234/2025',
-  data: '10/02/2026',
-  vencimento: '15/02/2026',
-  dataPagamento: '12/02/2026',
-  descricao: 'Pagamento referente aos honorários advocatícios do processo trabalhista. Cliente efetuou o pagamento via PIX.',
-  observacoes: 'Parcela 2 de 4 do contrato de honorários.',
-};
-
 const CATEGORIA_LABEL: Record<string, string> = {
   honorarios: 'Honorários',
   custas: 'Custas Judiciais',
@@ -77,7 +47,6 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditar
 
   const [loading, setLoading] = useState(false);
   const [transacao, setTransacao] = useState<TransacaoApi | null>(null);
-  const [offlineStatus, setOfflineStatus] = useState(OFFLINE_MOCK.status);
 
   const carregar = useCallback(async () => {
     if (!apiOn || !token) {
@@ -130,7 +99,7 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditar
         text: 'Confirmar',
         onPress: async () => {
           if (!apiOn || !transacao) {
-            setOfflineStatus('pago');
+            Alert.alert('Indisponível', 'É necessário estar logado com API configurada.');
             return;
           }
           if (!token) return;
@@ -154,7 +123,7 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditar
         style: 'destructive',
         onPress: async () => {
           if (!apiOn || !transacao) {
-            setOfflineStatus('cancelado');
+            Alert.alert('Indisponível', 'É necessário estar logado com API configurada.');
             return;
           }
           if (!token) return;
@@ -196,86 +165,11 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditar
     );
   }
 
-  /* ——— Visualização offline (sem API) ——— */
   if (!apiOn) {
-    const t = { ...OFFLINE_MOCK, status: offlineStatus };
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, styles.centered]}>
         <Header title="Detalhes da Transação" showBack onBack={onBack} />
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <LinearGradient
-            colors={t.tipo === 'receita' ? ['#22c55e', '#16a34a'] : ['#ef4444', '#dc2626']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={styles.heroCard}
-          >
-            <View style={styles.heroHeader}>
-              <Text style={styles.heroLabel}>{t.tipo === 'receita' ? 'Receita' : 'Despesa'}</Text>
-              <TagStatus status={t.status} />
-            </View>
-            <Text style={styles.heroValue}>{t.valor}</Text>
-            <Text style={styles.heroTitle}>{t.titulo}</Text>
-          </LinearGradient>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Informações</Text>
-            <InfoRow icon="tag" label="Categoria" value={t.categoria} />
-            <InfoRow icon="account" label="Cliente" value={t.cliente} />
-            <InfoRow icon="file-document" label="Processo" value={t.processo} />
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Datas</Text>
-            <View style={styles.datesRow}>
-              <View><Text style={styles.dateLabel}>Data de Emissão</Text><Text style={styles.dateValue}>{t.data}</Text></View>
-              <View><Text style={styles.dateLabel}>Vencimento</Text><Text style={styles.dateValue}>{t.vencimento}</Text></View>
-            </View>
-            {t.status === 'pago' && (
-              <View style={styles.pagamentoInfo}>
-                <Text style={styles.dateLabel}>Data de Pagamento</Text>
-                <Text style={styles.pagamentoValue}>{t.dataPagamento}</Text>
-                <Text style={styles.metodo}>Método: PIX</Text>
-              </View>
-            )}
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Descrição</Text>
-            <Text style={styles.descricao}>{t.descricao}</Text>
-          </View>
-          {t.observacoes ? (
-            <View style={styles.obsCard}>
-              <Text style={styles.obsTitle}>Observações</Text>
-              <Text style={styles.obsText}>{t.observacoes}</Text>
-            </View>
-          ) : null}
-          <Pressable onPress={() => setModalComprovante(true)} style={styles.comprovanteBtn}>
-            <MaterialCommunityIcons name="file-document" size={22} color="#0d9488" />
-            <Text style={styles.comprovanteBtnText}>Visualizar Comprovante</Text>
-          </Pressable>
-          <View style={styles.actionsRow}>
-            <Pressable onPress={onEditar} style={styles.btnEditar}>
-              <MaterialCommunityIcons name="pencil" size={22} color="#fff" />
-              <Text style={styles.btnEditarText}>Editar</Text>
-            </Pressable>
-            <Pressable onPress={handleExcluir} style={styles.btnExcluir}>
-              <MaterialCommunityIcons name="trash-can-outline" size={22} color="#dc2626" />
-              <Text style={styles.btnExcluirText}>Excluir</Text>
-            </Pressable>
-          </View>
-          {(t.status === 'pendente' || t.status === 'atrasado') && (
-            <View style={styles.statusActions}>
-              <Pressable onPress={handleMarcarComoPago} style={styles.btnPago}><MaterialCommunityIcons name="check-circle" size={22} color="#fff" /><Text style={styles.btnPagoText}>Marcar como Pago</Text></Pressable>
-              <Pressable onPress={handleCancelarTransacao} style={styles.btnCancelar}><MaterialCommunityIcons name="close-circle-outline" size={22} color="#6b7280" /><Text style={styles.btnCancelarText}>Cancelar Transação</Text></Pressable>
-            </View>
-          )}
-          <View style={{ height: 40 }} />
-        </ScrollView>
-        <Modal visible={modalComprovante} transparent animationType="fade">
-          <Pressable style={styles.modalOverlay} onPress={() => setModalComprovante(false)}>
-            <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-              <Text style={styles.modalTitle}>Comprovante de Pagamento</Text>
-              <View style={styles.comprovantePlaceholder}><MaterialCommunityIcons name="file-image-outline" size={64} color="#9ca3af" /></View>
-              <Pressable onPress={() => setModalComprovante(false)} style={styles.modalFechar}><Text style={styles.modalFecharText}>Fechar</Text></Pressable>
-            </View>
-          </Pressable>
-        </Modal>
+        <Text style={styles.erroText}>Configure a API e faça login para ver os detalhes.</Text>
       </View>
     );
   }

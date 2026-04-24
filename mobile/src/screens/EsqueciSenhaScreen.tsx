@@ -2,8 +2,17 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getApiBaseUrl } from '../config/api';
-import { postEsqueciSenha } from '../services/resources';
+import { getLoginApiBaseUrl } from '../config/api';
+import {
+  RESET_SENHA_REGEX,
+  resetarSenhaAuth,
+  solicitarResetSenhaAuth,
+} from '../services/authApi';
+
+/** Token gerado pela API-AUTH-MAIL: 8 caracteres hexadecimais. */
+const TOKEN_LEN_API = 8;
+/** Fluxo offline / sem URL de auth: mantém 6 dígitos como antes. */
+const TOKEN_LEN_MOCK = 6;
 
 type Etapa = 'email' | 'token' | 'novaSenha';
 
@@ -19,27 +28,91 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmaSenha, setConfirmaSenha] = useState('');
   const [enviandoEmail, setEnviandoEmail] = useState(false);
+  const [salvandoSenha, setSalvandoSenha] = useState(false);
+
+  const apiAuthOn = !!getLoginApiBaseUrl();
 
   const handleEnviarEmail = async () => {
-    if (getApiBaseUrl()) {
+    if (apiAuthOn) {
       try {
         setEnviandoEmail(true);
-        await postEsqueciSenha(email.trim());
-      } catch {
-        Alert.alert('Erro', 'Não foi possível enviar a solicitação. Verifique a URL da API e tente de novo.');
-        setEnviandoEmail(false);
-        return;
+        const result = await solicitarResetSenhaAuth(email.trim());
+        if (!result.ok) {
+          Alert.alert('Erro', result.error);
+          return;
+        }
+        Alert.alert(
+          'E-mail enviado',
+          'Confira sua caixa de entrada (e spam). O código tem 8 caracteres e expira em 5 minutos.',
+        );
       } finally {
         setEnviandoEmail(false);
       }
     }
     setEtapa('token');
   };
+
+  const handleReenviar = async () => {
+    if (!apiAuthOn) {
+      Alert.alert('Reenviar', 'Configure EXPO_PUBLIC_AUTH_API_URL para reenviar o código pela API.');
+      return;
+    }
+    try {
+      setEnviandoEmail(true);
+      const result = await solicitarResetSenhaAuth(email.trim());
+      if (!result.ok) {
+        Alert.alert('Erro', result.error);
+        return;
+      }
+      Alert.alert('Enviado', 'Um novo código foi solicitado. Verifique seu e-mail.');
+    } finally {
+      setEnviandoEmail(false);
+    }
+  };
+
   const handleValidarToken = () => setEtapa('novaSenha');
-  const handleRedefinirSenha = () => onSuccess();
+
+  const handleRedefinirSenha = async () => {
+    if (apiAuthOn) {
+      try {
+        setSalvandoSenha(true);
+        const result = await resetarSenhaAuth(token, novaSenha, confirmaSenha);
+        if (!result.ok) {
+          Alert.alert('Erro', result.error);
+          return;
+        }
+        Alert.alert('Senha alterada', 'Você já pode fazer login com a nova senha.');
+        onSuccess();
+      } finally {
+        setSalvandoSenha(false);
+      }
+      return;
+    }
+
+    onSuccess();
+  };
 
   const senhasDiferentes = novaSenha && confirmaSenha && novaSenha !== confirmaSenha;
-  const podeRedefinir = novaSenha && confirmaSenha && !senhasDiferentes && novaSenha.length >= 6;
+  const senhaValidaApi = RESET_SENHA_REGEX.test(novaSenha);
+  const tokenCompleto = apiAuthOn ? token.length === TOKEN_LEN_API : token.length === TOKEN_LEN_MOCK;
+
+  const podeRedefinirApi =
+    novaSenha &&
+    confirmaSenha &&
+    !senhasDiferentes &&
+    senhaValidaApi &&
+    tokenCompleto;
+  const podeRedefinirMock =
+    novaSenha && confirmaSenha && !senhasDiferentes && novaSenha.length >= 6 && tokenCompleto;
+  const podeRedefinir = apiAuthOn ? podeRedefinirApi : podeRedefinirMock;
+
+  const setTokenFiltrado = (t: string) => {
+    if (apiAuthOn) {
+      setToken(t.replace(/[^0-9a-fA-F]/g, '').slice(0, TOKEN_LEN_API));
+    } else {
+      setToken(t.replace(/\D/g, '').slice(0, TOKEN_LEN_MOCK));
+    }
+  };
 
   // Etapa 1: Email
   if (etapa === 'email') {
@@ -70,17 +143,23 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
             />
           </View>
           <View style={styles.infoBox}>
-            <Text style={styles.infoText}>💡 Enviaremos um código de 6 dígitos para você redefinir sua senha.</Text>
+            <Text style={styles.infoText}>
+              💡 Com a API-AUTH-MAIL ativa, você recebe um código de {TOKEN_LEN_API} caracteres por e-mail (validade 5
+              minutos).
+            </Text>
           </View>
           <Pressable onPress={handleEnviarEmail} disabled={!email || enviandoEmail} style={[styles.button, (!email || enviandoEmail) && styles.buttonDisabled]}>
             {enviandoEmail ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#0E6F73" />
             ) : (
               <Text style={styles.buttonText}>Enviar Código</Text>
             )}
           </Pressable>
           <Pressable onPress={onBack} style={styles.linkWrap}>
-            <Text><Text style={styles.linkText}>Lembrou sua senha? </Text><Text style={styles.linkBold}>Fazer login</Text></Text>
+            <Text>
+              <Text style={styles.linkText}>Lembrou sua senha? </Text>
+              <Text style={styles.linkBold}>Fazer login</Text>
+            </Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -99,30 +178,39 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
           <View style={styles.iconCircle}>
             <MaterialCommunityIcons name="email-outline" size={40} color="#0E6F73" />
           </View>
-          <Text style={styles.title}>Código Enviado</Text>
-          <Text style={styles.subtitle}>Digite o código de 6 dígitos enviado para</Text>
+          <Text style={styles.title}>Código enviado</Text>
+          <Text style={styles.subtitle}>
+            Digite o código de {apiAuthOn ? TOKEN_LEN_API : TOKEN_LEN_MOCK}{' '}
+            {apiAuthOn ? 'caracteres' : 'dígitos'} enviado para
+          </Text>
           <Text style={styles.emailDestino}>{email}</Text>
           <View style={styles.field}>
             <Text style={styles.label}>Código de verificação</Text>
             <TextInput
               value={token}
-              onChangeText={(t) => setToken(t.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
+              onChangeText={setTokenFiltrado}
+              placeholder={apiAuthOn ? Array(TOKEN_LEN_API).fill('0').join('') : '000000'}
               placeholderTextColor="rgba(255,255,255,0.5)"
-              keyboardType="number-pad"
-              maxLength={6}
+              autoCapitalize={apiAuthOn ? 'characters' : 'none'}
+              autoCorrect={false}
+              keyboardType={apiAuthOn ? 'default' : 'number-pad'}
+              maxLength={apiAuthOn ? TOKEN_LEN_API : TOKEN_LEN_MOCK}
               style={[styles.input, styles.tokenInput]}
             />
           </View>
           <View style={styles.infoBox}>
-            <Text style={styles.infoText}>⏱️ O código expira em 10 minutos</Text>
+            <Text style={styles.infoText}>⏱️ O código expira em 5 minutos</Text>
           </View>
-          <Pressable onPress={handleValidarToken} disabled={token.length !== 6} style={[styles.button, token.length !== 6 && styles.buttonDisabled]}>
-            <Text style={styles.buttonText}>Validar Código</Text>
+          <Pressable
+            onPress={handleValidarToken}
+            disabled={!tokenCompleto}
+            style={[styles.button, !tokenCompleto && styles.buttonDisabled]}
+          >
+            <Text style={styles.buttonText}>Continuar</Text>
           </Pressable>
-          <Pressable onPress={() => setEtapa('email')} style={styles.linkWrap}>
+          <Pressable onPress={handleReenviar} disabled={enviandoEmail} style={styles.linkWrap}>
             <Text style={styles.linkText}>Não recebeu o código? </Text>
-            <Text style={styles.linkBold}>Reenviar</Text>
+            <Text style={styles.linkBold}>{enviandoEmail ? 'Enviando…' : 'Reenviar'}</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -156,10 +244,22 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
           </View>
         )}
         <View style={styles.infoBox}>
-          <Text style={styles.infoText}>✓ Mínimo de 6 caracteres</Text>
+          <Text style={styles.infoText}>
+            {apiAuthOn
+              ? '✓ Mínimo 8 caracteres: maiúscula, minúscula, número e símbolo (@ # $ % ^ & + =)'
+              : '✓ Mínimo de 6 caracteres (modo sem API)'}
+          </Text>
         </View>
-        <Pressable onPress={handleRedefinirSenha} disabled={!podeRedefinir} style={[styles.button, !podeRedefinir && styles.buttonDisabled]}>
-          <Text style={styles.buttonText}>Redefinir Senha</Text>
+        <Pressable
+          onPress={handleRedefinirSenha}
+          disabled={!podeRedefinir || salvandoSenha}
+          style={[styles.button, (!podeRedefinir || salvandoSenha) && styles.buttonDisabled]}
+        >
+          {salvandoSenha ? (
+            <ActivityIndicator color="#0E6F73" />
+          ) : (
+            <Text style={styles.buttonText}>Redefinir Senha</Text>
+          )}
         </Pressable>
       </View>
     </LinearGradient>
@@ -181,7 +281,7 @@ const styles = StyleSheet.create({
   field: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: 16, marginBottom: 12 },
   label: { color: '#fff', fontSize: 12, marginBottom: 8 },
   input: { color: '#fff', fontSize: 16 },
-  tokenInput: { fontSize: 24, fontWeight: 'bold', letterSpacing: 8 },
+  tokenInput: { fontSize: 22, fontWeight: 'bold', letterSpacing: 4 },
   infoBox: { backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 16, padding: 16, marginBottom: 12 },
   infoText: { color: 'rgba(255,255,255,0.9)', fontSize: 14 },
   errorBox: { backgroundColor: 'rgba(220,38,38,0.3)', borderRadius: 16, padding: 16, marginBottom: 12 },

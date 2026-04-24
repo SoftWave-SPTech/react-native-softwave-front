@@ -8,6 +8,7 @@ import {
   Modal,
   ActivityIndicator,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
@@ -55,36 +56,6 @@ function formatGeradoEm(iso: string): string {
   });
 }
 
-const HISTORICO_FALLBACK: HistoricoItem[] = [
-  {
-    id: 'local_1',
-    tipoAnalise: 'receita-despesa',
-    tipoLabel: 'Receita vs Despesa',
-    periodo: '01/01/2024 - 31/03/2024',
-    resposta:
-      'Sua receita cresceu 17% de Janeiro a Março. Despesas aumentaram apenas 7%, mantendo boa margem. Tendência positiva: lucro líquido crescente.',
-    data: '22/02/2024 14:30',
-  },
-  {
-    id: 'local_2',
-    tipoAnalise: 'maiores-clientes',
-    tipoLabel: 'Maiores Clientes',
-    periodo: '01/02/2024 - 28/02/2024',
-    resposta:
-      'Top 2 clientes representam 68% da receita. João Silva é responsável por 40% do faturamento. Risco: alta dependência de poucos clientes.',
-    data: '20/02/2024 09:15',
-  },
-  {
-    id: 'local_3',
-    tipoAnalise: 'despesa-categoria',
-    tipoLabel: 'Despesa por Categoria',
-    periodo: '01/01/2024 - 31/01/2024',
-    resposta:
-      'Aluguel representa 35% das despesas fixas. Custas judiciais com volume acima da média. Oportunidade de reduzir custos operacionais em 15%.',
-    data: '15/02/2024 16:45',
-  },
-];
-
 const tiposAnalise = [
   { value: 'receita-despesa', label: 'Receita vs Despesa' },
   { value: 'receita-categoria', label: 'Receita por Categoria' },
@@ -93,15 +64,6 @@ const tiposAnalise = [
   { value: 'margem-lucro', label: 'Margem de Lucro' },
   { value: 'inadimplencia', label: 'Inadimplência' },
 ];
-
-const respostasIA: Record<string, string> = {
-  'receita-despesa': 'Analisando o período selecionado, sua receita apresentou crescimento consistente de 17%. As despesas aumentaram apenas 7%, indicando boa gestão de custos. A margem de lucro está em expansão, com tendência positiva para os próximos meses.',
-  'receita-categoria': 'Os Honorários representam 76% da sua receita total. Consultoria está crescendo 12% ao mês e pode ser uma boa oportunidade de diversificação.',
-  'despesa-categoria': 'O Aluguel representa 35% das suas despesas fixas. Há uma oportunidade de reduzir custos operacionais em aproximadamente 15%.',
-  'maiores-clientes': 'Seus top 2 clientes representam 68% da receita total. João Silva sozinho é responsável por 40% do faturamento.',
-  'margem-lucro': 'Sua margem de lucro atual está em 49.8%, acima da média do mercado jurídico (35-40%). O crescimento de 2.3% nos últimos meses indica tendência positiva.',
-  'inadimplencia': 'A taxa de inadimplência está em 12%, dentro da média do setor jurídico (10-15%). A redução de 3% indica melhoria nos processos de cobrança.',
-};
 
 const filtrosHistorico = [
   { value: 'todos', label: 'Todos' },
@@ -121,11 +83,11 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
   const [modalTipo, setModalTipo] = useState(false);
   const [modalFiltro, setModalFiltro] = useState(false);
 
-  const [historico, setHistorico] = useState<HistoricoItem[]>(HISTORICO_FALLBACK);
+  const [historico, setHistorico] = useState<HistoricoItem[]>([]);
 
   useEffect(() => {
     if (!apiOn || !token) {
-      setHistorico(HISTORICO_FALLBACK);
+      setHistorico([]);
       return;
     }
     let cancelled = false;
@@ -144,7 +106,7 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
           })),
         );
       } else {
-        setHistorico(HISTORICO_FALLBACK);
+        setHistorico([]);
       }
     })();
     return () => {
@@ -158,49 +120,31 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
     if (!tipoAnalise || !dataInicio || !dataFim) return;
     setIsLoading(true);
 
-    const aplicarRespostaLocal = () => {
-      const resposta = respostasIA[tipoAnalise] ?? 'Análise não disponível.';
-      setRespostaIA(resposta);
-      const novoItem: HistoricoItem = {
-        id: `local_${Date.now()}`,
-        tipoAnalise,
-        tipoLabel,
-        periodo: `${dataInicio} - ${dataFim}`,
-        resposta,
-        data: new Date().toLocaleString('pt-BR', {
-          day: '2-digit', month: '2-digit', year: 'numeric',
-          hour: '2-digit', minute: '2-digit',
-        }),
-      };
-      setHistorico((prev) => [novoItem, ...prev]);
+    if (!apiOn || !token) {
+      Alert.alert('API', 'Configure EXPO_PUBLIC_API_URL e faça login para gerar análises.');
       setIsLoading(false);
-    };
-
-    if (apiOn && token) {
-      const { dataInicio: di, dataFim: df } = brDatasParaIso(dataInicio, dataFim);
-      void (async () => {
-        const resp = await postIaAnalise(token, { tipoAnalise, dataInicio: di, dataFim: df });
-        if (resp) {
-          setRespostaIA(resp.resposta);
-          const novoItem: HistoricoItem = {
-            id: resp.id,
-            tipoAnalise: resp.tipoAnalise,
-            tipoLabel: tiposAnalise.find((t) => t.value === resp.tipoAnalise)?.label ?? tipoLabel,
-            periodo: resp.periodo,
-            resposta: resp.resposta,
-            data: formatGeradoEm(resp.geradoEm),
-          };
-          setHistorico((prev) => [novoItem, ...prev]);
-        } else {
-          aplicarRespostaLocal();
-          return;
-        }
-        setIsLoading(false);
-      })();
       return;
     }
 
-    setTimeout(aplicarRespostaLocal, 1500);
+    const { dataInicio: di, dataFim: df } = brDatasParaIso(dataInicio, dataFim);
+    void (async () => {
+      const resp = await postIaAnalise(token, { tipoAnalise, dataInicio: di, dataFim: df });
+      if (resp) {
+        setRespostaIA(resp.resposta);
+        const novoItem: HistoricoItem = {
+          id: resp.id,
+          tipoAnalise: resp.tipoAnalise,
+          tipoLabel: tiposAnalise.find((t) => t.value === resp.tipoAnalise)?.label ?? tipoLabel,
+          periodo: resp.periodo,
+          resposta: resp.resposta,
+          data: formatGeradoEm(resp.geradoEm),
+        };
+        setHistorico((prev) => [novoItem, ...prev]);
+      } else {
+        Alert.alert('Erro', 'Não foi possível obter resposta da API.');
+      }
+      setIsLoading(false);
+    })();
   };
 
   const historicoFiltrado = historico.filter(

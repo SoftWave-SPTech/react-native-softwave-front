@@ -1,6 +1,8 @@
 import type {
+  ClienteAdvogadoApi,
   ClienteDashboardApi,
   ClientePerfilApi,
+  ClientesListEnvelopeApi,
   CobrancaClienteApi,
   CobrancaDetalheApi,
   CobrancaPixApi,
@@ -15,6 +17,7 @@ import type {
   PagamentosPendentesEnvelopeApi,
   ParcelaApi,
   PerfilEscritorioApi,
+  ProcessoResumoApi,
   RelatorioDespesasMesApi,
   RelatorioInsightsApi,
   RelatorioKpisApi,
@@ -22,8 +25,22 @@ import type {
   RelatorioReceitaCategoriaApi,
   RelatorioReceitaDespesaApi,
   TransacaoApi,
+  TransacaoCreatePayload,
 } from '../types/api';
 import { apiDeleteJson, apiFetch, apiGetJson, apiPatchJson, apiPostJson, apiPutJson } from './http';
+
+/** Spring / outros backends costumam envolver a lista em `{ data }` ou `{ contratos }`. */
+function unwrapContratosArray(raw: unknown): ContratoApi[] {
+  if (Array.isArray(raw)) return raw as ContratoApi[];
+  if (raw && typeof raw === 'object') {
+    const o = raw as Record<string, unknown>;
+    for (const key of ['contratos', 'data', 'content', 'items']) {
+      const v = o[key];
+      if (Array.isArray(v)) return v as ContratoApi[];
+    }
+  }
+  return [];
+}
 
 export async function fetchDashboardResumo(token: string | null): Promise<DashboardResumoApi | null> {
   const rows = await apiGetJson<DashboardResumoApi[]>('/dashboardResumo', token);
@@ -155,7 +172,12 @@ export async function fetchNotificacoesCliente(token: string | null): Promise<No
 }
 
 export async function fetchContratos(token: string | null): Promise<ContratoApi[]> {
-  return apiGetJson<ContratoApi[]>('/contratos?_sort=id&_order=asc', token);
+  try {
+    const raw = await apiGetJson<unknown>('/contratos?_sort=id&_order=asc', token);
+    return unwrapContratosArray(raw);
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchPagamentosPendentes(token: string | null): Promise<PagamentoConferirApi[]> {
@@ -178,8 +200,46 @@ export async function fetchTransacaoById(token: string | null, id: string): Prom
   }
 }
 
-export async function createTransacao(token: string | null, body: TransacaoApi): Promise<TransacaoApi> {
-  return apiPostJson<TransacaoApi>('/transacoes', token, body);
+export type TransacaoCriadaResponseApi = { id?: string; mensagem?: string };
+
+export async function createTransacao(
+  token: string | null,
+  body: TransacaoCreatePayload,
+): Promise<TransacaoCriadaResponseApi> {
+  return apiPostJson<TransacaoCriadaResponseApi>('/transacoes', token, body);
+}
+
+export async function fetchClientesAdvogado(token: string | null): Promise<ClienteAdvogadoApi[]> {
+  try {
+    const env = await apiGetJson<ClientesListEnvelopeApi>('/clientes', token);
+    return env.clientes ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchProcessosAdvogado(token: string | null): Promise<ProcessoResumoApi[]> {
+  try {
+    const raw = await apiGetJson<unknown>('/processos', token);
+    if (Array.isArray(raw)) return raw as ProcessoResumoApi[];
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export type ClienteCreatePayload = {
+  nome: string;
+  email?: string;
+  telefone?: string;
+  processoIds?: number[];
+};
+
+export async function createClienteRapido(
+  token: string | null,
+  body: ClienteCreatePayload,
+): Promise<ClienteAdvogadoApi & { mensagem?: string }> {
+  return apiPostJson<ClienteAdvogadoApi & { mensagem?: string }>('/clientes', token, body);
 }
 
 export async function updateTransacao(
@@ -359,10 +419,6 @@ export async function fetchExportacaoTransacoesCsv(token: string | null): Promis
 export async function syncPagamentosDashboardCount(token: string | null): Promise<void> {
   const pending = await fetchPagamentosPendentes(token);
   await apiPatchJson('/dashboardResumo/1', token, { pagamentosParaConferir: pending.length });
-}
-
-export async function postEsqueciSenha(email: string): Promise<{ mensagem: string }> {
-  return apiPostJson<{ mensagem: string }>('/auth/esqueci-senha', null, { email });
 }
 
 export async function fetchContratoById(token: string | null, id: string): Promise<ContratoApi | null> {

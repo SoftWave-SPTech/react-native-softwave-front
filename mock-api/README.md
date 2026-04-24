@@ -12,6 +12,22 @@ npm start
 
 O servidor sobe na porta **3000** (ou a variável `PORT`).
 
+### Testar endpoints sem Bearer (somente desenvolvimento)
+
+Para chamar rotas protegidas **sem header `Authorization`** (por exemplo ao testar o backend real que ainda não envia JWT), suba com:
+
+```bash
+set MOCK_SKIP_AUTH=1 && npm start
+```
+
+No PowerShell:
+
+```powershell
+$env:MOCK_SKIP_AUTH='1'; npm start
+```
+
+O login continua disponível em `POST /auth/login`; apenas as checagens `requireAdvogado` / `requireCliente` são ignoradas.
+
 ## Dados seed (`db.json`)
 
 O arquivo cobre os recursos usados pelo app e pelas rotas customizadas do `server.cjs`, para que **não falte retorno** ao testar com o mock: `usuarios`, `dashboardResumo`, `transacoes`, `contratos` (com `descricao`/`criadoEm`), `parcelas`, `pagamentosParaConferir`, `notificacoesAdvogado`, `notificacoesCliente`, `clienteDashboard`, `relatoriosCache`, **`cobrancas`**, **`escritorioDadosBancarios`**, **`clientePerfil`** (`usuarioId` = `usr_2`), **`perfilEscritorio`** (`usuarioId` = `usr_1`), **`iaHistorico`**, **`importacaoHistorico`**. Reiniciar o mock recarrega o arquivo.

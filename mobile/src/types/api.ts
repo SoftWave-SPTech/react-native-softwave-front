@@ -13,6 +13,44 @@ export type TransacaoApi = {
   vencimento?: string;
 };
 
+/** Corpo de `POST /transacoes` alinhado ao backend (honorário novo via `processoId`). */
+export type TransacaoCreatePayload = {
+  tipo: 'receita' | 'despesa';
+  valor: number;
+  categoria?: string;
+  descricao: string;
+  titulo?: string;
+  clienteId?: number;
+  contraparte?: string;
+  processoId?: number;
+  honorarioId?: number;
+  data?: string;
+  vencimento?: string;
+  status?: string;
+  recorrencia?: string;
+  duracaoMeses?: number | null;
+  /** Cria honorário/transação sem processo (somente com API real). */
+  semProcesso?: boolean;
+};
+
+export type ClienteAdvogadoApi = {
+  id: string;
+  nome: string;
+  email?: string;
+  telefone?: string;
+};
+
+export type ClientesListEnvelopeApi = {
+  total: number;
+  clientes: ClienteAdvogadoApi[];
+};
+
+export type ProcessoResumoApi = {
+  id: number;
+  processoId: string;
+  titulo: string;
+};
+
 export type ContratoApi = {
   id: number;
   clienteId?: string;

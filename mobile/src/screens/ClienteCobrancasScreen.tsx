@@ -9,13 +9,6 @@ import { fetchClienteCobrancas } from '../services/resources';
 import type { CobrancaClienteApi } from '../types/api';
 import { formatCentavosBRL, formatDateIsoToBR } from '../utils/money';
 
-const COBRANCAS_FALLBACK: CobrancaClienteApi[] = [
-  { id: 'cob_003', processo: 'Processo 1234/2025', valor: 600000, vencimento: '2026-03-15', status: 'pendente', parcela: 3, totalParcelas: 4, percentualPago: 50 },
-  { id: 'cob_004', processo: 'Processo 1234/2025', valor: 600000, vencimento: '2026-04-15', status: 'pendente', parcela: 4, totalParcelas: 4, percentualPago: 50 },
-  { id: 'cob_001', processo: 'Processo 1234/2025', valor: 600000, vencimento: '2026-01-15', status: 'pago', parcela: 1, totalParcelas: 4, percentualPago: 25 },
-  { id: 'cob_002', processo: 'Processo 1234/2025', valor: 600000, vencimento: '2026-02-15', status: 'pago', parcela: 2, totalParcelas: 4, percentualPago: 50 },
-];
-
 type Props = {
   onBack: () => void;
   onNavigate: (screen: string, id?: string) => void;
@@ -30,21 +23,20 @@ export function ClienteCobrancasScreen({ onBack, onNavigate }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
 
-  const [lista, setLista] = useState<CobrancaClienteApi[]>(COBRANCAS_FALLBACK);
+  const [lista, setLista] = useState<CobrancaClienteApi[]>([]);
   const [loading, setLoading] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!apiOn || !token) {
-      setLista(COBRANCAS_FALLBACK);
+      setLista([]);
       return;
     }
     setLoading(true);
     try {
       const rows = await fetchClienteCobrancas(token);
-      if (rows.length > 0) setLista(rows);
-      else setLista(COBRANCAS_FALLBACK);
+      setLista(rows);
     } catch {
-      setLista(COBRANCAS_FALLBACK);
+      setLista([]);
     } finally {
       setLoading(false);
     }

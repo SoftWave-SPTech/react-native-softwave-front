@@ -13,20 +13,15 @@ type Props = {
   onNavigate: (screen: string, id?: string) => void;
 };
 
-const FALLBACK: ClienteDashboardApi = {
+const DASH_CLIENTE_VAZIO: ClienteDashboardApi = {
   id: 0,
-  nome: 'João Silva',
-  totalPago: 1500000,
-  totalPendente: 1000000,
-  totalContrato: 2500000,
-  percentualPago: 60,
-  parcelasRestantes: 3,
-  notificacoesNaoLidas: 2,
-  ultimaCobranca: {
-    parcelaLabel: 'Parcela 3/4',
-    vencimento: '15/03/2026',
-    valor: 600000,
-  },
+  nome: '',
+  totalPago: 0,
+  totalPendente: 0,
+  totalContrato: 0,
+  percentualPago: 0,
+  parcelasRestantes: 0,
+  notificacoesNaoLidas: 0,
 };
 
 function iniciais(nome: string): string {
@@ -43,7 +38,7 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
   const [dash, setDash] = useState<ClienteDashboardApi | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const d = dash ?? FALLBACK;
+  const d = dash ?? DASH_CLIENTE_VAZIO;
 
   useEffect(() => {
     if (!apiOn) {
@@ -83,7 +78,7 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
           )}
           <View>
             <Text style={styles.ola}>Olá,</Text>
-            <Text style={styles.nome}>{d.nome}</Text>
+            <Text style={styles.nome}>{d.nome || 'Cliente'}</Text>
           </View>
         </View>
         <View style={styles.headerBtns}>

@@ -29,14 +29,6 @@ interface DadoPessoal {
   value: string;
 }
 
-const DADOS_FALLBACK: DadoPessoal[] = [
-  { icon: 'account', label: 'Nome Completo', value: 'João Silva' },
-  { icon: 'email-outline', label: 'E-mail', value: 'joao.silva@email.com' },
-  { icon: 'phone-outline', label: 'Telefone', value: '(11) 98765-4321' },
-  { icon: 'map-marker-outline', label: 'Endereço', value: 'São Paulo, SP' },
-  { icon: 'card-account-details-outline', label: 'CPF', value: '123.456.789-00' },
-];
-
 function iniciais(nome: string) {
   const p = nome.trim().split(/\s+/).filter(Boolean);
   if (p.length === 0) return '?';
@@ -61,33 +53,19 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [loading, setLoading] = useState(false);
-  const [dadosPessoais, setDadosPessoais] = useState<DadoPessoal[]>(DADOS_FALLBACK);
-  const [nomeTopo, setNomeTopo] = useState('João Silva');
-  const [sinceTopo, setSinceTopo] = useState('Cliente desde Fev/2024');
-  const [proc, setProc] = useState<ProcessoAtivoUi>({
-    id: 'proc_001',
-    titulo: 'Processo 1234/2025',
-    subtitulo: 'Advocacia Cível - Honorários',
-    progressoPago: 60,
-    valorPago: 1500000,
-    valorTotal: 2500000,
-  });
+  const [dadosPessoais, setDadosPessoais] = useState<DadoPessoal[]>([]);
+  const [nomeTopo, setNomeTopo] = useState('');
+  const [sinceTopo, setSinceTopo] = useState('');
+  const [proc, setProc] = useState<ProcessoAtivoUi | null>(null);
   const [notificacoesAtivas, setNotificacoesAtivas] = useState(true);
   const [modalFoto, setModalFoto] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!apiOn || !token) {
-      setDadosPessoais(DADOS_FALLBACK);
-      setNomeTopo('João Silva');
-      setSinceTopo('Cliente desde Fev/2024');
-      setProc({
-        id: 'proc_001',
-        titulo: 'Processo 1234/2025',
-        subtitulo: 'Advocacia Cível - Honorários',
-        progressoPago: 60,
-        valorPago: 1500000,
-        valorTotal: 2500000,
-      });
+      setDadosPessoais([]);
+      setNomeTopo('');
+      setSinceTopo('');
+      setProc(null);
       return;
     }
     setLoading(true);
@@ -97,29 +75,19 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
         setDadosPessoais(perfilParaDados(p));
         setNomeTopo(p.nome);
         setSinceTopo(`Cliente desde ${p.clienteDesde}`);
-        setProc(
-          p.processoAtivo ?? {
-            id: 'proc_001',
-            titulo: 'Processo 1234/2025',
-            subtitulo: 'Advocacia Cível - Honorários',
-            progressoPago: 60,
-            valorPago: 1500000,
-            valorTotal: 2500000,
-          },
-        );
+        setProc(p.processoAtivo ?? null);
         setNotificacoesAtivas(p.preferencias?.notificacoesAtivas ?? true);
       } else {
-        setProc({
-          id: 'proc_001',
-          titulo: 'Processo 1234/2025',
-          subtitulo: 'Advocacia Cível - Honorários',
-          progressoPago: 60,
-          valorPago: 1500000,
-          valorTotal: 2500000,
-        });
+        setDadosPessoais([]);
+        setNomeTopo('');
+        setSinceTopo('');
+        setProc(null);
       }
     } catch {
-      /* fallback visual */
+      setDadosPessoais([]);
+      setNomeTopo('');
+      setSinceTopo('');
+      setProc(null);
     } finally {
       setLoading(false);
     }
@@ -152,24 +120,28 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
               </Pressable>
             </View>
             <Text style={styles.avatarName}>{nomeTopo}</Text>
-            <Text style={styles.avatarSince}>{sinceTopo}</Text>
+            {sinceTopo ? <Text style={styles.avatarSince}>{sinceTopo}</Text> : null}
           </View>
         </View>
 
         {/* Dados Pessoais */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Dados Pessoais</Text>
-          {dadosPessoais.map((dado, index) => (
-            <View key={index} style={styles.dadoItem}>
-              <View style={styles.dadoIconWrap}>
-                <MaterialCommunityIcons name={dado.icon} size={16} color="#0d9488" />
+          {dadosPessoais.length === 0 ? (
+            <Text style={styles.semDados}>Nenhum dado carregado. Verifique a API.</Text>
+          ) : (
+            dadosPessoais.map((dado, index) => (
+              <View key={index} style={styles.dadoItem}>
+                <View style={styles.dadoIconWrap}>
+                  <MaterialCommunityIcons name={dado.icon} size={16} color="#0d9488" />
+                </View>
+                <View style={styles.dadoText}>
+                  <Text style={styles.dadoLabel}>{dado.label}</Text>
+                  <Text style={styles.dadoValue} numberOfLines={1}>{dado.value}</Text>
+                </View>
               </View>
-              <View style={styles.dadoText}>
-                <Text style={styles.dadoLabel}>{dado.label}</Text>
-                <Text style={styles.dadoValue} numberOfLines={1}>{dado.value}</Text>
-              </View>
-            </View>
-          ))}
+            ))
+          )}
         </View>
 
         {/* Configurações */}
@@ -219,7 +191,8 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
         </View>
 
         {/* Processo Ativo */}
-        <View style={styles.card}>
+        {proc ? (
+          <View style={styles.card}>
             <Text style={styles.cardTitle}>Processo Ativo</Text>
             <View style={styles.processoWrap}>
               <View style={styles.processoIconWrap}>
@@ -243,6 +216,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
               </View>
             </View>
           </View>
+        ) : null}
 
         {/* Sair */}
         <Pressable style={styles.logoutBtn} onPress={onLogout}>
@@ -307,6 +281,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   cardTitle: { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 12, paddingHorizontal: 4 },
+  semDados: { fontSize: 14, color: '#9ca3af', paddingVertical: 8, paddingHorizontal: 4 },
 
   avatarSection: { alignItems: 'center', paddingVertical: 8 },
   avatarWrap: { position: 'relative', marginBottom: 16 },

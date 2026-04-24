@@ -110,13 +110,6 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
           <Text style={styles.linkText}>Esqueci minha senha</Text>
         </Pressable>
 
-        {/* Hint de credenciais (remover em produção) */}
-        <View style={styles.hintBox}>
-          <Text style={styles.hintTitle}>Credenciais de teste</Text>
-          <Text style={styles.hintText}>Advogado: advogado@softwave.com</Text>
-          <Text style={styles.hintText}>Cliente:    cliente@softwave.com</Text>
-          <Text style={styles.hintText}>Senha:      123456</Text>
-        </View>
       </View>
     </LinearGradient>
   );
@@ -234,24 +227,5 @@ const styles = StyleSheet.create({
   linkText: {
     color: 'rgba(255,255,255,0.75)',
     fontSize: 14,
-  },
-  hintBox: {
-    marginTop: 32,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.15)',
-    paddingTop: 16,
-    gap: 3,
-  },
-  hintTitle: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  hintText: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 11,
-    fontFamily: 'monospace',
   },
 });

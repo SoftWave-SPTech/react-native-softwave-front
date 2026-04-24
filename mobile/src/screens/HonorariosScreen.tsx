@@ -29,63 +29,6 @@ type Contrato = {
   encerrado?: boolean;
 };
 
-const CONTRATOS_FALLBACK_API: ContratoApi[] = [
-  {
-    id: 1,
-    clienteId: 'cli_1',
-    cliente: 'João Silva',
-    processo: 'Processo 1234/2025',
-    tipoContrato: 'Êxito',
-    status: 'em-dia',
-    progresso: 60,
-    vencimento: '15/03/2026',
-    total: 2500000,
-    pago: 1500000,
-    encerrado: false,
-    reprovado: false,
-  },
-  {
-    id: 2,
-    clienteId: 'cli_2',
-    cliente: 'Maria Santos',
-    processo: 'Processo 5678/2025',
-    tipoContrato: 'Parcelas',
-    status: 'pendente',
-    progresso: 33,
-    vencimento: '20/02/2026',
-    total: 1800000,
-    pago: 600000,
-    encerrado: false,
-    reprovado: true,
-  },
-  {
-    id: 3,
-    clienteId: 'cli_3',
-    cliente: 'Carlos Oliveira',
-    processo: 'Processo 9012/2025',
-    tipoContrato: 'Fixo Mensal',
-    status: 'atrasado',
-    progresso: 75,
-    vencimento: '10/02/2026',
-    total: 1200000,
-    pago: 900000,
-    encerrado: false,
-  },
-  {
-    id: 4,
-    clienteId: 'cli_4',
-    cliente: 'Ana Costa',
-    processo: 'Processo 3456/2024',
-    tipoContrato: 'Êxito',
-    status: 'encerrado',
-    progresso: 100,
-    vencimento: '01/01/2025',
-    total: 800000,
-    pago: 800000,
-    encerrado: true,
-  },
-];
-
 function mapApiToContrato(c: ContratoApi): Contrato {
   return {
     id: c.id,
@@ -125,14 +68,14 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
 
-  const [rowsApi, setRowsApi] = useState<ContratoApi[]>(CONTRATOS_FALLBACK_API);
+  const [rowsApi, setRowsApi] = useState<ContratoApi[]>([]);
   const [loading, setLoading] = useState(false);
 
   const emTelaHonorarios = routePath.includes('honorarios');
 
   useEffect(() => {
     if (!apiOn) {
-      setRowsApi(CONTRATOS_FALLBACK_API);
+      setRowsApi([]);
       return undefined;
     }
     if (!isFocused || !emTelaHonorarios) return undefined;
@@ -141,9 +84,9 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
       setLoading(true);
       try {
         const data = await fetchContratos(token);
-        if (!cancelled && data.length > 0) setRowsApi(data);
+        if (!cancelled) setRowsApi(Array.isArray(data) ? data : []);
       } catch {
-        if (!cancelled) setRowsApi(CONTRATOS_FALLBACK_API);
+        if (!cancelled) setRowsApi([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -153,8 +96,9 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
     };
   }, [routePath, emTelaHonorarios, isFocused, apiOn, token]);
 
-  const lista = useMemo(() => rowsApi.map(mapApiToContrato), [rowsApi]);
-  const topo = useMemo(() => resumoAtivos(rowsApi), [rowsApi]);
+  const rowsSeguros = Array.isArray(rowsApi) ? rowsApi : [];
+  const lista = useMemo(() => rowsSeguros.map(mapApiToContrato), [rowsSeguros]);
+  const topo = useMemo(() => resumoAtivos(rowsSeguros), [rowsSeguros]);
 
   const [aba, setAba] = useState<'ativos' | 'encerrados'>('ativos');
   const [filtroCliente, setFiltroCliente] = useState('todos');

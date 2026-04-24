@@ -32,54 +32,19 @@ type Props = {
 
 const SCREEN_WIDTH = Dimensions.get('window').width - 40;
 
-const DADOS_LINHA = {
-  labels: ['Jan', 'Fev', 'Mar'],
+/** Estrutura mínima para os gráficos quando a API ainda não retornou dados. */
+const CHART_VAZIO_LINHA = {
+  labels: ['—'],
   datasets: [
-    { data: [65000, 72000, 85000], color: () => '#16a34a', strokeWidth: 2 },
-    { data: [38000, 42000, 35000], color: () => '#dc2626', strokeWidth: 2 },
+    { data: [0], color: () => '#16a34a', strokeWidth: 2 },
+    { data: [0], color: () => '#dc2626', strokeWidth: 2 },
   ],
   legend: ['Receita', 'Despesa'],
 };
-
-const DADOS_PIZZA = [
-  { name: 'Honorários', value: 65000, color: '#0d9488', legendFontColor: '#374151', legendFontSize: 13 },
-  { name: 'Consultoria', value: 20000, color: '#16a34a', legendFontColor: '#374151', legendFontSize: 13 },
-  { name: 'Outros', value: 15000, color: '#f59e0b', legendFontColor: '#374151', legendFontSize: 13 },
+const CHART_VAZIO_PIZZA = [
+  { name: '—', value: 1, color: '#e5e7eb', legendFontColor: '#9ca3af', legendFontSize: 13 },
 ];
-
-const DADOS_BARRA = {
-  labels: ['Jan', 'Fev', 'Mar'],
-  datasets: [{ data: [15800, 18500, 12200] }],
-};
-
-const CLIENTES_RANKING = [
-  { nome: 'João Silva', valor: 25000 },
-  { nome: 'Maria Santos', valor: 18000 },
-  { nome: 'Carlos Oliveira', valor: 12000 },
-  { nome: 'Ana Costa', valor: 8500 },
-];
-
-const INSIGHTS = {
-  linha: [
-    'Receita cresceu 30% em 3 meses — ritmo acima da média do setor.',
-    'Despesas caíram 8% de Fev para Mar, indicando controle de custos.',
-    'Margem líquida melhorou de 41% para 59% no período analisado.',
-  ],
-  pizza: [
-    'Honorários representam 65% da receita total — alta dependência.',
-    'Consultoria tem margem maior que honorários — potencial de crescimento.',
-    'Diversificar fontes de receita pode reduzir riscos operacionais.',
-  ],
-  barra: [
-    'Janeiro foi o mês mais caro em despesas (R$ 15.800).',
-    'Redução de 34% nas despesas de Fev para Mar — tendência positiva.',
-    'Monitorar categorias de custo variável para manter a queda.',
-  ],
-  maioresClientes: [
-    'João Silva é o cliente que mais gerou receita (R$ 25.000).',
-    'Ana Costa é o cliente que menos gerou receita (R$ 8.500).',
-  ],
-};
+const CHART_VAZIO_BARRA = { labels: ['—'], datasets: [{ data: [0] }] };
 
 const CHART_CONFIG = {
   backgroundGradientFrom: '#fff',
@@ -173,7 +138,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         legend: ['Receita', 'Despesa'],
       };
     }
-    return DADOS_LINHA;
+    return CHART_VAZIO_LINHA;
   }, [rd]);
 
   const dadosPizza = useMemo(() => {
@@ -187,7 +152,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         legendFontSize: 13,
       }));
     }
-    return DADOS_PIZZA;
+    return CHART_VAZIO_PIZZA;
   }, [rc]);
 
   const dadosBarra = useMemo(() => {
@@ -197,7 +162,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         datasets: [{ data: dm.despesas.map(centavosParaReaisChart) }],
       };
     }
-    return DADOS_BARRA;
+    return CHART_VAZIO_BARRA;
   }, [dm]);
 
   const clientesRanking = useMemo(() => {
@@ -205,22 +170,16 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
     if (list && list.length > 0) {
       return list.map((c) => ({ nome: c.nome, valorLabel: formatCentavosBRL(c.valor) }));
     }
-    return CLIENTES_RANKING.map((c) => ({
-      nome: c.nome,
-      valorLabel: `R$ ${c.valor.toLocaleString('pt-BR')}`,
-    }));
+    return [];
   }, [ranking]);
 
   const insights = useMemo(() => {
-    const maiores =
-      insightsApi?.maioresClientes && insightsApi.maioresClientes.length > 0
-        ? insightsApi.maioresClientes
-        : INSIGHTS.maioresClientes;
     return {
-      linha: insightsApi?.linha?.length ? insightsApi.linha : INSIGHTS.linha,
-      pizza: insightsApi?.pizza?.length ? insightsApi.pizza : INSIGHTS.pizza,
-      barra: insightsApi?.barra?.length ? insightsApi.barra : INSIGHTS.barra,
-      maioresClientes: maiores,
+      linha: insightsApi?.linha?.length ? insightsApi.linha : [],
+      pizza: insightsApi?.pizza?.length ? insightsApi.pizza : [],
+      barra: insightsApi?.barra?.length ? insightsApi.barra : [],
+      maioresClientes:
+        insightsApi?.maioresClientes && insightsApi.maioresClientes.length > 0 ? insightsApi.maioresClientes : [],
     };
   }, [insightsApi]);
 
@@ -259,7 +218,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             <CardKPI
               icon="chart-line"
               title="Margem de Lucro"
-              value={valorPrincipalKpi(k, 'margemLucro', '49.8%')}
+              value={valorPrincipalKpi(k, 'margemLucro', '—')}
               variation={k?.margemLucro?.variacao}
               variationType={k?.margemLucro?.tipo === 'negativo' ? 'negative' : 'positive'}
             />
@@ -268,7 +227,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             <CardKPI
               icon="cash"
               title="Ticket Médio"
-              value={valorPrincipalKpi(k, 'ticketMedio', 'R$ 8.540,00')}
+              value={valorPrincipalKpi(k, 'ticketMedio', '—')}
               variation={k?.ticketMedio?.variacao}
               variationType={k?.ticketMedio?.tipo === 'negativo' ? 'negative' : 'positive'}
             />
@@ -277,7 +236,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             <CardKPI
               icon="alert-circle"
               title="Inadimplência"
-              value={valorPrincipalKpi(k, 'inadimplencia', '12%')}
+              value={valorPrincipalKpi(k, 'inadimplencia', '—')}
               variation={k?.inadimplencia?.variacao}
               variationType={k?.inadimplencia?.tipo === 'negativo' ? 'negative' : 'positive'}
             />
@@ -286,7 +245,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             <CardKPI
               icon="trending-up"
               title="Crescimento"
-              value={valorPrincipalKpi(k, 'crescimento', '15%')}
+              value={valorPrincipalKpi(k, 'crescimento', '—')}
               variation={k?.crescimento?.variacao}
               variationType={k?.crescimento?.tipo === 'negativo' ? 'negative' : 'positive'}
             />
@@ -388,13 +347,17 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
               <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'maioresClientes' ? '#0f766e' : '#0d9488'} />
             </Pressable>
             </View>
-          {clientesRanking.map((c, i) => (
-            <View key={i} style={styles.clienteRow}>
-              <View style={styles.clienteRank}><Text style={styles.clienteRankText}>{i + 1}</Text></View>
-              <Text style={styles.clienteNome}>{c.nome}</Text>
-              <Text style={styles.clienteValor}>{c.valorLabel}</Text>
-            </View>
-          ))}
+          {clientesRanking.length === 0 ? (
+            <Text style={styles.rankingVazio}>Nenhum cliente no ranking para este período.</Text>
+          ) : (
+            clientesRanking.map((c, i) => (
+              <View key={i} style={styles.clienteRow}>
+                <View style={styles.clienteRank}><Text style={styles.clienteRankText}>{i + 1}</Text></View>
+                <Text style={styles.clienteNome}>{c.nome}</Text>
+                <Text style={styles.clienteValor}>{c.valorLabel}</Text>
+              </View>
+            ))
+          )}
           {insightAberto === 'maioresClientes' && <InsightCard bullets={insights.maioresClientes} />}
         </View>
 
@@ -476,6 +439,7 @@ const styles = StyleSheet.create({
   etlSubtitle: { fontSize: 14, color: '#6b7280' },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 16 },
+  rankingVazio: { fontSize: 14, color: '#9ca3af', paddingVertical: 8 },
   clienteRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   clienteRank: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   clienteRankText: { fontSize: 14, fontWeight: '600', color: '#0d9488' },

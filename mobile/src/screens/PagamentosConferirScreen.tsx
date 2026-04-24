@@ -13,12 +13,6 @@ import {
 import type { PagamentoConferirApi } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
 
-const PAGAMENTOS_FALLBACK: PagamentoConferirApi[] = [
-  { id: 1, cliente: 'João Silva', processo: 'Processo 1234/2025', valor: 600000, data: '15/02/2026', status: 'pendente' },
-  { id: 2, cliente: 'Maria Santos', processo: 'Processo 5678/2025', valor: 320000, data: '14/02/2026', status: 'pendente' },
-  { id: 3, cliente: 'Carlos Oliveira', processo: 'Processo 9012/2025', valor: 550000, data: '13/02/2026', status: 'pendente' },
-];
-
 type Props = {
   onBack: () => void;
   onNavigate: (screen: string) => void;
@@ -29,13 +23,13 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
 
-  const [lista, setLista] = useState<PagamentoConferirApi[]>(PAGAMENTOS_FALLBACK);
+  const [lista, setLista] = useState<PagamentoConferirApi[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     if (!apiOn) {
-      setLista(PAGAMENTOS_FALLBACK);
+      setLista([]);
       return;
     }
     setLoading(true);
@@ -43,7 +37,7 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
       const rows = await fetchPagamentosPendentes(token);
       setLista(rows);
     } catch {
-      setLista(PAGAMENTOS_FALLBACK);
+      setLista([]);
     } finally {
       setLoading(false);
     }
