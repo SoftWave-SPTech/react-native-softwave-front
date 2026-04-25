@@ -9,6 +9,7 @@ export type LoginResult = { success: boolean; error?: string; userType?: UserTyp
 type AuthContextData = {
   userType: UserType | null;
   token: string | null;
+  userId: string | null;
   login: (email: string, senha: string) => Promise<LoginResult>;
   logout: () => void;
 };
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userType, setUserType] = useState<UserType | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const login = async (email: string, senha: string): Promise<LoginResult> => {
     const loginBase = getLoginApiBaseUrl();
@@ -28,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const ut = result.data.usuario.tipo;
         setUserType(ut);
         setToken(result.data.token);
+        setUserId(result.data.usuario.id || null);
         return { success: true, userType: ut };
       }
       return { success: false, error: result.error };
@@ -42,10 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUserType(null);
     setToken(null);
+    setUserId(null);
   };
 
   return (
-    <AuthContext.Provider value={{ userType, token, login, logout }}>
+    <AuthContext.Provider value={{ userType, token, userId, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

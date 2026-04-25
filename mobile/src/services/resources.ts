@@ -27,7 +27,9 @@ import type {
   TransacaoApi,
   TransacaoCreatePayload,
 } from '../types/api';
-import { apiDeleteJson, apiFetch, apiGetJson, apiPatchJson, apiPostJson, apiPutJson } from './http';
+import { Platform } from 'react-native';
+import { getEtlApiBaseUrl } from '../config/api';
+import { apiDeleteJson, apiGetJson, apiPatchJson, apiPostJson, apiPutJson } from './http';
 
 /** Spring / outros backends costumam envolver a lista em `{ data }` ou `{ contratos }`. */
 function unwrapContratosArray(raw: unknown): ContratoApi[] {
@@ -381,9 +383,18 @@ export async function fetchIaHistorico(
   }
 }
 
-export async function fetchImportacaoHistorico(token: string | null): Promise<ImportacaoItemApi[]> {
+export async function fetchImportacaoHistorico(token: string | null, usuarioId: string): Promise<ImportacaoItemApi[]> {
   try {
-    const env = await apiGetJson<{ importacoes: ImportacaoItemApi[] }>('/importacao/historico', token);
+    const base = getEtlApiBaseUrl();
+    if (!base) return [];
+    const url = new URL('/etl/importacao/historico', `${base}/`);
+    url.searchParams.set('usuario_id', usuarioId);
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!res.ok) return [];
+    const env = (await res.json()) as { importacoes: ImportacaoItemApi[] };
     return env.importacoes ?? [];
   } catch {
     return [];
@@ -392,22 +403,96 @@ export async function fetchImportacaoHistorico(token: string | null): Promise<Im
 
 export async function postImportacaoUpload(
   token: string | null,
-  body: { tipo: string; arquivoNome: string },
-): Promise<{ id: string; mensagem: string; status: string } | null> {
+  body: {
+    usuarioId: string;
+    banco: 'c6' | 'bradesco' | 'itau';
+    file: { uri: string; name: string; mimeType?: string; webFile?: File | null };
+    persistir?: boolean;
+  },
+): Promise<
+  | {
+      ok: true;
+      data: {
+        mensagem: string;
+        banco: string;
+        arquivo_origem: string;
+        total_extraido: number;
+        duplicatas_ignoradas: number;
+        inseridas: number;
+      };
+    }
+  | {
+      ok: false;
+      error: string;
+      status?: number;
+    }
+> {
   try {
-    return await apiPostJson<{ id: string; mensagem: string; status: string }>(
-      '/importacao/upload',
-      token,
-      body,
-    );
+    const base = getEtlApiBaseUrl();
+    if (!base) return { ok: false, error: 'API ETL não configurada.' };
+
+    const formData = new FormData();
+    const mimeType = body.file.mimeType ?? (body.banco === 'itau' ? 'application/pdf' : 'text/csv');
+    if (Platform.OS === 'web') {
+      const maybeFile = body.file.webFile;
+      if (maybeFile instanceof File) {
+        formData.append('arquivo', maybeFile, body.file.name);
+      } else {
+        const blobRes = await fetch(body.file.uri);
+        const blob = await blobRes.blob();
+        formData.append('arquivo', blob, body.file.name);
+      }
+    } else {
+      formData.append('arquivo', {
+        uri: body.file.uri,
+        name: body.file.name,
+        type: mimeType,
+      } as unknown as Blob);
+    }
+
+    const uploadUrl = new URL('/etl/upload', `${base}/`);
+    uploadUrl.searchParams.set('banco', body.banco);
+    uploadUrl.searchParams.set('usuario_id', body.usuarioId);
+    uploadUrl.searchParams.set('persistir', body.persistir === false ? 'false' : 'true');
+    const res = await fetch(uploadUrl.toString(), {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+    });
+    if (!res.ok) {
+      let detalhe = `Falha no upload (${res.status})`;
+      try {
+        const err = (await res.json()) as { detail?: string };
+        if (err?.detail) detalhe = err.detail;
+      } catch {
+        // Ignora parse de erro e mantém mensagem padrão.
+      }
+      return { ok: false, error: detalhe, status: res.status };
+    }
+    const data = (await res.json()) as {
+      mensagem: string;
+      banco: string;
+      arquivo_origem: string;
+      total_extraido: number;
+      duplicatas_ignoradas: number;
+      inseridas: number;
+    };
+    return { ok: true, data };
   } catch {
-    return null;
+    return { ok: false, error: 'Não foi possível conectar na API ETL.' };
   }
 }
 
-export async function fetchExportacaoTransacoesCsv(token: string | null): Promise<string | null> {
+export async function fetchExportacaoTransacoesCsv(token: string | null, usuarioId: string): Promise<string | null> {
   try {
-    const res = await apiFetch(`/exportacao/transacoes?formato=csv`, { method: 'GET', token });
+    const base = getEtlApiBaseUrl();
+    if (!base) return null;
+    const url = new URL('/etl/extrato/csv', `${base}/`);
+    url.searchParams.set('usuario_id', usuarioId);
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
     if (!res.ok) return null;
     return await res.text();
   } catch {
