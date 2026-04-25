@@ -15,6 +15,7 @@ import { ClienteHomeScreen } from './src/screens/ClienteHomeScreen';
 import { ClienteCobrancasScreen } from './src/screens/ClienteCobrancasScreen';
 import { ClientePagamentoScreen } from './src/screens/ClientePagamentoScreen';
 import { PlaceholderScreen } from './src/screens/PlaceholderScreen';
+import { AssistenteIAScreen } from './src/screens/AssistenteIAScreen';
 
 export type Screen =
   | 'Login'
@@ -183,6 +184,10 @@ export default function App() {
         onNavigate={navigateAny}
       />
     );
+  }
+
+  if (screen === 'AssistenteIA') {
+    return <AssistenteIAScreen onBack={goBack} onNavigate={navigateAny} />;
   }
 
   if (screen === 'Notificacoes') {
