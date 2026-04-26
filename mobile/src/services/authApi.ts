@@ -87,6 +87,19 @@ function tipoUsuarioFromBodyOrJwt(body: AuthMailLoginBody): string | undefined {
   return typeof fromJwt === 'string' && fromJwt.trim() ? fromJwt.trim() : undefined;
 }
 
+function userIdFromBodyOrJwt(body: AuthMailLoginBody): string | null {
+  if (body.id != null && String(body.id).trim()) {
+    return String(body.id).trim();
+  }
+  const token = body.token;
+  if (!token) return null;
+  const payload = decodeJwtPayloadRecord(token);
+  const fromJwt = payload?.id ?? payload?.userId ?? payload?.usuarioId ?? payload?.sub;
+  if (fromJwt == null) return null;
+  const normalized = String(fromJwt).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 function normalizeLoginSuccess(body: AuthMailLoginBody): LoginApiSuccess | null {
   const token = body.token;
   if (!token) {
@@ -99,7 +112,10 @@ function normalizeLoginSuccess(body: AuthMailLoginBody): LoginApiSuccess | null 
     return null;
   }
 
-  const id = body.id != null ? String(body.id) : '';
+  const id = userIdFromBodyOrJwt(body);
+  if (!id) {
+    return null;
+  }
   const nome = body.nome ?? '';
   const email = body.email ?? '';
 

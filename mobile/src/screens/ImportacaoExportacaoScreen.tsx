@@ -125,6 +125,9 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
   const [feedbackModalTitle, setFeedbackModalTitle] = useState('Aviso');
   const [feedbackModalMessage, setFeedbackModalMessage] = useState('');
 
+  const usuarioIdNumerico = userId ? Number(userId) : Number.NaN;
+  const usuarioAutenticadoValido = Number.isInteger(usuarioIdNumerico) && usuarioIdNumerico > 0;
+
   const historicoVisivel = showAllHistorico ? historicoImportacoes : historicoImportacoes.slice(0, 3);
 
   const openFeedbackModal = (title: string, message: string) => {
@@ -134,7 +137,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
   };
 
   const carregarHistorico = useCallback(async () => {
-    if (!apiOn || !token || !userId) {
+    if (!apiOn || !token || !userId || !usuarioAutenticadoValido) {
       setHistoricoImportacoes([]);
       return;
     }
@@ -156,7 +159,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
         erros: r.erros,
       })),
     );
-  }, [apiOn, token, userId]);
+  }, [apiOn, token, userId, usuarioAutenticadoValido]);
 
   useEffect(() => {
     carregarHistorico();
@@ -195,6 +198,10 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
       openFeedbackModal('Sessão expirada', 'Faça login novamente para importar com autenticação JWT.');
       return;
     }
+    if (!usuarioAutenticadoValido) {
+      openFeedbackModal('Usuário inválido', 'Não foi possível identificar o usuário autenticado.');
+      return;
+    }
     if (!arquivoSelecionado) {
       openFeedbackModal('Selecione um arquivo', 'Toque em "Selecionar arquivo" antes de importar.');
       return;
@@ -204,7 +211,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
       if (apiOn) {
         const tipoApi = tipoUploadParaApi(bancoExtrato);
         const res = await postImportacaoUpload(token, {
-          usuarioId: userId,
+          usuarioId: usuarioIdNumerico,
           banco: tipoApi as BancoExtratoId,
           file: arquivoSelecionado,
           persistir: true,
@@ -248,6 +255,10 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
     void (async () => {
       if (!token || !userId) {
         openFeedbackModal('Sessão expirada', 'Faça login novamente para exportar com autenticação JWT.');
+        return;
+      }
+      if (!usuarioAutenticadoValido) {
+        openFeedbackModal('Usuário inválido', 'Não foi possível identificar o usuário autenticado.');
         return;
       }
       if (tipo === 'transacoes' && apiOn) {
@@ -422,7 +433,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
 
         {/* Como Funciona */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoCardTitle}>Como funciona a reconciliação?</Text>
+          <Text style={styles.infoCardTitle}>Como funciona a conciliação?</Text>
           {[
             'Escolha o banco e envie o extrato no formato correto (C6/Bradesco = CSV, Itaú = PDF)',
             'O sistema extrai as transações do extrato enviado',

@@ -383,12 +383,20 @@ export async function fetchIaHistorico(
   }
 }
 
+function normalizeUsuarioId(usuarioId: string): number | null {
+  const parsed = Number(usuarioId);
+  if (!Number.isInteger(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
 export async function fetchImportacaoHistorico(token: string | null, usuarioId: string): Promise<ImportacaoItemApi[]> {
   try {
     const base = getEtlApiBaseUrl();
     if (!base) return [];
+    const usuarioIdNumerico = normalizeUsuarioId(usuarioId);
+    if (!usuarioIdNumerico) return [];
     const url = new URL('/etl/importacao/historico', `${base}/`);
-    url.searchParams.set('usuario_id', usuarioId);
+    url.searchParams.set('usuario_id', String(usuarioIdNumerico));
     const res = await fetch(url.toString(), {
       method: 'GET',
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -404,7 +412,7 @@ export async function fetchImportacaoHistorico(token: string | null, usuarioId: 
 export async function postImportacaoUpload(
   token: string | null,
   body: {
-    usuarioId: string;
+    usuarioId: number;
     banco: 'c6' | 'bradesco' | 'itau';
     file: { uri: string; name: string; mimeType?: string; webFile?: File | null };
     persistir?: boolean;
@@ -452,7 +460,7 @@ export async function postImportacaoUpload(
 
     const uploadUrl = new URL('/etl/upload', `${base}/`);
     uploadUrl.searchParams.set('banco', body.banco);
-    uploadUrl.searchParams.set('usuario_id', body.usuarioId);
+    uploadUrl.searchParams.set('usuario_id', String(body.usuarioId));
     uploadUrl.searchParams.set('persistir', body.persistir === false ? 'false' : 'true');
     const res = await fetch(uploadUrl.toString(), {
       method: 'POST',
@@ -487,8 +495,10 @@ export async function fetchExportacaoTransacoesCsv(token: string | null, usuario
   try {
     const base = getEtlApiBaseUrl();
     if (!base) return null;
+    const usuarioIdNumerico = normalizeUsuarioId(usuarioId);
+    if (!usuarioIdNumerico) return null;
     const url = new URL('/etl/extrato/csv', `${base}/`);
-    url.searchParams.set('usuario_id', usuarioId);
+    url.searchParams.set('usuario_id', String(usuarioIdNumerico));
     const res = await fetch(url.toString(), {
       method: 'GET',
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,

@@ -40,11 +40,11 @@ function getDynamicBaseUrlFromExpo(port: number, path = ''): string | null {
 export function getAuthBaseUrl(): string | null {
   const fromEnv = process.env.EXPO_PUBLIC_AUTH_API_URL;
   if (fromEnv && String(fromEnv).trim().length > 0) {
-    return normalizeBaseUrl(String(fromEnv).trim());
+    return normalizeBaseUrl(resolveMobileLoopback(String(fromEnv).trim()));
   }
   const extra = Constants.expoConfig?.extra as { authApiUrl?: string } | undefined;
   if (extra?.authApiUrl && String(extra.authApiUrl).trim().length > 0) {
-    return normalizeBaseUrl(String(extra.authApiUrl).trim());
+    return normalizeBaseUrl(resolveMobileLoopback(String(extra.authApiUrl).trim()));
   }
   return null;
 }
@@ -56,12 +56,12 @@ export function getAuthBaseUrl(): string | null {
 export function getApiBaseUrl(): string | null {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL;
   if (fromEnv && String(fromEnv).trim().length > 0) {
-    return normalizeBaseUrl(String(fromEnv).trim());
+    return normalizeBaseUrl(resolveMobileLoopback(String(fromEnv).trim()));
   }
 
   const extra = Constants.expoConfig?.extra as { apiUrl?: string } | undefined;
   if (extra?.apiUrl && String(extra.apiUrl).trim().length > 0) {
-    return normalizeBaseUrl(String(extra.apiUrl).trim());
+    return normalizeBaseUrl(resolveMobileLoopback(String(extra.apiUrl).trim()));
   }
 
   return null;
