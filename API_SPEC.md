@@ -29,6 +29,8 @@
 
 - **Base URL:** `https://api.softwave.com.br/v1`
 - **Autenticação:** `Bearer <token>` no header `Authorization`
+- **IDs externos (string):** `txn_`, `pag_`, `ntf_`, `cob_`, `cli_`, `ctr_`, `proc_`
+- **Status financeiros oficiais:** `pendente`, `atrasado`, `pago`, `cancelado`
 - **Datas:** formato ISO 8601 — `YYYY-MM-DD` ou `YYYY-MM-DDTHH:mm:ssZ`
 - **Valores monetários:** `number` em centavos (ex: `600000` = R$ 6.000,00) **ou** `string` formatada (definir padrão no backend)
 - **Status HTTP:** `200 OK`, `201 Created`, `400 Bad Request`, `401 Unauthorized`, `404 Not Found`, `422 Unprocessable Entity`, `500 Internal Server Error`
@@ -134,9 +136,6 @@ Invalida o token atual.
 ### `GET /dashboard/resumo`
 Retorna os KPIs exibidos na Home do advogado.
 
-> Compatibilidade mobile atual: o app consome `GET /dashboardResumo` (coleção JSON Server) e usa o primeiro item.
-> Também usa `PATCH /dashboardResumo/1` para sincronizar `pagamentosParaConferir`.
-
 **Query params:** `?periodo=mes` _(opcional — `semana | mes | ano`, padrão: `mes`)_
 
 **Response `200`:**
@@ -206,7 +205,7 @@ Lista todas as transações com filtros.
 | Parâmetro | Tipo | Descrição |
 |---|---|---|
 | `tipo` | `receita \| despesa` | Filtro por tipo |
-| `status` | `pago \| pendente \| atrasado \| em-dia \| cancelado` | Filtro por status |
+| `status` | `pago \| pendente \| atrasado \| cancelado` | Filtro por status |
 | `busca` | `string` | Busca por título ou cliente |
 | `dataInicio` | `YYYY-MM-DD` | Filtro de data inicial |
 | `dataFim` | `YYYY-MM-DD` | Filtro de data final |
@@ -373,7 +372,7 @@ Lista os contratos com filtros.
       "cliente": "João Silva",
       "processo": "Proc. 1234/2025",
       "tipoContrato": "Êxito",
-      "status": "em-dia",
+      "status": "pendente",
       "progresso": 60,
       "vencimento": "2026-03-15",
       "total": 2500000,
@@ -398,7 +397,7 @@ Detalhes completos de um contrato.
   "cliente": "João Silva",
   "processo": "Proc. 1234/2025",
   "tipoContrato": "Êxito",
-  "status": "em-dia",
+  "status": "pendente",
   "progresso": 60,
   "total": 2500000,
   "pago": 1500000,
@@ -478,8 +477,6 @@ Dispara uma cobrança ao cliente referente a uma parcela.
 
 ### `GET /pagamentos/pendentes`
 Lista os pagamentos submetidos pelos clientes aguardando aprovação.
-
-> Compatibilidade mobile atual: fallback em `GET /pagamentosParaConferir?status=pendente&_sort=id&_order=desc`.
 
 **Response `200`:**
 ```json
@@ -642,8 +639,6 @@ Insights gerados pela IA para cada gráfico.
 
 ### `GET /notificacoes`
 Lista as notificações do advogado.
-
-> Compatibilidade mobile atual: fallback em `GET /notificacoesAdvogado?_sort=id&_order=desc` (lista simples).
 
 **Query params:** `?page=1&limit=20`
 
@@ -929,8 +924,6 @@ Lista todos os clientes do escritório (usado em filtros e selects).
 ### `GET /cliente/dashboard`
 Retorna os dados da Home do cliente.
 
-> Compatibilidade mobile atual: fallback em `GET /clienteDashboard` (coleção JSON Server, app usa o primeiro item).
-
 **Response `200`:**
 ```json
 {
@@ -1062,8 +1055,6 @@ Cliente envia o comprovante de pagamento.
 ### `GET /cliente/notificacoes`
 Lista as notificações do cliente logado.
 
-> Compatibilidade mobile atual: o app consome `GET /notificacoesCliente?_sort=id&_order=desc` (lista simples).
-
 **Response `200`:**
 ```json
 {
@@ -1176,7 +1167,7 @@ type Transacao = {
   titulo: string;
   subtitulo?: string;           // nome do cliente
   valor: number;                // em centavos
-  status: 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
+  status: 'pago' | 'pendente' | 'atrasado' | 'cancelado';
   categoria: 'honorarios' | 'custas' | 'consultoria' | 'aluguel' | 'outros';
   clienteId?: string;
   cliente?: string;
@@ -1205,7 +1196,7 @@ type Contrato = {
   cliente: string;
   processo: string;
   tipoContrato: 'Êxito' | 'Parcelas' | 'Fixo Mensal';
-  status: 'em-dia' | 'pendente' | 'atrasado' | 'encerrado';
+  status: 'pendente' | 'atrasado' | 'pago' | 'cancelado' | 'encerrado';
   progresso: number;            // 0-100
   total: number;                // em centavos
   pago: number;                 // em centavos

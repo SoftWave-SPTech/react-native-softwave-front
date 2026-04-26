@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
@@ -48,45 +49,42 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
 
   const effectiveDash = dash ?? DASHBOARD_VAZIO;
 
-  useEffect(() => {
+  const carregar = React.useCallback(async () => {
     if (!apiOn) {
       setDash(null);
       setRecent([]);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
+    setLoading(true);
+    try {
+      const [d, tx] = await Promise.all([fetchDashboardResumo(token), fetchTransacoesRecentes(token, 4)]);
       try {
-        const [d, tx] = await Promise.all([
-          fetchDashboardResumo(token),
-          fetchTransacoesRecentes(token, 4),
-        ]);
-        if (cancelled) return;
-        try {
-          await syncPagamentosDashboardCount(token);
-        } catch {
-          /* mantém resumo do GET */
-        }
-        if (cancelled) return;
-        const dAfter = await fetchDashboardResumo(token);
-        if (cancelled) return;
-        if (dAfter) setDash(dAfter);
-        else if (d) setDash(d);
-        if (tx.length > 0) setRecent(tx.map(mapTransacaoApiToCard));
+        await syncPagamentosDashboardCount(token);
       } catch {
-        if (!cancelled) {
-          setDash(null);
-          setRecent([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+        /* mantém resumo do GET */
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      const dAfter = await fetchDashboardResumo(token);
+      if (dAfter) setDash(dAfter);
+      else if (d) setDash(d);
+      setRecent(tx.map(mapTransacaoApiToCard));
+    } catch {
+      setDash(null);
+      setRecent([]);
+    } finally {
+      setLoading(false);
+    }
   }, [apiOn, token]);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void carregar();
+      return undefined;
+    }, [carregar]),
+  );
 
   const heroValor = useMemo(
     () => formatCentavosBRL(effectiveDash.valorDisponivel),

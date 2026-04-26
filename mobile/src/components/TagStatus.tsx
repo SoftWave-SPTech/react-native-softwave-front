@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-type Status = 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado' | 'encerrado';
+type Status = 'pago' | 'pendente' | 'atrasado' | 'cancelado' | 'encerrado';
 
 type Props = {
   status: Status | string;
@@ -11,7 +11,6 @@ const statusConfig: Record<Status, { bg: string; text: string }> = {
   pago: { bg: '#dcfce7', text: '#15803d' },
   pendente: { bg: '#fef9c3', text: '#a16207' },
   atrasado: { bg: '#fee2e2', text: '#dc2626' },
-  'em-dia': { bg: '#ccfbf1', text: '#0f766e' },
   cancelado: { bg: '#f3f4f6', text: '#6b7280' },
   encerrado: { bg: '#f3f4f6', text: '#374151' },
 };
@@ -20,7 +19,6 @@ const labels: Record<Status, string> = {
   pago: 'Pago',
   pendente: 'Pendente',
   atrasado: 'Atrasado',
-  'em-dia': 'Em dia',
   cancelado: 'Cancelado',
   encerrado: 'Encerrado',
 };
@@ -43,10 +41,10 @@ function normalizeStatus(input: string): Status {
     atrasado: 'atrasado',
     vencido: 'atrasado',
     overdue: 'atrasado',
-    'em-dia': 'em-dia',
-    emdia: 'em-dia',
-    'em-dia.': 'em-dia',
-    adimplente: 'em-dia',
+    'em-dia': 'pendente',
+    emdia: 'pendente',
+    'em-dia.': 'pendente',
+    adimplente: 'pendente',
     cancelado: 'cancelado',
     cancelada: 'cancelado',
     encerrado: 'encerrado',

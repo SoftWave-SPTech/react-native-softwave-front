@@ -27,7 +27,7 @@ import type {
   TransacaoApi,
   TransacaoCreatePayload,
 } from '../types/api';
-import { apiDeleteJson, apiFetch, apiGetJson, apiPatchJson, apiPostJson, apiPutJson } from './http';
+import { ApiError, apiDeleteJson, apiFetch, apiGetJson, apiPatchJson, apiPostFormData, apiPostJson, apiPutJson } from './http';
 
 /** Spring / outros backends costumam envolver a lista em `{ data }` ou `{ contratos }`. */
 function unwrapContratosArray(raw: unknown): ContratoApi[] {
@@ -43,58 +43,70 @@ function unwrapContratosArray(raw: unknown): ContratoApi[] {
 }
 
 export async function fetchDashboardResumo(token: string | null): Promise<DashboardResumoApi | null> {
-  const rows = await apiGetJson<DashboardResumoApi[]>('/dashboardResumo', token);
-  return rows[0] ?? null;
-}
-
-export async function fetchTransacoes(token: string | null): Promise<TransacaoApi[]> {
-  return apiGetJson<TransacaoApi[]>('/transacoes?_sort=ordem&_order=desc', token);
-}
-
-export async function fetchTransacoesRecentes(token: string | null, limit: number): Promise<TransacaoApi[]> {
-  return apiGetJson<TransacaoApi[]>(
-    `/transacoes?_sort=ordem&_order=desc&_limit=${limit}`,
-    token,
-  );
-}
-
-function notifAdvIdFromApi(id: string | number): number {
-  if (typeof id === 'number') return id;
-  const n = Number(id);
-  return Number.isFinite(n) ? n : 0;
-}
-
-export async function fetchNotificacoesAdvogado(token: string | null): Promise<NotificacaoAdvApi[]> {
   try {
-    const env = await apiGetJson<{
-      notificacoes: Array<{
-        id: string;
-        tipo: string;
-        titulo: string;
-        mensagem: string;
-        data: string;
-        lida: boolean;
-      }>;
-    }>('/notificacoes', token);
-    return (env.notificacoes ?? []).map((r) => {
-      const tipos: NotificacaoAdvApi['tipo'][] = ['pagamento', 'alerta', 'sucesso', 'lembrete', 'insight'];
-      const tipo = (tipos.includes(r.tipo as NotificacaoAdvApi['tipo']) ? r.tipo : 'alerta') as NotificacaoAdvApi['tipo'];
-      return {
-        id: notifAdvIdFromApi(r.id),
-        tipo,
-        titulo: r.titulo,
-        mensagem: r.mensagem,
-        data: r.data,
-        lida: r.lida,
-      };
-    });
+    const d = await apiGetJson<DashboardResumoApi>('/dashboard/resumo', token);
+    return {
+      id: d.id ?? 1,
+      valorDisponivel: d.valorDisponivel ?? 0,
+      lucroLiquidoMes: d.lucroLiquidoMes ?? 0,
+      receitaMensal: d.receitaMensal ?? 0,
+      despesaMensal: d.despesaMensal ?? 0,
+      pendentes: d.pendentes ?? 0,
+      variacaoReceita: d.variacaoReceita ?? '+0%',
+      variacaoPendentes: d.variacaoPendentes ?? '+0%',
+      variacaoDespesa: d.variacaoDespesa ?? '+0%',
+      variacaoLucro: d.variacaoLucro ?? '+0%',
+      pagamentosParaConferir: d.pagamentosParaConferir ?? 0,
+    };
   } catch {
-    return apiGetJson<NotificacaoAdvApi[]>('/notificacoesAdvogado?_sort=id&_order=desc', token);
+    return null;
   }
 }
 
-export async function putNotificacaoAdvLida(token: string | null, id: number): Promise<void> {
-  await apiPutJson(`/notificacoes/${id}/lida`, token);
+export async function fetchTransacoes(token: string | null): Promise<TransacaoApi[]> {
+  return apiGetJson<TransacaoApi[]>('/transacoes', token);
+}
+
+export async function fetchTransacoesRecentes(token: string | null, limit: number): Promise<TransacaoApi[]> {
+  const env = await apiGetJson<{ transacoes: TransacaoApi[] }>(`/dashboard/transacoes-recentes?limit=${limit}`, token);
+  return env.transacoes ?? [];
+}
+
+function notifIdFromApi(id: string | number): string {
+  if (typeof id === 'string' && id.startsWith('ntf_')) return id;
+  if (typeof id === 'number') return `ntf_${id}`;
+  const n = Number(id);
+  return Number.isFinite(n) ? `ntf_${n}` : 'ntf_0';
+}
+
+export async function fetchNotificacoesAdvogado(token: string | null): Promise<NotificacaoAdvApi[]> {
+  const env = await apiGetJson<{
+    notificacoes: Array<{
+      id: string | number;
+      tipo: string;
+      titulo: string;
+      mensagem: string;
+      data: string;
+      lida: boolean;
+    }>;
+  }>('/notificacoes', token);
+  return (env.notificacoes ?? []).map((r) => {
+    const tipos: NotificacaoAdvApi['tipo'][] = ['pagamento', 'alerta', 'sucesso', 'lembrete', 'insight'];
+    const tipo = (tipos.includes(r.tipo as NotificacaoAdvApi['tipo']) ? r.tipo : 'alerta') as NotificacaoAdvApi['tipo'];
+    return {
+      id: notifIdFromApi(r.id),
+      tipo,
+      titulo: r.titulo,
+      mensagem: r.mensagem,
+      data: r.data,
+      lida: r.lida,
+    };
+  });
+}
+
+export async function putNotificacaoAdvLida(token: string | null, id: string): Promise<void> {
+  const rawId = id.startsWith('ntf_') ? id.substring(4) : id;
+  await apiPutJson(`/notificacoes/${encodeURIComponent(rawId)}/lida`, token);
 }
 
 function formatVencimentoClienteDash(v: string): string {
@@ -143,21 +155,17 @@ export async function fetchClienteDashboard(token: string | null): Promise<Clien
         : undefined,
     };
   } catch {
-    try {
-      const rows = await apiGetJson<ClienteDashboardApi[]>('/clienteDashboard', token);
-      return rows[0] ?? null;
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
-export async function putClienteNotificacaoLida(token: string | null, id: number): Promise<void> {
-  await apiPutJson(`/cliente/notificacoes/${id}/lida`, token);
+export async function putClienteNotificacaoLida(token: string | null, id: string): Promise<void> {
+  const rawId = id.startsWith('ntf_') ? id.substring(4) : id;
+  await apiPutJson(`/cliente/notificacoes/${encodeURIComponent(rawId)}/lida`, token);
 }
 
 export type NotificacaoClienteApi = {
-  id: number;
+  id: string;
   tipo: string;
   titulo: string;
   mensagem: string;
@@ -168,7 +176,26 @@ export type NotificacaoClienteApi = {
 };
 
 export async function fetchNotificacoesCliente(token: string | null): Promise<NotificacaoClienteApi[]> {
-  return apiGetJson<NotificacaoClienteApi[]>('/notificacoesCliente?_sort=id&_order=desc', token);
+  const env = await apiGetJson<{
+    notificacoes: Array<{
+      id: string | number;
+      tipo: string;
+      titulo: string;
+      mensagem: string;
+      data: string;
+      lida: boolean;
+    }>;
+  }>('/cliente/notificacoes', token);
+  return (env.notificacoes ?? []).map((n) => ({
+    id: notifIdFromApi(n.id),
+    tipo: n.tipo,
+    titulo: n.titulo,
+    mensagem: n.mensagem,
+    data: n.data,
+    lida: n.lida,
+    icon: 'bell-outline',
+    color: '#0d9488',
+  }));
 }
 
 export async function fetchContratos(token: string | null): Promise<ContratoApi[]> {
@@ -181,15 +208,11 @@ export async function fetchContratos(token: string | null): Promise<ContratoApi[
 }
 
 export async function fetchPagamentosPendentes(token: string | null): Promise<PagamentoConferirApi[]> {
-  try {
-    const env = await apiGetJson<PagamentosPendentesEnvelopeApi>('/pagamentos/pendentes', token);
-    return env.pagamentos ?? [];
-  } catch {
-    return apiGetJson<PagamentoConferirApi[]>(
-      '/pagamentosParaConferir?status=pendente&_sort=id&_order=desc',
-      token,
-    );
-  }
+  const env = await apiGetJson<PagamentosPendentesEnvelopeApi>('/pagamentos/pendentes', token);
+  return (env.pagamentos ?? []).map((p) => ({
+    ...p,
+    id: typeof p.id === 'string' && p.id.startsWith('pag_') ? p.id : `pag_${p.id}`,
+  }));
 }
 
 export async function fetchTransacaoById(token: string | null, id: string): Promise<TransacaoApi | null> {
@@ -207,6 +230,41 @@ export async function createTransacao(
   body: TransacaoCreatePayload,
 ): Promise<TransacaoCriadaResponseApi> {
   return apiPostJson<TransacaoCriadaResponseApi>('/transacoes', token, body);
+}
+
+export type UploadComprovanteResponseApi = {
+  mensagem: string;
+  comprovanteUrl?: string;
+};
+
+export type UploadableFile = {
+  uri: string;
+  name: string;
+  type: string;
+  /** No web, o fetch espera File/Blob real no FormData. */
+  file?: File | Blob;
+};
+
+export async function postCobrancaComprovante(
+  token: string | null,
+  cobrancaId: string,
+  arquivo: UploadableFile,
+): Promise<UploadComprovanteResponseApi> {
+  const fd = new FormData();
+  if (arquivo.file) {
+    fd.append('arquivo', arquivo.file, arquivo.name);
+  } else {
+    fd.append('arquivo', {
+      uri: arquivo.uri,
+      name: arquivo.name,
+      type: arquivo.type,
+    } as unknown as Blob);
+  }
+  return apiPostFormData<UploadComprovanteResponseApi>(
+    `/cobrancas/${encodeURIComponent(cobrancaId)}/comprovante`,
+    token,
+    fd,
+  );
 }
 
 export async function fetchClientesAdvogado(token: string | null): Promise<ClienteAdvogadoApi[]> {
@@ -256,20 +314,24 @@ export async function deleteTransacao(token: string | null, id: string): Promise
 
 export async function updatePagamentoConferir(
   token: string | null,
-  id: number,
+  id: string | number,
   body: Partial<PagamentoConferirApi>,
 ): Promise<void> {
+  if (!token) {
+    throw new ApiError('Token ausente para atualizar pagamento.', 401);
+  }
+  const rawId = String(id).startsWith('pag_') ? String(id).substring(4) : String(id);
   if (body.status === 'aprovado') {
-    await apiPutJson(`/pagamentos/${id}/aprovar`, token);
+    await apiPutJson(`/pagamentos/${rawId}/aprovar`, token);
     return;
   }
   if (body.status === 'reprovado') {
-    await apiPutJson(`/pagamentos/${id}/reprovar`, token, {
+    await apiPutJson(`/pagamentos/${rawId}/reprovar`, token, {
       motivo: body.motivoRejeicao ?? '',
     });
     return;
   }
-  await apiPatchJson<PagamentoConferirApi>(`/pagamentosParaConferir/${id}`, token, body);
+  await apiPatchJson<PagamentoConferirApi>(`/pagamentos/${rawId}`, token, body);
 }
 
 function relatorioPeriodoQuery(periodo: string): string {
@@ -417,8 +479,8 @@ export async function fetchExportacaoTransacoesCsv(token: string | null): Promis
 
 /** Mantém o KPI da home alinhado à quantidade real de pagamentos pendentes. */
 export async function syncPagamentosDashboardCount(token: string | null): Promise<void> {
-  const pending = await fetchPagamentosPendentes(token);
-  await apiPatchJson('/dashboardResumo/1', token, { pagamentosParaConferir: pending.length });
+  void token;
+  return;
 }
 
 export async function fetchContratoById(token: string | null, id: string): Promise<ContratoApi | null> {

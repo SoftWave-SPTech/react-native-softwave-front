@@ -20,7 +20,7 @@ type Props = {
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface Notificacao {
-  id: number;
+  id: string;
   tipo: string;
   titulo: string;
   mensagem: string;
@@ -86,7 +86,7 @@ export function ClienteNotificacoesScreen({ onBack }: Props) {
     };
   }, [apiOn, token]);
 
-  const marcarComoLida = async (id: number) => {
+  const marcarComoLida = async (id: string) => {
     const anterior = notificacoes;
     setNotificacoes((prev) => prev.map((n) => (n.id === id ? { ...n, lida: true } : n)));
     if (!apiOn || !token) return;

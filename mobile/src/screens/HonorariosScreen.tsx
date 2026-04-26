@@ -13,7 +13,7 @@ import { fetchContratos } from '../services/resources';
 import type { ContratoApi } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
 
-type ContratoStatus = 'em-dia' | 'pendente' | 'atrasado' | 'encerrado';
+type ContratoStatus = 'pendente' | 'atrasado' | 'pago' | 'cancelado' | 'encerrado';
 
 type Contrato = {
   id: number;

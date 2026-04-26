@@ -12,7 +12,7 @@ type Tipo = 'pagamento' | 'alerta' | 'sucesso' | 'lembrete' | 'insight';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 interface Notificacao {
-  id: number;
+  id: string;
   tipo: Tipo;
   titulo: string;
   mensagem: string;
@@ -95,7 +95,7 @@ export function NotificacoesScreen({ onBack, onNavigate }: Props) {
     };
   }, [apiOn, token]);
 
-  const marcarComoLida = async (id: number) => {
+  const marcarComoLida = async (id: string) => {
     const anterior = notificacoes;
     setNotificacoes((prev) => prev.map((n) => (n.id === id ? { ...n, lida: true } : n)));
     if (!apiOn) return;
