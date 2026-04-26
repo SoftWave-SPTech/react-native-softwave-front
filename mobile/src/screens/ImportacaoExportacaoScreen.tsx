@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
 import { getEtlApiBaseUrl } from '../config/api';
@@ -134,6 +136,45 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
     setFeedbackModalTitle(title);
     setFeedbackModalMessage(message);
     setFeedbackModalVisible(true);
+  };
+
+  const salvarCsvNoMobile = async (csv: string): Promise<boolean> => {
+    try {
+      const diretorio = FileSystem.cacheDirectory;
+      if (!diretorio) return false;
+      const timestamp = new Date().getTime();
+      const caminhoCsv = `${diretorio}extrato_${timestamp}.csv`;
+      const caminhoTxt = `${diretorio}extrato_${timestamp}.txt`;
+      await FileSystem.writeAsStringAsync(caminhoCsv, csv, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      await FileSystem.writeAsStringAsync(caminhoTxt, csv, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      const podeCompartilhar = await Sharing.isAvailableAsync();
+      if (!podeCompartilhar) return false;
+
+      try {
+        // iOS pode falhar com UTI/mimeType de CSV; tenta o modo mais simples primeiro.
+        await Sharing.shareAsync(caminhoCsv, {
+          dialogTitle: 'Exportar transações',
+        });
+        return true;
+      } catch {
+        try {
+          // Fallback para apps que não aceitam extensão .csv no iOS.
+          await Sharing.shareAsync(caminhoTxt, {
+            dialogTitle: 'Exportar transações',
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    } catch {
+      return false;
+    }
   };
 
   const carregarHistorico = useCallback(async () => {
@@ -274,6 +315,12 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
             link.click();
             link.remove();
             URL.revokeObjectURL(url);
+          } else {
+            const ok = await salvarCsvNoMobile(csv);
+            if (!ok) {
+              openFeedbackModal('Falha na exportação', 'Não foi possível salvar/compartilhar o CSV no dispositivo.');
+              return;
+            }
           }
           openFeedbackModal('Exportação', 'Exportação de transações realizada com sucesso!');
           return;
