@@ -4,6 +4,9 @@ import {
   Text,
   ScrollView,
   Pressable,
+  Platform,
+  Share,
+  InteractionManager,
   Modal,
   ActivityIndicator,
   StyleSheet,
@@ -12,9 +15,12 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
-import { getApiBaseUrl } from '../config/api';
+import { getEtlApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchExportacaoTransacoesCsv,
@@ -54,12 +60,25 @@ const BANCOS_EXTRATO: { id: BancoExtratoId; nome: string; descricao: string; log
 ];
 
 function tipoUploadParaApi(banco: BancoExtratoId): string {
-  return `extrato_${banco}`;
+  return banco;
 }
 
-function arquivoNomeExtratoSimulado(banco: BancoExtratoId): string {
-  const extensao = banco === 'itau' ? 'pdf' : 'csv';
-  return `extrato_${banco}_${Date.now()}.${extensao}`;
+type ArquivoSelecionado = {
+  uri: string;
+  name: string;
+  mimeType?: string;
+  size?: number | null;
+  webFile?: File | null;
+};
+
+function extensaoPermitida(banco: BancoExtratoId): string {
+  return banco === 'itau' ? '.pdf' : '.csv';
+}
+
+function validarArquivoSelecionado(banco: BancoExtratoId, nomeArquivo: string): boolean {
+  const nome = nomeArquivo.toLowerCase();
+  if (banco === 'itau') return nome.endsWith('.pdf');
+  return nome.endsWith('.csv');
 }
 
 /** Rótulo para histórico (API pode devolver extrato_c6, extrato, etc.). */
@@ -96,21 +115,91 @@ function formatDataImp(isoOrBr: string): string {
 
 export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
   void onNavigate;
-  const { token } = useAuth();
-  const apiOn = !!getApiBaseUrl() && !!token;
+  const { token, userId } = useAuth();
+  const isIOS = Platform.OS === 'ios';
+  const apiOn = !!getEtlApiBaseUrl() && !!token && !!userId;
 
   const [modalUpload, setModalUpload] = useState(false);
   const [bancoExtrato, setBancoExtrato] = useState<BancoExtratoId>('c6');
   const [processando, setProcessando] = useState(false);
   const [modalExportar, setModalExportar] = useState(false);
   const [historicoImportacoes, setHistoricoImportacoes] = useState<Importacao[]>([]);
+  const [arquivoSelecionado, setArquivoSelecionado] = useState<ArquivoSelecionado | null>(null);
+  const [showAllHistorico, setShowAllHistorico] = useState(false);
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [feedbackModalTitle, setFeedbackModalTitle] = useState('Aviso');
+  const [feedbackModalMessage, setFeedbackModalMessage] = useState('');
+
+  const usuarioIdNumerico = userId ? Number(userId) : Number.NaN;
+  const usuarioAutenticadoValido = Number.isInteger(usuarioIdNumerico) && usuarioIdNumerico > 0;
+
+  const historicoVisivel = showAllHistorico ? historicoImportacoes : historicoImportacoes.slice(0, 3);
+
+  const openFeedbackModal = (title: string, message: string) => {
+    if (isIOS) {
+      Alert.alert(title, message);
+      return;
+    }
+    setFeedbackModalTitle(title);
+    setFeedbackModalMessage(message);
+    setFeedbackModalVisible(true);
+  };
+
+  const salvarCsvNoMobile = async (csv: string): Promise<boolean> => {
+    try {
+      const diretorio = Platform.OS === 'ios' ? FileSystem.documentDirectory : FileSystem.cacheDirectory;
+      if (!diretorio) return false;
+      const timestamp = new Date().getTime();
+      const caminhoCsv = `${diretorio}extrato_${timestamp}.csv`;
+      await FileSystem.writeAsStringAsync(caminhoCsv, csv, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      const podeCompartilhar = await Sharing.isAvailableAsync();
+      if (podeCompartilhar) {
+        try {
+          await Sharing.shareAsync(caminhoCsv, {
+            dialogTitle: 'Baixar extrato em CSV',
+          });
+          return true;
+        } catch {
+          try {
+            await Sharing.shareAsync(caminhoCsv, {
+              dialogTitle: 'Baixar extrato em CSV',
+              mimeType: 'text/csv',
+              UTI: 'public.comma-separated-values-text',
+            });
+            return true;
+          } catch {
+            // tenta fallback nativo abaixo
+          }
+        }
+      }
+
+      if (Platform.OS === 'ios') {
+        try {
+          await Share.share({
+            title: 'Baixar extrato em CSV',
+            url: caminhoCsv,
+            message: 'Arquivo CSV exportado.',
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
 
   const carregarHistorico = useCallback(async () => {
-    if (!apiOn || !token) {
+    if (!apiOn || !token || !userId || !usuarioAutenticadoValido) {
       setHistoricoImportacoes([]);
       return;
     }
-    const rows = await fetchImportacaoHistorico(token);
+    const rows = await fetchImportacaoHistorico(token, userId);
     if (!rows.length) {
       setHistoricoImportacoes([]);
       return;
@@ -128,25 +217,87 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
         erros: r.erros,
       })),
     );
-  }, [apiOn, token]);
+  }, [apiOn, token, userId, usuarioAutenticadoValido]);
 
   useEffect(() => {
     carregarHistorico();
   }, [carregarHistorico]);
 
+  const escolherArquivo = async () => {
+    const resultado = await DocumentPicker.getDocumentAsync({
+      type: bancoExtrato === 'itau' ? ['application/pdf', '.pdf'] : ['text/csv', '.csv'],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
+    if (resultado.canceled) return;
+    const asset = resultado.assets[0];
+    if (!asset) return;
+
+    if (!validarArquivoSelecionado(bancoExtrato, asset.name)) {
+      Alert.alert(
+        'Formato inválido',
+        `Para ${bancoExtrato === 'itau' ? 'Itaú' : 'C6/Bradesco'} selecione arquivo ${extensaoPermitida(bancoExtrato)}.`,
+      );
+      return;
+    }
+
+    setArquivoSelecionado({
+      uri: asset.uri,
+      name: asset.name,
+      mimeType: asset.mimeType,
+      size: asset.size,
+      webFile: (asset as DocumentPicker.DocumentPickerAsset & { file?: File }).file ?? null,
+    });
+  };
+
   const handleImportar = () => {
+    if (!token || !userId) {
+      openFeedbackModal('Sessão expirada', 'Faça login novamente para importar com autenticação JWT.');
+      return;
+    }
+    if (!usuarioAutenticadoValido) {
+      openFeedbackModal('Usuário inválido', 'Não foi possível identificar o usuário autenticado.');
+      return;
+    }
+    if (!arquivoSelecionado) {
+      openFeedbackModal('Selecione um arquivo', 'Toque em "Selecionar arquivo" antes de importar.');
+      return;
+    }
     setProcessando(true);
     void (async () => {
-      if (apiOn && token) {
+      if (apiOn) {
         const tipoApi = tipoUploadParaApi(bancoExtrato);
-        const nomeArquivo = arquivoNomeExtratoSimulado(bancoExtrato);
-        const res = await postImportacaoUpload(token, { tipo: tipoApi, arquivoNome: nomeArquivo });
-        await carregarHistorico();
+        const res = await postImportacaoUpload(token, {
+          usuarioId: usuarioIdNumerico,
+          banco: tipoApi as BancoExtratoId,
+          file: arquivoSelecionado,
+          persistir: true,
+        });
+        if (res.ok) {
+          setHistoricoImportacoes((prev) => [
+            {
+              id: `${Date.now()}`,
+              tipo: `extrato_${tipoApi}`,
+              arquivo: res.data.arquivo_origem,
+              data: formatDataImp(new Date().toISOString()),
+              status: 'concluido',
+              registros: res.data.total_extraido,
+              novos: res.data.inseridas,
+              atualizados: res.data.duplicatas_ignoradas,
+              erros: 0,
+            },
+            ...prev,
+          ]);
+        } else {
+          await carregarHistorico();
+        }
         setProcessando(false);
         setModalUpload(false);
-        Alert.alert(
-          res ? 'Importação' : 'Aviso',
-          res?.mensagem ?? 'Não foi possível contactar o servidor. Dados locais inalterados.',
+        setArquivoSelecionado(null);
+        openFeedbackModal(
+          res.ok ? 'Importação' : 'Falha na importação',
+          res.ok ? 'Importação de transações realizada com sucesso!' : res.error,
         );
         return;
       }
@@ -160,14 +311,61 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
   const handleExportar = (tipo: string) => {
     setModalExportar(false);
     void (async () => {
-      if (tipo === 'transacoes' && apiOn && token) {
-        const csv = await fetchExportacaoTransacoesCsv(token);
-        if (csv) {
-          Alert.alert('Exportação', `CSV gerado (${csv.split('\n').length} linhas).`);
+      if (Platform.OS === 'ios') {
+        await new Promise<void>((resolve) => {
+          InteractionManager.runAfterInteractions(() => resolve());
+        });
+      }
+      try {
+        if (!token || !userId) {
+          openFeedbackModal('Sessão expirada', 'Faça login novamente para exportar com autenticação JWT.');
           return;
         }
+        if (!usuarioAutenticadoValido) {
+          openFeedbackModal('Usuário inválido', 'Não foi possível identificar o usuário autenticado.');
+          return;
+        }
+        if (tipo === 'transacoes' && apiOn) {
+          const csv = await fetchExportacaoTransacoesCsv(token, userId);
+          if (csv) {
+            if (Platform.OS === 'web') {
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.setAttribute('download', `extrato_${new Date().getTime()}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              URL.revokeObjectURL(url);
+              openFeedbackModal('Exportação', 'Exportação de transações realizada com sucesso!');
+              return;
+            }
+
+            const ok = await salvarCsvNoMobile(csv);
+            if (!ok) {
+              openFeedbackModal(
+                'Falha na exportação',
+                'Não foi possível abrir o compartilhamento do CSV no iPhone. Tente novamente e escolha "Salvar em Arquivos".',
+              );
+              Alert.alert('Falha na exportação', 'Não foi possível abrir o compartilhamento do CSV no iPhone.');
+              return;
+            }
+            openFeedbackModal('Exportação', 'Exportação feita com sucesso.');
+            return;
+          }
+          openFeedbackModal(
+            'Falha na exportação',
+            'Não foi possível obter o CSV da API. Verifique conexão, token e URL da API ETL.',
+          );
+          Alert.alert('Falha na exportação', 'Não foi possível obter o CSV da API.');
+          return;
+        }
+        openFeedbackModal('Exportação', 'Apenas exportação de transações em CSV está disponível neste fluxo.');
+      } catch {
+        openFeedbackModal('Erro inesperado', 'Ocorreu um erro ao exportar. Tente novamente.');
+        Alert.alert('Erro inesperado', 'Ocorreu um erro ao exportar.');
       }
-      Alert.alert('Exportação', 'Apenas exportação de transações em CSV está disponível neste fluxo.');
     })();
   };
 
@@ -213,8 +411,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
           <View style={styles.infoBannerText}>
             <Text style={styles.infoBannerTitle}>Processamento de dados</Text>
             <Text style={styles.infoBannerDesc}>
-              Importe extratos (C6, Bradesco ou Itaú) para reconciliação automática ou exporte seus dados para backup e
-              análise.
+              Importe extratos (C6, Bradesco ou Itaú) para extrair apenas transações e exporte suas transações em CSV.
             </Text>
           </View>
         </View>
@@ -229,12 +426,21 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
             <Text style={styles.actionDesc}>Upload de arquivos</Text>
           </Pressable>
 
-          <Pressable style={styles.actionCard} onPress={() => setModalExportar(true)}>
+          <Pressable
+            style={styles.actionCard}
+            onPress={() => {
+              if (isIOS) {
+                handleExportar('transacoes');
+                return;
+              }
+              setModalExportar(true);
+            }}
+          >
             <View style={[styles.actionIcon, styles.actionIconGreen]}>
               <MaterialCommunityIcons name="download" size={24} color="#16a34a" />
             </View>
             <Text style={styles.actionTitle}>Exportar</Text>
-            <Text style={styles.actionDesc}>Baixar dados</Text>
+            <Text style={styles.actionDesc}>Baixar transações</Text>
           </Pressable>
         </View>
 
@@ -267,7 +473,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
           {historicoImportacoes.length === 0 ? (
             <Text style={styles.historicoVazio}>Nenhuma importação registrada ainda.</Text>
           ) : null}
-          {historicoImportacoes.map(imp => (
+          {historicoVisivel.map(imp => (
             <View key={imp.id} style={styles.historicoItem}>
               <View style={styles.historicoTop}>
                 {getStatusIcon(imp.status)}
@@ -276,7 +482,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
                   <View style={styles.historicoMeta}>
                     <View style={getStatusStyle(imp.status)}>
                       <Text style={getStatusTextStyle(imp.status)}>
-                        {labelTipoImportacao(String(imp.tipo))} · {imp.status}
+                        {labelTipoImportacao(String(imp.tipo))}
                       </Text>
                     </View>
                     <Text style={styles.historicoData}>{imp.data}</Text>
@@ -306,16 +512,28 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
               )}
             </View>
           ))}
+          {historicoImportacoes.length > 3 && (
+            <Pressable style={styles.mostrarMaisBtn} onPress={() => setShowAllHistorico((v) => !v)}>
+              <MaterialCommunityIcons
+                name={showAllHistorico ? 'chevron-up-circle-outline' : 'chevron-down-circle-outline'}
+                size={18}
+                color="#0d9488"
+              />
+              <Text style={styles.mostrarMaisText}>
+                {showAllHistorico ? 'Mostrar menos' : 'Mostrar mais'}
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Como Funciona */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoCardTitle}>Como funciona a reconciliação?</Text>
+          <Text style={styles.infoCardTitle}>Como funciona a conciliação?</Text>
           {[
             'Escolha o banco e envie o extrato no formato correto (C6/Bradesco = CSV, Itaú = PDF)',
-            'O sistema compara com transações cadastradas',
-            'Reconciliação automática por valor, data e descrição',
-            'Sugestões de lançamentos para movimentos não cadastrados',
+            'O sistema extrai as transações do extrato enviado',
+            'Cada linha é normalizada para data, descrição, tipo e valor',
+            'Você pode exportar as transações em CSV',
           ].map((step, i) => (
             <View key={i} style={styles.stepRow}>
               <Text style={styles.stepNumber}>{i + 1}.</Text>
@@ -357,7 +575,10 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
                   <Pressable
                     key={b.id}
                     style={[styles.radioOption, bancoExtrato === b.id && styles.radioOptionActive]}
-                    onPress={() => setBancoExtrato(b.id)}
+                    onPress={() => {
+                      setBancoExtrato(b.id);
+                      setArquivoSelecionado(null);
+                    }}
                   >
                     <View style={[styles.radioCircle, bancoExtrato === b.id && styles.radioCircleActive]}>
                       {bancoExtrato === b.id && <View style={styles.radioInner} />}
@@ -372,13 +593,23 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
                   </Pressable>
                 ))}
 
-                <View style={styles.dropZone}>
+                <Pressable style={styles.dropZone} onPress={() => void escolherArquivo()}>
                   <MaterialCommunityIcons name="upload" size={40} color="#9ca3af" />
                   <Text style={styles.dropZoneTitle}>Toque para selecionar</Text>
                   <Text style={styles.dropZoneDesc}>
                     {bancoExtrato === 'itau' ? 'Somente PDF para Itaú' : 'Somente CSV para C6 e Bradesco'}
                   </Text>
-                </View>
+                  {arquivoSelecionado ? (
+                    <View style={styles.fileInfoBox}>
+                      <Text style={styles.fileInfoName} numberOfLines={1}>
+                        {arquivoSelecionado.name}
+                      </Text>
+                      <Text style={styles.fileInfoSize}>
+                        {arquivoSelecionado.size ? `${Math.round(arquivoSelecionado.size / 1024)} KB` : 'Tamanho não informado'}
+                      </Text>
+                    </View>
+                  ) : null}
+                </Pressable>
 
                 <View style={styles.modalButtons}>
                   <Pressable style={styles.cancelBtn} onPress={() => setModalUpload(false)}>
@@ -395,48 +626,55 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
         </Pressable>
       </Modal>
 
-      {/* Modal Exportar */}
-      <Modal visible={modalExportar} transparent animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={() => setModalExportar(false)}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Exportar Dados</Text>
-              <Pressable onPress={() => setModalExportar(false)}>
-                <MaterialCommunityIcons name="close" size={22} color="#9ca3af" />
+      {/* Modal Exportar (web/android) */}
+      {!isIOS && (
+        <Modal visible={modalExportar} transparent animationType="slide">
+          <Pressable style={styles.modalOverlay} onPress={() => setModalExportar(false)}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Exportar Dados</Text>
+                <Pressable onPress={() => setModalExportar(false)}>
+                  <MaterialCommunityIcons name="close" size={22} color="#9ca3af" />
+                </Pressable>
+              </View>
+              <Text style={styles.exportDesc}>Escolha qual tipo de dado deseja exportar:</Text>
+
+              {[
+                { key: 'transacoes', icon: 'file-excel', label: 'Transações', desc: 'Todas as receitas e despesas' },
+                // { key: 'honorarios', icon: 'file-document-outline', label: 'Honorários', desc: 'Contratos e pagamentos' },
+                // { key: 'clientes', icon: 'database', label: 'Clientes', desc: 'Cadastro completo' },
+              ].map(item => (
+                <Pressable key={item.key} style={styles.exportOption} onPress={() => handleExportar(item.key)}>
+                  <View style={[styles.exportIcon, { backgroundColor: '#f0fdf4' }]}>
+                    <MaterialCommunityIcons name={item.icon as any} size={20} color="#16a34a" />
+                  </View>
+                  <View style={styles.exportOptionText}>
+                    <Text style={styles.exportOptionTitle}>{item.label}</Text>
+                    <Text style={styles.exportOptionDesc}>{item.desc}</Text>
+                  </View>
+                  <MaterialCommunityIcons name="arrow-right" size={18} color="#9ca3af" />
+                </Pressable>
+              ))}
+
+              <Pressable style={styles.cancelBtn} onPress={() => setModalExportar(false)}>
+                <Text style={styles.cancelBtnText}>Cancelar</Text>
               </Pressable>
             </View>
-            <Text style={styles.exportDesc}>Escolha qual tipo de dado deseja exportar:</Text>
+          </Pressable>
+        </Modal>
+      )}
 
-            {[
-              { key: 'transacoes', icon: 'file-excel', label: 'Transações', desc: 'Todas as receitas e despesas' },
-              { key: 'honorarios', icon: 'file-document-outline', label: 'Honorários', desc: 'Contratos e pagamentos' },
-              { key: 'clientes', icon: 'database', label: 'Clientes', desc: 'Cadastro completo' },
-            ].map(item => (
-              <Pressable key={item.key} style={styles.exportOption} onPress={() => handleExportar(item.key)}>
-                <View style={[styles.exportIcon, { backgroundColor: '#f0fdf4' }]}>
-                  <MaterialCommunityIcons name={item.icon as any} size={20} color="#16a34a" />
-                </View>
-                <View style={styles.exportOptionText}>
-                  <Text style={styles.exportOptionTitle}>{item.label}</Text>
-                  <Text style={styles.exportOptionDesc}>{item.desc}</Text>
-                </View>
-                <MaterialCommunityIcons name="arrow-right" size={18} color="#9ca3af" />
-              </Pressable>
-            ))}
-
-            <Pressable style={styles.exportOptionBlue} onPress={() => handleExportar('completo')}>
-              <View style={[styles.exportIcon, { backgroundColor: '#ccfbf1' }]}>
-                <MaterialCommunityIcons name="download" size={20} color="#0d9488" />
-              </View>
-              <View style={styles.exportOptionText}>
-                <Text style={[styles.exportOptionTitle, { color: '#115e59' }]}>Backup Completo</Text>
-                <Text style={[styles.exportOptionDesc, { color: '#0f766e' }]}>Todos os dados do sistema</Text>
-              </View>
-              <MaterialCommunityIcons name="arrow-right" size={18} color="#0d9488" />
-            </Pressable>
-
-            <Pressable style={styles.cancelBtn} onPress={() => setModalExportar(false)}>
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
+      {/* Modal de Feedback */}
+      <Modal visible={feedbackModalVisible} transparent animationType="fade">
+        <Pressable style={styles.modalOverlayCenter} onPress={() => setFeedbackModalVisible(false)}>
+          <View style={styles.feedbackModalCard}>
+            <View style={styles.feedbackIconWrap}>
+              <MaterialCommunityIcons name="check-decagram-outline" size={30} color="#0d9488" />
+            </View>
+            <Text style={styles.feedbackTitle}>{feedbackModalTitle}</Text>
+            <Text style={styles.feedbackMessage}>{feedbackModalMessage}</Text>
+            <Pressable style={styles.feedbackBtn} onPress={() => setFeedbackModalVisible(false)}>
+              <Text style={styles.feedbackBtnText}>OK</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -509,6 +747,19 @@ const styles = StyleSheet.create({
   statusTextPendente: { fontSize: 11, color: '#9ca3af', fontWeight: '500' },
 
   historicoData: { fontSize: 12, color: '#9ca3af' },
+  mostrarMaisBtn: {
+    marginTop: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#f0fdfa',
+    borderWidth: 1,
+    borderColor: '#ccfbf1',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  mostrarMaisText: { fontSize: 13, fontWeight: '600', color: '#0f766e' },
 
   statsRow: {
     flexDirection: 'row', gap: 16,
@@ -537,12 +788,38 @@ const styles = StyleSheet.create({
   bottomNavWrap: { position: 'absolute', bottom: 0, left: 0, right: 0 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalOverlayCenter: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
   modalSheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, paddingBottom: 36,
   },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontWeight: '600', color: '#111827' },
+  feedbackModalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+  },
+  feedbackIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#ccfbf1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  feedbackTitle: { fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 8, textAlign: 'center' },
+  feedbackMessage: { fontSize: 14, color: '#374151', textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  feedbackBtn: {
+    width: '100%',
+    borderRadius: 10,
+    backgroundColor: '#0d9488',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  feedbackBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   processandoContainer: { alignItems: 'center', paddingVertical: 32 },
   processandoTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginTop: 16, marginBottom: 4 },
@@ -582,6 +859,17 @@ const styles = StyleSheet.create({
   },
   dropZoneTitle: { fontSize: 14, fontWeight: '500', color: '#111827', marginTop: 8, marginBottom: 4 },
   dropZoneDesc: { fontSize: 12, color: '#9ca3af' },
+  fileInfoBox: {
+    width: '100%',
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  fileInfoName: { fontSize: 13, fontWeight: '600', color: '#111827' },
+  fileInfoSize: { fontSize: 12, color: '#6b7280', marginTop: 2 },
 
   modalButtons: { flexDirection: 'row', gap: 12 },
   cancelBtn: {
