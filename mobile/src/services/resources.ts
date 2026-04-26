@@ -1,3 +1,6 @@
+import { getApiBaseUrl } from '../config/api';
+import axios from 'axios';
+
 import type {
   ClienteAdvogadoApi,
   ClienteDashboardApi,
@@ -134,12 +137,12 @@ export async function fetchClienteDashboard(token: string | null): Promise<Clien
       notificacoesNaoLidas: d.notificacoesNaoLidas,
       ultimaCobranca: uc
         ? {
-            parcelaLabel: uc.descricao || '',
-            vencimento: formatVencimentoClienteDash(uc.vencimento),
-            valor: uc.valor,
-            id: uc.id,
-            status: uc.status,
-          }
+          parcelaLabel: uc.descricao || '',
+          vencimento: formatVencimentoClienteDash(uc.vencimento),
+          valor: uc.valor,
+          id: uc.id,
+          status: uc.status,
+        }
         : undefined,
     };
   } catch {
@@ -489,18 +492,74 @@ export async function fetchEscritorioDadosBancarios(token: string | null): Promi
   }
 }
 
-export async function fetchClientePerfil(token: string | null): Promise<ClientePerfilApi | null> {
-  try {
-    return await apiGetJson<ClientePerfilApi>('/cliente/perfil', token);
-  } catch {
-    return null;
-  }
+export async function fetchClientePerfil(token: string, userId: string) {
+  const data = await apiGetJson<any>(`/usuarios/${userId}`, token);
+
+  return {
+    nome: data.nome,
+    email: data.email,
+    telefone: data.telefone,
+    foto: data.foto,
+    logradouro: data.logradouro,
+    numero: data.numero,
+    bairro: data.bairro,
+    cidade: data.cidade,
+    cep: data.cep,
+  };
 }
 
-export async function fetchPerfilEscritorio(token: string | null): Promise<PerfilEscritorioApi | null> {
-  try {
-    return await apiGetJson<PerfilEscritorioApi>('/perfil', token);
-  } catch {
-    return null;
-  }
+
+export async function fetchPerfilEscritorio(token: string, userId: string) {
+  const data = await apiGetJson<any>(`/usuarios/${userId}`, token);
+
+  return {
+    nomeFantasia: data.nomeFantasia,
+    razaoSocial: data.razaoSocial,
+    email: data.email,
+    telefone: data.telefone,
+    oab: data.oab,
+    foto: data.foto,
+    logradouro: data.logradouro,
+    numero: data.numero,
+    bairro: data.bairro,
+    cidade: data.cidade,
+    cep: data.cep,
+  };
+}
+
+export async function updatePerfil(token: string, userId: string, payload: any) {
+  return apiPutJson(`/usuarios/${userId}`, token, payload);
+}
+
+export async function uploadFotoPerfil(
+  token: string,
+  userId: string,
+  uri: string
+) {
+  const formData = new FormData();
+
+  const filename = uri.split('/').pop() || 'foto.jpg';
+
+  let type = 'image/jpeg';
+  if (filename.endsWith('.png')) type = 'image/png';
+  if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) type = 'image/jpeg';
+
+  formData.append('file', {
+    uri,
+    name: filename,
+    type,
+  } as any);
+
+  const res = await axios.post(
+    `${getApiBaseUrl()}/usuarios/${userId}/foto`,
+    formData,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+
+  return res.data;
 }
