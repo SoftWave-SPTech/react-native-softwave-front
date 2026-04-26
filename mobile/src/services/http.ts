@@ -49,7 +49,8 @@ export async function apiFetch(
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
-  if (rest.body != null && !headers.has('Content-Type')) {
+  const isFormData = typeof FormData !== 'undefined' && rest.body instanceof FormData;
+  if (rest.body != null && !headers.has('Content-Type') && !isFormData) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -134,4 +135,16 @@ export async function apiDeleteJson(path: string, token: string | null): Promise
   if (!res.ok) {
     await throwHttpError(res, path);
   }
+}
+
+export async function apiPostFormData<T>(path: string, token: string | null, body: FormData): Promise<T> {
+  const res = await apiFetch(path, {
+    method: 'POST',
+    token,
+    body,
+  });
+  if (!res.ok) {
+    await throwHttpError(res, path);
+  }
+  return res.json() as Promise<T>;
 }

@@ -10,7 +10,7 @@ export type TransacaoCardModel = {
   subtitle: string;
   value: string;
   type: 'receita' | 'despesa';
-  status: 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
+  status: 'pago' | 'pendente' | 'atrasado' | 'cancelado';
 };
 
 const FALLBACK_ICON: TransacaoCardModel['icon'] = 'cash';

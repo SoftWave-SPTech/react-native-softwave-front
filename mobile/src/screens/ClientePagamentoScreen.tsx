@@ -2,11 +2,19 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Modal, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
-import { fetchCobrancaDetalhe, fetchCobrancaPix, fetchEscritorioDadosBancarios } from '../services/resources';
+import {
+  fetchCobrancaDetalhe,
+  fetchCobrancaPix,
+  fetchEscritorioDadosBancarios,
+  postCobrancaComprovante,
+  type UploadableFile,
+} from '../services/resources';
 import { formatCentavosBRL, formatDateIsoToBR } from '../utils/money';
 
 const BANCO_VAZIO = {
@@ -35,7 +43,7 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
   const [copiado, setCopiado] = useState(false);
   const [comprovanteAnexado, setComprovanteAnexado] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [arquivoSelecionado, setArquivoSelecionado] = useState<string | null>(null);
+  const [arquivoSelecionado, setArquivoSelecionado] = useState<UploadableFile | null>(null);
   const [enviando, setEnviando] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -56,6 +64,7 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
       if (det) {
         setValorFmt(formatCentavosBRL(det.valor));
         setVencFmt(/^\d{4}-\d{2}-\d{2}/.test(det.vencimento) ? formatDateIsoToBR(det.vencimento) : det.vencimento);
+        setComprovanteAnexado(Boolean(det.comprovanteEnviado || det.comprovanteUrl));
       }
       if (pix?.pixCopiaCola) setPixCode(pix.pixCopiaCola);
       if (esc) setBanco(esc);
@@ -83,20 +92,83 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
     }
   };
 
-  const selecionarArquivo = (tipo: 'camera' | 'galeria') => {
-    const nomes = ['comprovante_pix.jpg', 'pagamento_03_2026.png', 'recibo_transferencia.pdf'];
-    const nome = nomes[Math.floor(Math.random() * nomes.length)];
-    setArquivoSelecionado(nome);
+  const selecionarArquivo = async (tipo: 'camera' | 'galeria' | 'documento') => {
+    try {
+      if (tipo === 'documento') {
+        const doc = await DocumentPicker.getDocumentAsync({
+          copyToCacheDirectory: true,
+          multiple: false,
+          type: ['image/*', 'application/pdf'],
+        });
+        if (doc.canceled || !doc.assets[0]) return;
+        const a = doc.assets[0];
+        setArquivoSelecionado({
+          uri: a.uri,
+          name: a.name ?? `comprovante_${Date.now()}`,
+          type: a.mimeType ?? 'application/octet-stream',
+          file: (a as { file?: File | Blob }).file,
+        });
+        return;
+      }
+
+      const permissao =
+        tipo === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissao.granted) {
+        Alert.alert('Permissão necessária', 'Autorize acesso à câmera/galeria para enviar comprovante.');
+        return;
+      }
+
+      const picked =
+        tipo === 'camera'
+          ? await ImagePicker.launchCameraAsync({
+              quality: 0.85,
+              allowsEditing: false,
+              mediaTypes: ['images'],
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              quality: 0.85,
+              allowsEditing: false,
+              mediaTypes: ['images'],
+            });
+
+      if (picked.canceled || !picked.assets[0]) return;
+      const a = picked.assets[0];
+      const ext = a.fileName?.split('.').pop() || 'jpg';
+      setArquivoSelecionado({
+        uri: a.uri,
+        name: a.fileName ?? `comprovante_${Date.now()}.${ext}`,
+        type: a.mimeType ?? 'image/jpeg',
+        file: (a as { file?: File | Blob }).file,
+      });
+    } catch {
+      Alert.alert('Erro', 'Não foi possível selecionar o arquivo.');
+    }
   };
 
-  const enviarComprovante = () => {
+  const enviarComprovante = async () => {
+    if (!arquivoSelecionado) return;
+    if (comprovanteAnexado) {
+      Alert.alert('Comprovante já enviado', 'Este pagamento já possui comprovante enviado.');
+      return;
+    }
+    if (!apiOn || !token) {
+      Alert.alert('API indisponível', 'Configure a API para enviar comprovantes reais.');
+      return;
+    }
     setEnviando(true);
-    setTimeout(() => {
+    try {
+      await postCobrancaComprovante(token, cobrancaId, arquivoSelecionado);
       setEnviando(false);
       setModalVisible(false);
       setArquivoSelecionado(null);
       setComprovanteAnexado(true);
-    }, 1500);
+    } catch (e: unknown) {
+      setEnviando(false);
+      const msg = e instanceof Error ? e.message : 'Falha no envio do comprovante.';
+      Alert.alert('Erro', msg);
+    }
   };
 
   const fecharModal = () => {
@@ -163,9 +235,16 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
               <Text style={styles.comprovanteOkSub}>Aguardando confirmação do escritório</Text>
             </View>
           ) : (
-            <Pressable onPress={() => setModalVisible(true)} style={styles.btnAnexar}>
+            <Pressable
+              onPress={() => {
+                if (comprovanteAnexado) return;
+                setModalVisible(true);
+              }}
+              disabled={comprovanteAnexado}
+              style={[styles.btnAnexar, comprovanteAnexado && styles.btnAnexarDisabled]}
+            >
               <MaterialCommunityIcons name="upload" size={22} color="#fff" />
-              <Text style={styles.btnAnexarText}>Anexar Comprovante</Text>
+              <Text style={styles.btnAnexarText}>{comprovanteAnexado ? 'Comprovante Enviado' : 'Anexar Comprovante'}</Text>
             </Pressable>
           )}
         </View>
@@ -205,7 +284,14 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
                     <MaterialCommunityIcons name="image-multiple" size={32} color="#0d9488" />
                   </View>
                   <Text style={styles.opcaoLabel}>Escolher da Galeria</Text>
-                  <Text style={styles.opcaoSub}>Fotos ou arquivos PDF</Text>
+                  <Text style={styles.opcaoSub}>Fotos da galeria</Text>
+                </Pressable>
+                <Pressable onPress={() => selecionarArquivo('documento')} style={styles.opcaoBtn}>
+                  <View style={styles.opcaoIcon}>
+                    <MaterialCommunityIcons name="file-document-outline" size={32} color="#0d9488" />
+                  </View>
+                  <Text style={styles.opcaoLabel}>Escolher Arquivo</Text>
+                  <Text style={styles.opcaoSub}>Imagem ou PDF</Text>
                 </Pressable>
               </View>
             ) : (
@@ -213,13 +299,13 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
                 <View style={styles.arquivoCard}>
                   <View style={styles.arquivoIcon}>
                     <MaterialCommunityIcons
-                      name={arquivoSelecionado.endsWith('.pdf') ? 'file-pdf-box' : 'file-image'}
+                      name={arquivoSelecionado.type.includes('pdf') ? 'file-pdf-box' : 'file-image'}
                       size={36}
                       color="#0d9488"
                     />
                   </View>
                   <View style={styles.arquivoInfo}>
-                    <Text style={styles.arquivoNome} numberOfLines={1}>{arquivoSelecionado}</Text>
+                    <Text style={styles.arquivoNome} numberOfLines={1}>{arquivoSelecionado.name}</Text>
                     <Text style={styles.arquivoTamanho}>Pronto para envio</Text>
                   </View>
                   <Pressable onPress={() => setArquivoSelecionado(null)} style={styles.arquivoRemover}>
@@ -253,6 +339,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
   heroCard: { borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 16, shadowColor: '#115e59', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 5 },
   heroLabel: { fontSize: 14, color: '#ccfbf1', marginBottom: 8 },
   heroValor: { fontSize: 36, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
@@ -275,6 +363,7 @@ const styles = StyleSheet.create({
   comprovanteOkTitle: { fontSize: 18, fontWeight: '700', color: '#15803d', marginTop: 12 },
   comprovanteOkSub: { fontSize: 14, color: '#16a34a', marginTop: 6, textAlign: 'center' },
   btnAnexar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, backgroundColor: '#0d9488', borderRadius: 12 },
+  btnAnexarDisabled: { backgroundColor: '#6b7280' },
   btnAnexarText: { color: '#fff', fontSize: 16, fontWeight: '500' },
   alertBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f0fdfa', borderWidth: 1, borderColor: '#99f6e4', borderRadius: 16, padding: 16, marginBottom: 16 },
   alertText: { flex: 1, fontSize: 14, color: '#0f766e' },
@@ -286,7 +375,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
   modalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
   modalSubtitle: { fontSize: 14, color: '#6b7280', marginBottom: 24 },
-  modalOpcoes: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  modalOpcoes: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 8 },
   opcaoBtn: { flex: 1, backgroundColor: '#f0fdfa', borderWidth: 1.5, borderColor: '#99f6e4', borderRadius: 16, alignItems: 'center', padding: 20, gap: 8 },
   opcaoIcon: { width: 64, height: 64, borderRadius: 16, backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center' },
   opcaoLabel: { fontSize: 15, fontWeight: '600', color: '#0f766e', textAlign: 'center' },

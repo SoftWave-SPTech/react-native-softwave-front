@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { CardTransacao } from '../components/CardTransacao';
@@ -25,27 +26,32 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
   const [lista, setLista] = useState<TransacaoCardModel[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const carregar = React.useCallback(async () => {
     if (!apiOn) {
       setLista([]);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const data = await fetchTransacoes(token);
-        if (!cancelled) setLista(data.map(mapTransacaoApiToCard));
-      } catch {
-        if (!cancelled) setLista([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    setLoading(true);
+    try {
+      const data = await fetchTransacoes(token);
+      setLista(data.map(mapTransacaoApiToCard));
+    } catch {
+      setLista([]);
+    } finally {
+      setLoading(false);
+    }
   }, [apiOn, token]);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void carregar();
+      return undefined;
+    }, [carregar]),
+  );
 
   const [busca, setBusca] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState<TipoFiltro>('todas');

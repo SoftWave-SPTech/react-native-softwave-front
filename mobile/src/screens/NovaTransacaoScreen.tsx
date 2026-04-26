@@ -8,9 +8,6 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
@@ -18,7 +15,6 @@ import { AccordionSelect, SelectOption } from '../components/AccordionSelect';
 import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import {
-  createClienteRapido,
   createTransacao,
   fetchClientesAdvogado,
   fetchProcessosAdvogado,
@@ -83,6 +79,23 @@ const RECORRENCIAS: SelectOption[] = [
 /** Valor do select de processo = lançamento avulso (backend: semProcesso). */
 const PROCESSO_SEM_VINCULO = '__sem_processo__';
 
+function maskCurrencyInput(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+  const cents = digits.padStart(3, '0');
+  const inteiro = cents.slice(0, -2).replace(/^0+(?=\d)/, '');
+  const decimal = cents.slice(-2);
+  const inteiroFmt = (inteiro || '0').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${inteiroFmt},${decimal}`;
+}
+
+function maskDateInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
 export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
@@ -92,20 +105,16 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
   const [clientesLista, setClientesLista] = useState<ClienteAdvogadoApi[]>([]);
   const [processosLista, setProcessosLista] = useState<ProcessoResumoApi[]>([]);
   const [processoIdApi, setProcessoIdApi] = useState(PROCESSO_SEM_VINCULO);
-  const [modalCliente, setModalCliente] = useState(false);
-  const [novoCliNome, setNovoCliNome] = useState('');
-  const [novoCliEmail, setNovoCliEmail] = useState('');
-  const [novoCliTel, setNovoCliTel] = useState('');
-  const [vincularNovoCliAoProcesso, setVincularNovoCliAoProcesso] = useState(true);
-  const [salvandoCliente, setSalvandoCliente] = useState(false);
 
   const [tipo, setTipo] = useState<'receita' | 'despesa'>(transacaoParaEditar?.tipo ?? 'receita');
-  const [valor, setValor] = useState(transacaoParaEditar?.valor ?? '');
+  const [valor, setValor] = useState(transacaoParaEditar?.valor ? maskCurrencyInput(transacaoParaEditar.valor) : '');
   const [categoria, setCategoria] = useState(transacaoParaEditar?.categoria ?? '');
   const [cliente, setCliente] = useState(transacaoParaEditar?.cliente ?? '');
   const [processo, setProcesso] = useState(transacaoParaEditar?.processo ?? '');
-  const [data, setData] = useState(transacaoParaEditar?.data ?? '');
-  const [vencimento, setVencimento] = useState(transacaoParaEditar?.vencimento ?? '');
+  const [data, setData] = useState(transacaoParaEditar?.data ? maskDateInput(transacaoParaEditar.data) : '');
+  const [vencimento, setVencimento] = useState(
+    transacaoParaEditar?.vencimento ? maskDateInput(transacaoParaEditar.vencimento) : '',
+  );
   const [status, setStatus] = useState<'pago' | 'pendente'>(transacaoParaEditar?.status ?? 'pendente');
   const [descricao, setDescricao] = useState(transacaoParaEditar?.descricao ?? '');
   const [mostrarSucesso, setMostrarSucesso] = useState(false);
@@ -141,12 +150,12 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
   useEffect(() => {
     if (transacaoParaEditar) {
       setTipo(transacaoParaEditar.tipo);
-      setValor(transacaoParaEditar.valor);
+      setValor(maskCurrencyInput(transacaoParaEditar.valor));
       setCategoria(transacaoParaEditar.categoria);
       setCliente(transacaoParaEditar.cliente);
       setProcesso(transacaoParaEditar.processo);
-      setData(transacaoParaEditar.data);
-      setVencimento(transacaoParaEditar.vencimento);
+      setData(maskDateInput(transacaoParaEditar.data));
+      setVencimento(maskDateInput(transacaoParaEditar.vencimento));
       setStatus(transacaoParaEditar.status);
       setDescricao(transacaoParaEditar.descricao);
     }
@@ -159,39 +168,6 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
     if (recorrencia === 'mensal') return `${dur} meses (~${Math.round(dur / 12)} anos)`;
     if (recorrencia === 'anual') return `${dur} anos`;
     return '';
-  };
-
-  const handleSalvarClienteRapido = async () => {
-    if (!token || !novoCliNome.trim()) {
-      Alert.alert('Nome', 'Informe o nome do cliente.');
-      return;
-    }
-    const pid = parseProcessoIdNum(processoIdApi);
-    try {
-      setSalvandoCliente(true);
-      const criado = await createClienteRapido(token, {
-        nome: novoCliNome.trim(),
-        email: novoCliEmail.trim() || undefined,
-        telefone: novoCliTel.trim() || undefined,
-        processoIds:
-          vincularNovoCliAoProcesso && pid != null ? [pid] : undefined,
-      });
-      setClientesLista((prev) => {
-        const rest = prev.filter((c) => c.id !== criado.id);
-        return [criado, ...rest];
-      });
-      setCliente(criado.id);
-      setModalCliente(false);
-      setNovoCliNome('');
-      setNovoCliEmail('');
-      setNovoCliTel('');
-      Alert.alert('Cliente', criado.mensagem ?? 'Cliente cadastrado.');
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Não foi possível cadastrar.';
-      Alert.alert('Erro', msg);
-    } finally {
-      setSalvandoCliente(false);
-    }
   };
 
   const handleSalvar = async () => {
@@ -289,72 +265,6 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
         </View>
       )}
 
-      <Modal visible={modalCliente} transparent animationType="fade" onRequestClose={() => setModalCliente(false)}>
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setModalCliente(false)} />
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Novo cliente</Text>
-            <Text style={styles.modalHint}>Cadastro rápido para aparecer no select e na transação.</Text>
-            <TextInput
-              value={novoCliNome}
-              onChangeText={setNovoCliNome}
-              placeholder="Nome completo *"
-              placeholderTextColor="#9ca3af"
-              style={styles.modalInput}
-            />
-            <TextInput
-              value={novoCliEmail}
-              onChangeText={setNovoCliEmail}
-              placeholder="E-mail (opcional)"
-              placeholderTextColor="#9ca3af"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.modalInput}
-            />
-            <TextInput
-              value={novoCliTel}
-              onChangeText={setNovoCliTel}
-              placeholder="Telefone (opcional)"
-              placeholderTextColor="#9ca3af"
-              keyboardType="phone-pad"
-              style={styles.modalInput}
-            />
-            {parseProcessoIdNum(processoIdApi) != null && (
-              <Pressable
-                onPress={() => setVincularNovoCliAoProcesso(!vincularNovoCliAoProcesso)}
-                style={styles.modalCheckRow}
-              >
-                <MaterialCommunityIcons
-                  name={vincularNovoCliAoProcesso ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                  size={22}
-                  color="#0d9488"
-                />
-                <Text style={styles.modalCheckLabel}>Vincular ao processo selecionado</Text>
-              </Pressable>
-            )}
-            <View style={styles.modalActions}>
-              <Pressable onPress={() => setModalCliente(false)} style={styles.modalBtnSecondary}>
-                <Text style={styles.modalBtnSecondaryText}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => void handleSalvarClienteRapido()}
-                disabled={salvandoCliente}
-                style={[styles.modalBtnPrimary, salvandoCliente && styles.saveBtnDisabled]}
-              >
-                {salvandoCliente ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.modalBtnPrimaryText}>Salvar</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Tipo */}
         <View style={styles.tipoRow}>
@@ -373,7 +283,7 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
           </Text>
           <TextInput
             value={valor}
-            onChangeText={setValor}
+            onChangeText={(v) => setValor(maskCurrencyInput(v))}
             placeholder="R$ 0,00"
             placeholderTextColor="#9ca3af"
             keyboardType="numeric"
@@ -438,12 +348,6 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
             onChange={setCliente}
           />
         </View>
-        {apiOn && (
-          <Pressable onPress={() => setModalCliente(true)} style={styles.linkNovoCliente}>
-            <MaterialCommunityIcons name="account-plus" size={20} color="#0d9488" />
-            <Text style={styles.linkNovoClienteText}>Cadastrar novo cliente</Text>
-          </Pressable>
-        )}
 
         {/* Processo — texto livre (referência / modo offline) */}
         <View style={styles.field}>
@@ -463,7 +367,7 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
             <Text style={styles.fieldLabel}>Data pagamento</Text>
             <TextInput
               value={data}
-              onChangeText={setData}
+              onChangeText={(v) => setData(maskDateInput(v))}
               placeholder="DD/MM/AAAA"
               placeholderTextColor="#9ca3af"
               keyboardType="numeric"
@@ -476,7 +380,7 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
             </Text>
             <TextInput
               value={vencimento}
-              onChangeText={setVencimento}
+              onChangeText={(v) => setVencimento(maskDateInput(v))}
               placeholder="DD/MM/AAAA"
               placeholderTextColor="#9ca3af"
               keyboardType="numeric"
@@ -706,54 +610,4 @@ const styles = StyleSheet.create({
     marginTop: -4,
     lineHeight: 18,
   },
-  linkNovoCliente: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-    paddingVertical: 4,
-  },
-  linkNovoClienteText: { fontSize: 14, color: '#0d9488', fontWeight: '600' },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    zIndex: 2,
-  },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 6 },
-  modalHint: { fontSize: 13, color: '#6b7280', marginBottom: 16 },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 10,
-    color: '#111827',
-  },
-  modalCheckRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 8 },
-  modalCheckLabel: { fontSize: 14, color: '#374151', flex: 1 },
-  modalActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  modalBtnSecondary: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-  },
-  modalBtnSecondaryText: { fontSize: 15, color: '#4b5563', fontWeight: '600' },
-  modalBtnPrimary: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#0d9488',
-    alignItems: 'center',
-  },
-  modalBtnPrimaryText: { fontSize: 15, color: '#fff', fontWeight: '600' },
 });

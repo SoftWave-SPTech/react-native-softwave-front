@@ -4,13 +4,15 @@ export type TransacaoApi = {
   subtitulo: string;
   valor: number;
   tipo: 'receita' | 'despesa';
-  status: 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
+  status: 'pago' | 'pendente' | 'atrasado' | 'cancelado';
   icone?: string;
   ordem?: number;
   categoria?: string;
   clienteId?: string;
   data?: string;
   vencimento?: string;
+  comprovante?: boolean;
+  comprovanteUrl?: string | null;
 };
 
 /** Corpo de `POST /transacoes` alinhado ao backend (honorário novo via `processoId`). */
@@ -57,7 +59,7 @@ export type ContratoApi = {
   cliente: string;
   processo: string;
   tipoContrato: string;
-  status: 'em-dia' | 'pendente' | 'atrasado' | 'encerrado';
+  status: 'pendente' | 'atrasado' | 'pago' | 'cancelado' | 'encerrado';
   progresso: number;
   vencimento: string;
   total: number;
@@ -99,6 +101,8 @@ export type CobrancaDetalheApi = {
   status: 'pago' | 'pendente';
   parcela: number;
   totalParcelas: number;
+  comprovanteUrl?: string;
+  comprovanteEnviado?: boolean;
 };
 
 export type CobrancaPixApi = {
@@ -147,17 +151,18 @@ export type PerfilEscritorioApi = {
 };
 
 export type PagamentoConferirApi = {
-  id: number;
+  id: string;
   cliente: string;
   processo: string;
   valor: number;
   data: string;
+  comprovanteUrl?: string;
   status: 'pendente' | 'aprovado' | 'reprovado';
   motivoRejeicao?: string;
 };
 
 export type DashboardResumoApi = {
-  id: number;
+  id?: number;
   valorDisponivel: number;
   lucroLiquidoMes: number;
   receitaMensal: number;
@@ -171,7 +176,7 @@ export type DashboardResumoApi = {
 };
 
 export type NotificacaoAdvApi = {
-  id: number;
+  id: string;
   tipo: 'pagamento' | 'alerta' | 'sucesso' | 'lembrete' | 'insight';
   titulo: string;
   mensagem: string;
@@ -181,7 +186,7 @@ export type NotificacaoAdvApi = {
 
 /** Shape normalizado para a Home do cliente (compatível com mock legado e GET /cliente/dashboard). */
 export type ClienteDashboardApi = {
-  id: number;
+  id?: number;
   nome: string;
   totalPago: number;
   totalPendente: number;
