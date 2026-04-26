@@ -5,6 +5,8 @@ import {
   ScrollView,
   Pressable,
   Platform,
+  Share,
+  InteractionManager,
   Modal,
   ActivityIndicator,
   StyleSheet,
@@ -114,6 +116,7 @@ function formatDataImp(isoOrBr: string): string {
 export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
   void onNavigate;
   const { token, userId } = useAuth();
+  const isIOS = Platform.OS === 'ios';
   const apiOn = !!getEtlApiBaseUrl() && !!token && !!userId;
 
   const [modalUpload, setModalUpload] = useState(false);
@@ -133,6 +136,10 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
   const historicoVisivel = showAllHistorico ? historicoImportacoes : historicoImportacoes.slice(0, 3);
 
   const openFeedbackModal = (title: string, message: string) => {
+    if (isIOS) {
+      Alert.alert(title, message);
+      return;
+    }
     setFeedbackModalTitle(title);
     setFeedbackModalMessage(message);
     setFeedbackModalVisible(true);
@@ -140,38 +147,48 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
 
   const salvarCsvNoMobile = async (csv: string): Promise<boolean> => {
     try {
-      const diretorio = FileSystem.cacheDirectory;
+      const diretorio = Platform.OS === 'ios' ? FileSystem.documentDirectory : FileSystem.cacheDirectory;
       if (!diretorio) return false;
       const timestamp = new Date().getTime();
       const caminhoCsv = `${diretorio}extrato_${timestamp}.csv`;
-      const caminhoTxt = `${diretorio}extrato_${timestamp}.txt`;
       await FileSystem.writeAsStringAsync(caminhoCsv, csv, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      await FileSystem.writeAsStringAsync(caminhoTxt, csv, {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
       const podeCompartilhar = await Sharing.isAvailableAsync();
-      if (!podeCompartilhar) return false;
-
-      try {
-        // iOS pode falhar com UTI/mimeType de CSV; tenta o modo mais simples primeiro.
-        await Sharing.shareAsync(caminhoCsv, {
-          dialogTitle: 'Exportar transações',
-        });
-        return true;
-      } catch {
+      if (podeCompartilhar) {
         try {
-          // Fallback para apps que não aceitam extensão .csv no iOS.
-          await Sharing.shareAsync(caminhoTxt, {
-            dialogTitle: 'Exportar transações',
+          await Sharing.shareAsync(caminhoCsv, {
+            dialogTitle: 'Baixar extrato em CSV',
+          });
+          return true;
+        } catch {
+          try {
+            await Sharing.shareAsync(caminhoCsv, {
+              dialogTitle: 'Baixar extrato em CSV',
+              mimeType: 'text/csv',
+              UTI: 'public.comma-separated-values-text',
+            });
+            return true;
+          } catch {
+            // tenta fallback nativo abaixo
+          }
+        }
+      }
+
+      if (Platform.OS === 'ios') {
+        try {
+          await Share.share({
+            title: 'Baixar extrato em CSV',
+            url: caminhoCsv,
+            message: 'Arquivo CSV exportado.',
           });
           return true;
         } catch {
           return false;
         }
       }
+      return false;
     } catch {
       return false;
     }
@@ -294,39 +311,61 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
   const handleExportar = (tipo: string) => {
     setModalExportar(false);
     void (async () => {
-      if (!token || !userId) {
-        openFeedbackModal('Sessão expirada', 'Faça login novamente para exportar com autenticação JWT.');
-        return;
+      if (Platform.OS === 'ios') {
+        await new Promise<void>((resolve) => {
+          InteractionManager.runAfterInteractions(() => resolve());
+        });
       }
-      if (!usuarioAutenticadoValido) {
-        openFeedbackModal('Usuário inválido', 'Não foi possível identificar o usuário autenticado.');
-        return;
-      }
-      if (tipo === 'transacoes' && apiOn) {
-        const csv = await fetchExportacaoTransacoesCsv(token, userId);
-        if (csv) {
-          if (Platform.OS === 'web') {
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `extrato_${new Date().getTime()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            URL.revokeObjectURL(url);
-          } else {
-            const ok = await salvarCsvNoMobile(csv);
-            if (!ok) {
-              openFeedbackModal('Falha na exportação', 'Não foi possível salvar/compartilhar o CSV no dispositivo.');
-              return;
-            }
-          }
-          openFeedbackModal('Exportação', 'Exportação de transações realizada com sucesso!');
+      try {
+        if (!token || !userId) {
+          openFeedbackModal('Sessão expirada', 'Faça login novamente para exportar com autenticação JWT.');
           return;
         }
+        if (!usuarioAutenticadoValido) {
+          openFeedbackModal('Usuário inválido', 'Não foi possível identificar o usuário autenticado.');
+          return;
+        }
+        if (tipo === 'transacoes' && apiOn) {
+          const csv = await fetchExportacaoTransacoesCsv(token, userId);
+          if (csv) {
+            if (Platform.OS === 'web') {
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.setAttribute('download', `extrato_${new Date().getTime()}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              URL.revokeObjectURL(url);
+              openFeedbackModal('Exportação', 'Exportação de transações realizada com sucesso!');
+              return;
+            }
+
+            const ok = await salvarCsvNoMobile(csv);
+            if (!ok) {
+              openFeedbackModal(
+                'Falha na exportação',
+                'Não foi possível abrir o compartilhamento do CSV no iPhone. Tente novamente e escolha "Salvar em Arquivos".',
+              );
+              Alert.alert('Falha na exportação', 'Não foi possível abrir o compartilhamento do CSV no iPhone.');
+              return;
+            }
+            openFeedbackModal('Exportação', 'Exportação feita com sucesso.');
+            return;
+          }
+          openFeedbackModal(
+            'Falha na exportação',
+            'Não foi possível obter o CSV da API. Verifique conexão, token e URL da API ETL.',
+          );
+          Alert.alert('Falha na exportação', 'Não foi possível obter o CSV da API.');
+          return;
+        }
+        openFeedbackModal('Exportação', 'Apenas exportação de transações em CSV está disponível neste fluxo.');
+      } catch {
+        openFeedbackModal('Erro inesperado', 'Ocorreu um erro ao exportar. Tente novamente.');
+        Alert.alert('Erro inesperado', 'Ocorreu um erro ao exportar.');
       }
-      openFeedbackModal('Exportação', 'Apenas exportação de transações em CSV está disponível neste fluxo.');
     })();
   };
 
@@ -387,7 +426,16 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
             <Text style={styles.actionDesc}>Upload de arquivos</Text>
           </Pressable>
 
-          <Pressable style={styles.actionCard} onPress={() => setModalExportar(true)}>
+          <Pressable
+            style={styles.actionCard}
+            onPress={() => {
+              if (isIOS) {
+                handleExportar('transacoes');
+                return;
+              }
+              setModalExportar(true);
+            }}
+          >
             <View style={[styles.actionIcon, styles.actionIconGreen]}>
               <MaterialCommunityIcons name="download" size={24} color="#16a34a" />
             </View>
@@ -578,53 +626,43 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
         </Pressable>
       </Modal>
 
-      {/* Modal Exportar */}
-      <Modal visible={modalExportar} transparent animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={() => setModalExportar(false)}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Exportar Dados</Text>
-              <Pressable onPress={() => setModalExportar(false)}>
-                <MaterialCommunityIcons name="close" size={22} color="#9ca3af" />
+      {/* Modal Exportar (web/android) */}
+      {!isIOS && (
+        <Modal visible={modalExportar} transparent animationType="slide">
+          <Pressable style={styles.modalOverlay} onPress={() => setModalExportar(false)}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Exportar Dados</Text>
+                <Pressable onPress={() => setModalExportar(false)}>
+                  <MaterialCommunityIcons name="close" size={22} color="#9ca3af" />
+                </Pressable>
+              </View>
+              <Text style={styles.exportDesc}>Escolha qual tipo de dado deseja exportar:</Text>
+
+              {[
+                { key: 'transacoes', icon: 'file-excel', label: 'Transações', desc: 'Todas as receitas e despesas' },
+                // { key: 'honorarios', icon: 'file-document-outline', label: 'Honorários', desc: 'Contratos e pagamentos' },
+                // { key: 'clientes', icon: 'database', label: 'Clientes', desc: 'Cadastro completo' },
+              ].map(item => (
+                <Pressable key={item.key} style={styles.exportOption} onPress={() => handleExportar(item.key)}>
+                  <View style={[styles.exportIcon, { backgroundColor: '#f0fdf4' }]}>
+                    <MaterialCommunityIcons name={item.icon as any} size={20} color="#16a34a" />
+                  </View>
+                  <View style={styles.exportOptionText}>
+                    <Text style={styles.exportOptionTitle}>{item.label}</Text>
+                    <Text style={styles.exportOptionDesc}>{item.desc}</Text>
+                  </View>
+                  <MaterialCommunityIcons name="arrow-right" size={18} color="#9ca3af" />
+                </Pressable>
+              ))}
+
+              <Pressable style={styles.cancelBtn} onPress={() => setModalExportar(false)}>
+                <Text style={styles.cancelBtnText}>Cancelar</Text>
               </Pressable>
             </View>
-            <Text style={styles.exportDesc}>Escolha qual tipo de dado deseja exportar:</Text>
-
-            {[
-              { key: 'transacoes', icon: 'file-excel', label: 'Transações', desc: 'Todas as receitas e despesas' },
-              // { key: 'honorarios', icon: 'file-document-outline', label: 'Honorários', desc: 'Contratos e pagamentos' },
-              // { key: 'clientes', icon: 'database', label: 'Clientes', desc: 'Cadastro completo' },
-            ].map(item => (
-              <Pressable key={item.key} style={styles.exportOption} onPress={() => handleExportar(item.key)}>
-                <View style={[styles.exportIcon, { backgroundColor: '#f0fdf4' }]}>
-                  <MaterialCommunityIcons name={item.icon as any} size={20} color="#16a34a" />
-                </View>
-                <View style={styles.exportOptionText}>
-                  <Text style={styles.exportOptionTitle}>{item.label}</Text>
-                  <Text style={styles.exportOptionDesc}>{item.desc}</Text>
-                </View>
-                <MaterialCommunityIcons name="arrow-right" size={18} color="#9ca3af" />
-              </Pressable>
-            ))}
-
-            {/* Extrato focado em transações: opções adicionais de exportação ficam desabilitadas por enquanto. */}
-            {/* <Pressable style={styles.exportOptionBlue} onPress={() => handleExportar('completo')}>
-              <View style={[styles.exportIcon, { backgroundColor: '#ccfbf1' }]}>
-                <MaterialCommunityIcons name="download" size={20} color="#0d9488" />
-              </View>
-              <View style={styles.exportOptionText}>
-                <Text style={[styles.exportOptionTitle, { color: '#115e59' }]}>Backup Completo</Text>
-                <Text style={[styles.exportOptionDesc, { color: '#0f766e' }]}>Todos os dados do sistema</Text>
-              </View>
-              <MaterialCommunityIcons name="arrow-right" size={18} color="#0d9488" />
-            </Pressable> */}
-
-            <Pressable style={styles.cancelBtn} onPress={() => setModalExportar(false)}>
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
+          </Pressable>
+        </Modal>
+      )}
 
       {/* Modal de Feedback */}
       <Modal visible={feedbackModalVisible} transparent animationType="fade">
