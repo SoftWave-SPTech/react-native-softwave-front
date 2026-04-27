@@ -1,25 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  TextInput,
-  Modal,
   ActivityIndicator,
-  StyleSheet,
   Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
-import { getApiBaseUrl } from '../config/api';
+import { getIaApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
-import { fetchIaHistorico, postIaAnalise } from '../services/resources';
+import type { InsightFinanceiroResponseApi, TipoInsightApi } from '../types/api';
+import { fetchInsightsHistorico, postInsightGerar } from '../services/resources';
 
 type Props = {
   onBack: () => void;
-  onNavigate: (screen: string, id?: string) => void;
+  onNavigate?: (screen: string, id?: string) => void;
 };
 
 interface HistoricoItem {
@@ -27,9 +28,35 @@ interface HistoricoItem {
   tipoAnalise: string;
   tipoLabel: string;
   periodo: string;
-  resposta: string;
+  resumo: string;
+  bullets: string[];
+  riscos: string[];
+  oportunidades: string[];
   data: string;
 }
+
+const tiposAnalise: Array<{ value: string; label: string; api: TipoInsightApi }> = [
+  { value: 'receita-despesa', label: 'Receita vs Despesa', api: 'RECEITA_DESPESA' },
+  { value: 'receita-categoria', label: 'Receita por Categoria', api: 'RECEITA_POR_CATEGORIA' },
+  { value: 'despesa-categoria', label: 'Despesa por Categoria', api: 'DESPESA_POR_CATEGORIA' },
+  { value: 'maiores-clientes', label: 'Maiores Clientes', api: 'MAIORES_CLIENTES' },
+  { value: 'margem-lucro', label: 'Margem de Lucro', api: 'MARGEM_LUCRO' },
+  { value: 'inadimplencia', label: 'Inadimplência', api: 'INADIMPLENCIA' },
+];
+
+const API_TIPO_PARA_UI: Record<TipoInsightApi, string> = {
+  RECEITA_DESPESA: 'receita-despesa',
+  RECEITA_POR_CATEGORIA: 'receita-categoria',
+  DESPESA_POR_CATEGORIA: 'despesa-categoria',
+  MAIORES_CLIENTES: 'maiores-clientes',
+  MARGEM_LUCRO: 'margem-lucro',
+  INADIMPLENCIA: 'inadimplencia',
+};
+
+const filtrosHistorico = [
+  { value: 'todos', label: 'Todos' },
+  ...tiposAnalise.map((t) => ({ value: t.value, label: t.label })),
+];
 
 function brDatasParaIso(inicio: string, fim: string): { dataInicio: string; dataFim: string } {
   const p = (s: string) => s.split('/').map((x) => x.trim());
@@ -44,6 +71,23 @@ function brDatasParaIso(inicio: string, fim: string): { dataInicio: string; data
   return { dataInicio: inicio, dataFim: fim };
 }
 
+function mascaraDataNumerica(value: string): string {
+  const numbers = value.replace(/\D/g, '').slice(0, 8);
+  if (numbers.length <= 2) return numbers;
+  if (numbers.length <= 4) return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
+  return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}/${numbers.slice(4)}`;
+}
+
+function isoDateParaBr(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim());
+  if (!m) return iso;
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+function periodoBrDeInsight(dataInicio: string, dataFim: string): string {
+  return `${isoDateParaBr(dataInicio)} - ${isoDateParaBr(dataFim)}`;
+}
+
 function formatGeradoEm(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -56,125 +100,122 @@ function formatGeradoEm(iso: string): string {
   });
 }
 
-const tiposAnalise = [
-  { value: 'receita-despesa', label: 'Receita vs Despesa' },
-  { value: 'receita-categoria', label: 'Receita por Categoria' },
-  { value: 'despesa-categoria', label: 'Despesa por Categoria' },
-  { value: 'maiores-clientes', label: 'Maiores Clientes' },
-  { value: 'margem-lucro', label: 'Margem de Lucro' },
-  { value: 'inadimplencia', label: 'Inadimplência' },
-];
-
-const filtrosHistorico = [
-  { value: 'todos', label: 'Todos' },
-  ...tiposAnalise,
-];
+function mapearInsightParaHistorico(insight: InsightFinanceiroResponseApi): HistoricoItem {
+  const tipoAnalise = API_TIPO_PARA_UI[insight.tipoInsight] ?? insight.tipoInsight;
+  const bullets = Array.isArray(insight.bullets) ? insight.bullets.filter((b) => b?.trim()) : [];
+  const riscos = Array.isArray(insight.riscos) ? insight.riscos.filter((b) => b?.trim()) : [];
+  const oportunidades = Array.isArray(insight.oportunidades)
+    ? insight.oportunidades.filter((b) => b?.trim())
+    : [];
+  return {
+    id: String(insight.id),
+    tipoAnalise,
+    tipoLabel: tiposAnalise.find((t) => t.value === tipoAnalise)?.label ?? insight.tipoInsight,
+    periodo: periodoBrDeInsight(insight.dataInicio, insight.dataFim),
+    resumo: insight.resumoIA?.trim() ?? '',
+    bullets,
+    riscos,
+    oportunidades,
+    data: formatGeradoEm(insight.criadoEm),
+  };
+}
 
 export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
+  void onNavigate;
   const { token } = useAuth();
-  const apiOn = !!getApiBaseUrl() && !!token;
+  const apiOn = !!getIaApiBaseUrl()?.trim();
 
   const [tipoAnalise, setTipoAnalise] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
-  const [respostaIA, setRespostaIA] = useState('');
+  const [insightGerado, setInsightGerado] = useState<HistoricoItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [filtroHistorico, setFiltroHistorico] = useState('todos');
   const [modalTipo, setModalTipo] = useState(false);
   const [modalFiltro, setModalFiltro] = useState(false);
-
+  const [modalDetalhe, setModalDetalhe] = useState(false);
+  const [insightSelecionado, setInsightSelecionado] = useState<HistoricoItem | null>(null);
+  const [incluirComparativo, setIncluirComparativo] = useState(true);
+  const [carregandoHistorico, setCarregandoHistorico] = useState(false);
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
 
   useEffect(() => {
-    if (!apiOn || !token) {
-      setHistorico([]);
-      return;
-    }
     let cancelled = false;
-    (async () => {
-      const env = await fetchIaHistorico(token);
+    if (!apiOn) {
+      setHistorico([]);
+      return () => {
+        cancelled = true;
+      };
+    }
+    setCarregandoHistorico(true);
+    void (async () => {
+      const lista = await fetchInsightsHistorico(token, undefined, undefined, 0, 50);
       if (cancelled) return;
-      if (env?.historico?.length) {
-        setHistorico(
-          env.historico.map((h) => ({
-            id: h.id,
-            tipoAnalise: h.tipoAnalise,
-            tipoLabel: tiposAnalise.find((t) => t.value === h.tipoAnalise)?.label ?? h.tipoAnalise,
-            periodo: h.periodo,
-            resposta: h.resposta,
-            data: formatGeradoEm(h.geradoEm),
-          })),
-        );
-      } else {
-        setHistorico([]);
-      }
+      setHistorico(lista.map(mapearInsightParaHistorico));
+      setCarregandoHistorico(false);
     })();
     return () => {
       cancelled = true;
     };
   }, [apiOn, token]);
 
-  const tipoLabel = tiposAnalise.find(t => t.value === tipoAnalise)?.label ?? '';
+  const tipoLabel = tiposAnalise.find((t) => t.value === tipoAnalise)?.label ?? '';
+  const tipoApiSelecionado = tiposAnalise.find((t) => t.value === tipoAnalise)?.api;
 
   const handleGerarInsight = () => {
-    if (!tipoAnalise || !dataInicio || !dataFim) return;
-    setIsLoading(true);
-
-    if (!apiOn || !token) {
-      Alert.alert('API', 'Configure EXPO_PUBLIC_API_URL e faça login para gerar análises.');
-      setIsLoading(false);
+    if (!tipoAnalise || !dataInicio || !dataFim || !tipoApiSelecionado) return;
+    if (!apiOn) {
+      Alert.alert('API', 'URL da API não configurada.');
       return;
     }
-
+    setIsLoading(true);
     const { dataInicio: di, dataFim: df } = brDatasParaIso(dataInicio, dataFim);
     void (async () => {
-      const resp = await postIaAnalise(token, { tipoAnalise, dataInicio: di, dataFim: df });
-      if (resp) {
-        setRespostaIA(resp.resposta);
-        const novoItem: HistoricoItem = {
-          id: resp.id,
-          tipoAnalise: resp.tipoAnalise,
-          tipoLabel: tiposAnalise.find((t) => t.value === resp.tipoAnalise)?.label ?? tipoLabel,
-          periodo: resp.periodo,
-          resposta: resp.resposta,
-          data: formatGeradoEm(resp.geradoEm),
-        };
-        setHistorico((prev) => [novoItem, ...prev]);
-      } else {
-        Alert.alert('Erro', 'Não foi possível obter resposta da API.');
+      const insight = await postInsightGerar(token, {
+        tipoInsight: tipoApiSelecionado,
+        dataInicio: di,
+        dataFim: df,
+        incluirComparativoPeriodoAnterior: incluirComparativo,
+      });
+      if (!insight) {
+        Alert.alert('Erro', 'Não foi possível gerar o insight.');
+        setIsLoading(false);
+        return;
       }
+      const novoItem = mapearInsightParaHistorico(insight);
+      setInsightGerado(novoItem);
+      setHistorico((prev) => {
+        const rest = prev.filter((h) => h.id !== novoItem.id);
+        return [novoItem, ...rest];
+      });
       setIsLoading(false);
     })();
   };
 
   const historicoFiltrado = historico.filter(
-    item => filtroHistorico === 'todos' || item.tipoAnalise === filtroHistorico,
+    (item) => filtroHistorico === 'todos' || item.tipoAnalise === filtroHistorico,
   );
-
-  const filtroLabel = filtrosHistorico.find(f => f.value === filtroHistorico)?.label ?? 'Todos';
+  const filtroLabel = filtrosHistorico.find((f) => f.value === filtroHistorico)?.label ?? 'Todos';
   const filtroAtivo = filtroHistorico !== 'todos';
   const corFiltro = filtroAtivo ? '#fff' : '#111827';
-
-  const canSubmit = !!tipoAnalise && !!dataInicio && !!dataFim && !isLoading;
+  const canSubmit = !!tipoAnalise && dataInicio.length === 10 && dataFim.length === 10 && !isLoading;
 
   return (
     <View style={styles.container}>
       <Header title="Assistente IA" showBack onBack={onBack} />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Card Principal */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.iconWrap}>
               <MaterialCommunityIcons name="shimmer" size={24} color="#0d9488" />
             </View>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>Consultoria Inteligente</Text>
-              <Text style={styles.cardSubtitle}>Obtenha insights personalizados</Text>
+              <Text style={styles.cardSubtitle}>Insights a partir da API financeira</Text>
             </View>
           </View>
 
-          {/* Tipo de Análise */}
           <Text style={styles.label}>Tipo de Análise</Text>
           <Pressable style={styles.selectBtn} onPress={() => setModalTipo(true)}>
             <Text style={[styles.selectText, !tipoAnalise && styles.placeholder]}>
@@ -183,7 +224,6 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
             <MaterialCommunityIcons name="chevron-down" size={20} color="#9ca3af" />
           </Pressable>
 
-          {/* Período */}
           <Text style={[styles.label, { marginTop: 16 }]}>Período de Análise</Text>
           <View style={styles.dateRow}>
             <View style={styles.dateField}>
@@ -193,8 +233,9 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
                 placeholder="DD/MM/AAAA"
                 placeholderTextColor="#9ca3af"
                 value={dataInicio}
-                onChangeText={setDataInicio}
+                onChangeText={(text) => setDataInicio(mascaraDataNumerica(text))}
                 keyboardType="numeric"
+                maxLength={10}
               />
             </View>
             <View style={styles.dateField}>
@@ -204,13 +245,20 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
                 placeholder="DD/MM/AAAA"
                 placeholderTextColor="#9ca3af"
                 value={dataFim}
-                onChangeText={setDataFim}
+                onChangeText={(text) => setDataFim(mascaraDataNumerica(text))}
                 keyboardType="numeric"
+                maxLength={10}
               />
             </View>
           </View>
 
-          {/* Botão Gerar */}
+          <Pressable onPress={() => setIncluirComparativo((v) => !v)} style={styles.toggleRow}>
+            <View style={[styles.checkbox, incluirComparativo && styles.checkboxActive]}>
+              {incluirComparativo ? <MaterialCommunityIcons name="check" size={14} color="#fff" /> : null}
+            </View>
+            <Text style={styles.toggleText}>Comparar com período anterior</Text>
+          </Pressable>
+
           <Pressable
             style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
             onPress={handleGerarInsight}
@@ -230,8 +278,7 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
           </Pressable>
         </View>
 
-        {/* Resposta IA */}
-        {!!respostaIA && (
+        {!!insightGerado && (
           <View style={styles.respostaCard}>
             <View style={styles.respostaHeader}>
               <View style={styles.respostaIconWrap}>
@@ -239,13 +286,21 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
               </View>
               <View style={styles.respostaContent}>
                 <Text style={styles.respostaTitle}>Análise Gerada</Text>
-                <Text style={styles.respostaText}>{respostaIA}</Text>
+                <Text style={styles.respostaText} numberOfLines={3}>{insightGerado.resumo}</Text>
+                <Pressable
+                  style={styles.verMaisBtn}
+                  onPress={() => {
+                    setInsightSelecionado(insightGerado);
+                    setModalDetalhe(true);
+                  }}
+                >
+                  <Text style={styles.verMaisText}>Ver análise completa</Text>
+                </Pressable>
               </View>
             </View>
           </View>
         )}
 
-        {/* Histórico */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
@@ -262,18 +317,33 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
             </Pressable>
           </View>
 
-          {historicoFiltrado.map(item => (
-            <View key={item.id} style={styles.historicoCard}>
-              <View style={styles.historicoTop}>
-                <View style={styles.tipoTag}>
-                  <Text style={styles.tipoTagText}>{item.tipoLabel}</Text>
+          {carregandoHistorico ? (
+            <ActivityIndicator style={{ marginVertical: 16 }} color="#0d9488" />
+          ) : historicoFiltrado.length === 0 ? (
+            <Text style={styles.emptyHistorico}>Nenhum insight salvo ainda para este usuário.</Text>
+          ) : (
+            historicoFiltrado.map((item) => (
+              <View key={item.id} style={styles.historicoCard}>
+                <View style={styles.historicoTop}>
+                  <View style={styles.tipoTag}>
+                    <Text style={styles.tipoTagText}>{item.tipoLabel}</Text>
+                  </View>
+                  <Text style={styles.historicoData}>{item.data}</Text>
                 </View>
-                <Text style={styles.historicoData}>{item.data}</Text>
+                <Text style={styles.historicoPeriodo}>{item.periodo}</Text>
+                <Text style={styles.historicoResumo} numberOfLines={2}>{item.resumo}</Text>
+                <Pressable
+                  style={styles.linkDetalhe}
+                  onPress={() => {
+                    setInsightSelecionado(item);
+                    setModalDetalhe(true);
+                  }}
+                >
+                  <Text style={styles.linkDetalheText}>Ver detalhes</Text>
+                </Pressable>
               </View>
-              <Text style={styles.historicoPeriodo}>{item.periodo}</Text>
-              <Text style={styles.historicoResposta}>{item.resposta}</Text>
-            </View>
-          ))}
+            ))
+          )}
         </View>
 
         <View style={{ height: 100 }} />
@@ -283,23 +353,25 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
         <BottomNav />
       </View>
 
-      {/* Modal Tipo de Análise */}
       <Modal visible={modalTipo} transparent animationType="slide">
         <Pressable style={styles.modalOverlay} onPress={() => setModalTipo(false)}>
-          <View style={styles.modalSheet}>
+          <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
             <Text style={styles.modalTitle}>Tipo de Análise</Text>
-            {tiposAnalise.map(tipo => (
+            {tiposAnalise.map((tipo) => (
               <Pressable
                 key={tipo.value}
                 style={[styles.modalOption, tipoAnalise === tipo.value && styles.modalOptionActive]}
-                onPress={() => { setTipoAnalise(tipo.value); setModalTipo(false); }}
+                onPress={() => {
+                  setTipoAnalise(tipo.value);
+                  setModalTipo(false);
+                }}
               >
                 <Text style={[styles.modalOptionText, tipoAnalise === tipo.value && styles.modalOptionTextActive]}>
                   {tipo.label}
                 </Text>
-                {tipoAnalise === tipo.value && (
+                {tipoAnalise === tipo.value ? (
                   <MaterialCommunityIcons name="check" size={18} color="#0d9488" />
-                )}
+                ) : null}
               </Pressable>
             ))}
             <Pressable style={styles.modalCancel} onPress={() => setModalTipo(false)}>
@@ -309,27 +381,60 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
         </Pressable>
       </Modal>
 
-      {/* Modal Filtro Histórico */}
       <Modal visible={modalFiltro} transparent animationType="slide">
         <Pressable style={styles.modalOverlay} onPress={() => setModalFiltro(false)}>
-          <View style={styles.modalSheet}>
+          <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
             <Text style={styles.modalTitle}>Filtrar Histórico</Text>
-            {filtrosHistorico.map(f => (
+            {filtrosHistorico.map((f) => (
               <Pressable
                 key={f.value}
                 style={[styles.modalOption, filtroHistorico === f.value && styles.modalOptionActive]}
-                onPress={() => { setFiltroHistorico(f.value); setModalFiltro(false); }}
+                onPress={() => {
+                  setFiltroHistorico(f.value);
+                  setModalFiltro(false);
+                }}
               >
                 <Text style={[styles.modalOptionText, filtroHistorico === f.value && styles.modalOptionTextActive]}>
                   {f.label}
                 </Text>
-                {filtroHistorico === f.value && (
+                {filtroHistorico === f.value ? (
                   <MaterialCommunityIcons name="check" size={18} color="#0d9488" />
-                )}
+                ) : null}
               </Pressable>
             ))}
             <Pressable style={styles.modalCancel} onPress={() => setModalFiltro(false)}>
               <Text style={styles.modalCancelText}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={modalDetalhe} transparent animationType="slide">
+        <Pressable style={styles.modalOverlay} onPress={() => setModalDetalhe(false)}>
+          <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
+            <Text style={styles.modalTitle}>Detalhes do Insight</Text>
+            {insightSelecionado ? (
+              <ScrollView style={styles.modalContent}>
+                <Text style={styles.modalMeta}>{insightSelecionado.tipoLabel} • {insightSelecionado.data}</Text>
+                <Text style={styles.modalMeta}>{insightSelecionado.periodo}</Text>
+                <Text style={styles.modalSectionTitle}>Resumo</Text>
+                <Text style={styles.modalSectionText}>{insightSelecionado.resumo || 'Sem resumo.'}</Text>
+                <Text style={styles.modalSectionTitle}>Ações sugeridas</Text>
+                {insightSelecionado.bullets.length ? insightSelecionado.bullets.map((item, index) => (
+                  <Text key={`${item}-${index}`} style={styles.modalBullet}>• {item}</Text>
+                )) : <Text style={styles.modalSectionText}>Sem ações sugeridas.</Text>}
+                <Text style={styles.modalSectionTitle}>Riscos</Text>
+                {insightSelecionado.riscos.length ? insightSelecionado.riscos.map((item, index) => (
+                  <Text key={`${item}-${index}`} style={styles.modalBullet}>• {item}</Text>
+                )) : <Text style={styles.modalSectionText}>Sem riscos informados.</Text>}
+                <Text style={styles.modalSectionTitle}>Oportunidades</Text>
+                {insightSelecionado.oportunidades.length ? insightSelecionado.oportunidades.map((item, index) => (
+                  <Text key={`${item}-${index}`} style={styles.modalBullet}>• {item}</Text>
+                )) : <Text style={styles.modalSectionText}>Sem oportunidades informadas.</Text>}
+              </ScrollView>
+            ) : null}
+            <Pressable style={styles.modalCancel} onPress={() => setModalDetalhe(false)}>
+              <Text style={styles.modalCancelText}>Fechar</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -363,7 +468,6 @@ const styles = StyleSheet.create({
   cardSubtitle: { fontSize: 13, color: '#6b7280', marginTop: 2 },
 
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 8 },
-
   selectBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb',
@@ -372,7 +476,7 @@ const styles = StyleSheet.create({
   selectText: { fontSize: 14, color: '#111827', flex: 1 },
   placeholder: { color: '#9ca3af' },
 
-  dateRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  dateRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   dateField: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb',
@@ -381,6 +485,27 @@ const styles = StyleSheet.create({
   dateIcon: { marginRight: 8 },
   dateInput: { flex: 1, height: 46, fontSize: 13, color: '#111827' },
 
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxActive: {
+    backgroundColor: '#0d9488',
+    borderColor: '#0d9488',
+  },
+  toggleText: { fontSize: 13, color: '#4b5563', flex: 1 },
   submitBtn: {
     backgroundColor: '#0d9488', borderRadius: 12, paddingVertical: 14,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -400,6 +525,8 @@ const styles = StyleSheet.create({
   respostaContent: { flex: 1 },
   respostaTitle: { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 6 },
   respostaText: { fontSize: 14, color: '#374151', lineHeight: 21 },
+  verMaisBtn: { marginTop: 8 },
+  verMaisText: { color: '#0f766e', fontSize: 13, fontWeight: '600' },
 
   section: { marginBottom: 16 },
   sectionHeader: {
@@ -433,7 +560,10 @@ const styles = StyleSheet.create({
   tipoTagText: { fontSize: 12, color: '#0f766e', fontWeight: '500' },
   historicoData: { fontSize: 12, color: '#9ca3af' },
   historicoPeriodo: { fontSize: 13, color: '#6b7280', marginBottom: 8 },
-  historicoResposta: { fontSize: 13, color: '#374151', lineHeight: 20 },
+  emptyHistorico: { fontSize: 14, color: '#6b7280', marginVertical: 8 },
+  historicoResumo: { fontSize: 13, color: '#374151', lineHeight: 20 },
+  linkDetalhe: { marginTop: 6, alignSelf: 'flex-start' },
+  linkDetalheText: { fontSize: 13, color: '#0f766e', fontWeight: '600' },
 
   bottomNavWrap: { position: 'absolute', bottom: 0, left: 0, right: 0 },
 
@@ -458,4 +588,9 @@ const styles = StyleSheet.create({
     borderRadius: 12, alignItems: 'center',
   },
   modalCancelText: { fontSize: 15, fontWeight: '600', color: '#374151' },
+  modalContent: { maxHeight: 380 },
+  modalMeta: { fontSize: 12, color: '#6b7280', marginBottom: 6 },
+  modalSectionTitle: { fontSize: 14, color: '#111827', fontWeight: '700', marginTop: 10, marginBottom: 4 },
+  modalSectionText: { fontSize: 13, color: '#374151', lineHeight: 20 },
+  modalBullet: { fontSize: 13, color: '#374151', lineHeight: 20, marginBottom: 2 },
 });

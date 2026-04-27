@@ -38,6 +38,22 @@ export function getApiBaseUrl(): string | null {
   return null;
 }
 
+/**
+ * Base da API de IA (ex.: `http://IP:8084` para API-IA-MOBILE).
+ * Se nao definida, usa `getApiBaseUrl()` como fallback.
+ */
+export function getIaApiBaseUrl(): string | null {
+  const fromEnv = process.env.EXPO_PUBLIC_IA_API_URL;
+  if (fromEnv && String(fromEnv).trim().length > 0) {
+    return normalizeBaseUrl(String(fromEnv).trim());
+  }
+  const extra = Constants.expoConfig?.extra as { iaApiUrl?: string } | undefined;
+  if (extra?.iaApiUrl && String(extra.iaApiUrl).trim().length > 0) {
+    return normalizeBaseUrl(String(extra.iaApiUrl).trim());
+  }
+  return getApiBaseUrl();
+}
+
 /** URL usada só no fluxo de login (`/auth/login`). */
 export function getLoginApiBaseUrl(): string | null {
   return getAuthBaseUrl() ?? getApiBaseUrl();
