@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { getLoginApiBaseUrl } from '../config/api';
 import { loginWithApi } from '../services/authApi';
 
@@ -65,14 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userType, setUserType] = useState<UserType | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const session = loadPersistedSession();
-    if (!session) return;
-    setUserType(session.userType);
-    setToken(session.token);
-    setUserId(session.userId);
-  }, []);
 
   const login = async (email: string, senha: string): Promise<LoginResult> => {
     const loginBase = getLoginApiBaseUrl();
