@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Modal, Alert, ActivityIndicator, Image, Linking, Platform } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { TagStatus } from '../components/TagStatus';
+import { ComprovantePreviewModal } from '../components/ComprovantePreviewModal';
 import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { deleteTransacao, fetchTransacaoById, updateTransacao } from '../services/resources';
-import { apiFetch } from '../services/http';
 import type { TransacaoApi } from '../types/api';
 import { formatCentavosBRL, formatDateIsoToBR } from '../utils/money';
 
@@ -68,15 +68,7 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditar
   }, [carregar]);
 
   const [modalComprovante, setModalComprovante] = useState(false);
-  const [comprovantePreviewUrl, setComprovantePreviewUrl] = useState('');
-  const [previewErro, setPreviewErro] = useState(false);
   const [mutando, setMutando] = useState(false);
-  useEffect(() => {
-    const cleanup = () => {
-      if (comprovantePreviewUrl.startsWith('blob:')) URL.revokeObjectURL(comprovantePreviewUrl);
-    };
-    return cleanup;
-  }, [comprovantePreviewUrl]);
 
 
   const handleExcluir = () => {
@@ -180,61 +172,8 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditar
   const comprovanteAbsUrl = (() => {
     const comprovanteUrl = transacao?.comprovanteUrl ?? '';
     if (!comprovanteUrl) return '';
-    if (/^https?:\/\//i.test(comprovanteUrl)) return comprovanteUrl;
-    const base = getApiBaseUrl() ?? '';
-    return comprovanteUrl.startsWith('/') ? `${base}${comprovanteUrl}` : `${base}/${comprovanteUrl}`;
+    return comprovanteUrl;
   })();
-
-  const blobToPreviewUri = useCallback(async (blob: Blob): Promise<string> => {
-    if (Platform.OS === 'web' && typeof URL !== 'undefined' && URL.createObjectURL) {
-      return URL.createObjectURL(blob);
-    }
-    if (typeof FileReader !== 'undefined') {
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(String(reader.result ?? ''));
-        reader.onerror = () => reject(new Error('Falha ao converter arquivo para preview.'));
-        reader.readAsDataURL(blob);
-      });
-    }
-    throw new Error('Preview não suportado neste dispositivo');
-  }, []);
-
-  useEffect(() => {
-    if (!modalComprovante) return;
-    let previous = '';
-    const carregarPreview = async () => {
-      setPreviewErro(false);
-      setComprovantePreviewUrl((prev) => {
-        previous = prev;
-        return '';
-      });
-      if (!comprovanteAbsUrl) return;
-      const base = getApiBaseUrl() ?? '';
-      if (!base || !comprovanteAbsUrl.startsWith(base)) {
-        setComprovantePreviewUrl(comprovanteAbsUrl);
-        return;
-      }
-      if (!token) {
-        setPreviewErro(true);
-        return;
-      }
-      try {
-        const relative = comprovanteAbsUrl.slice(base.length) || '/';
-        const path = relative.startsWith('/') ? relative : `/${relative}`;
-        const res = await apiFetch(path, { method: 'GET', token });
-        if (!res.ok) throw new Error('Falha ao carregar comprovante');
-        const blob = await res.blob();
-        const uri = await blobToPreviewUri(blob);
-        setComprovantePreviewUrl(uri);
-      } catch {
-        setPreviewErro(true);
-      } finally {
-        if (previous.startsWith('blob:')) URL.revokeObjectURL(previous);
-      }
-    };
-    void carregarPreview();
-  }, [blobToPreviewUri, comprovanteAbsUrl, modalComprovante, token]);
 
   if (apiOn && loading) {
     return (
@@ -276,57 +215,6 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditar
   const dataEmissao = tx.data ? formatDateIsoToBR(tx.data) : '—';
   const vencFmt = tx.vencimento ? formatDateIsoToBR(tx.vencimento) : '—';
   const descricao = tx.titulo;
-
-  const abrirComprovante = async () => {
-    if (!comprovanteAbsUrl) return;
-    if (!token) {
-      Alert.alert('Sessão inválida', 'Faça login novamente para baixar o comprovante.');
-      return;
-    }
-    try {
-      const base = getApiBaseUrl() ?? '';
-      const relative = comprovanteAbsUrl.startsWith(base) ? (comprovanteAbsUrl.slice(base.length) || '/') : comprovanteAbsUrl;
-      const path = relative.startsWith('/') ? relative : `/${relative}`;
-      const res = await apiFetch(path, { method: 'GET', token });
-      if (!res.ok) {
-        Alert.alert('Erro', 'Não foi possível baixar o comprovante.');
-        return;
-      }
-      const blob = await res.blob();
-
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof URL !== 'undefined') {
-        const objectUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = objectUrl;
-        anchor.download = `comprovante-${tx.id}`;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        URL.revokeObjectURL(objectUrl);
-        return;
-      }
-
-      if (typeof FileReader === 'undefined') {
-        Alert.alert('Não suportado', 'Este dispositivo não suporta download direto do comprovante.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const result = String(reader.result ?? '');
-        if (!result.startsWith('data:')) {
-          Alert.alert('Erro', 'Não foi possível preparar o comprovante para download.');
-          return;
-        }
-        await Linking.openURL(result);
-      };
-      reader.onerror = () => {
-        Alert.alert('Erro', 'Falha ao processar arquivo para download.');
-      };
-      reader.readAsDataURL(blob);
-    } catch {
-      Alert.alert('Erro', 'Falha ao baixar comprovante.');
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -390,37 +278,13 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditar
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      <Modal visible={modalComprovante} transparent animationType="fade">
-        <Pressable style={styles.modalOverlay} onPress={() => setModalComprovante(false)}>
-          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-            <Text style={styles.modalTitle}>Comprovante de Pagamento</Text>
-            {(comprovantePreviewUrl || comprovanteAbsUrl) ? (
-              <Image
-                source={{ uri: comprovantePreviewUrl }}
-                style={styles.comprovantePreview}
-                resizeMode="contain"
-                onError={() => setPreviewErro(true)}
-              />
-            ) : (
-              <View style={styles.comprovantePlaceholder}>
-                <MaterialCommunityIcons name="file-image-outline" size={64} color="#9ca3af" />
-              </View>
-            )}
-            {previewErro && <Text style={styles.semComprovanteText}>Falha ao carregar preview autenticado do comprovante.</Text>}
-            {comprovanteAbsUrl ? (
-              <Pressable onPress={abrirComprovante} style={styles.comprovanteOpenBtn}>
-                <MaterialCommunityIcons name="download" size={18} color="#0d9488" />
-                <Text style={styles.comprovanteOpenBtnText}>Baixar comprovante</Text>
-              </Pressable>
-            ) : (
-              <Text style={styles.semComprovanteText}>Sem comprovante anexado.</Text>
-            )}
-            <Pressable onPress={() => setModalComprovante(false)} style={styles.modalFechar}>
-              <Text style={styles.modalFecharText}>Fechar</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
+      <ComprovantePreviewModal
+        visible={modalComprovante}
+        onClose={() => setModalComprovante(false)}
+        token={token}
+        comprovanteUrl={comprovanteAbsUrl}
+        downloadName={`comprovante-${tx.id}`}
+      />
     </View>
   );
 }
@@ -479,14 +343,4 @@ const styles = StyleSheet.create({
   btnPagoText: { color: '#fff', fontSize: 16, fontWeight: '500' },
   btnCancelar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: '#fff', borderWidth: 2, borderColor: '#e5e7eb', borderRadius: 12 },
   btnCancelarText: { color: '#6b7280', fontSize: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 16 },
-  comprovantePreview: { height: 240, borderRadius: 12, backgroundColor: '#f8fafc', marginBottom: 12 },
-  comprovantePlaceholder: { height: 200, backgroundColor: '#f3f4f6', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  comprovanteOpenBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#ecfeff', borderRadius: 10, paddingVertical: 10, marginBottom: 12 },
-  comprovanteOpenBtnText: { color: '#0f766e', fontWeight: '600', fontSize: 14 },
-  semComprovanteText: { color: '#6b7280', fontSize: 13, marginBottom: 12, textAlign: 'center' },
-  modalFechar: { backgroundColor: '#111827', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  modalFecharText: { color: '#fff', fontSize: 16, fontWeight: '500' },
 });

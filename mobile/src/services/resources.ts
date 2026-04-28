@@ -28,8 +28,10 @@ import type {
   TipoInsightApi,
   TransacaoApi,
   TransacaoCreatePayload,
+  TransacoesListApi,
 } from '../types/api';
-import { getIaApiBaseUrl } from '../config/api';
+import { getIaApiBaseUrl, getEtlApiBaseUrl } from '../config/api';
+import { Platform } from 'react-native';
 import { ApiError, apiDeleteJson, apiFetch, apiGetJson, apiPatchJson, apiPostFormData, apiPostJson, apiPutJson } from './http';
 
 /** Spring / outros backends costumam envolver a lista em `{ data }` ou `{ contratos }`. */
@@ -66,8 +68,35 @@ export async function fetchDashboardResumo(token: string | null): Promise<Dashbo
   }
 }
 
-export async function fetchTransacoes(token: string | null): Promise<TransacaoApi[]> {
-  return apiGetJson<TransacaoApi[]>('/transacoes', token);
+export async function fetchTransacoes(
+  token: string | null,
+  params?: {
+    tipo?: 'receita' | 'despesa';
+    status?: 'pago' | 'pendente' | 'atrasado' | 'cancelado';
+    periodoDias?: 15 | 30 | 60 | 90;
+    dataInicio?: string;
+    dataFim?: string;
+    page?: number;
+    limit?: number;
+  },
+): Promise<TransacoesListApi> {
+  const search = new URLSearchParams();
+  if (params?.tipo) search.set('tipo', params.tipo);
+  if (params?.status) search.set('status', params.status);
+  if (params?.periodoDias) search.set('periodoDias', String(params.periodoDias));
+  if (params?.dataInicio) search.set('dataInicio', params.dataInicio);
+  if (params?.dataFim) search.set('dataFim', params.dataFim);
+  search.set('page', String(params?.page ?? 1));
+  search.set('limit', String(params?.limit ?? 20));
+  const q = search.toString();
+  const env = await apiGetJson<TransacoesListApi>(`/transacoes${q ? `?${q}` : ''}`, token);
+  return {
+    transacoes: env.transacoes ?? [],
+    page: env.page ?? 1,
+    pageSize: env.pageSize ?? 20,
+    total: env.total ?? 0,
+    totalPages: env.totalPages ?? 1,
+  };
 }
 
 export async function fetchTransacoesRecentes(token: string | null, limit: number): Promise<TransacaoApi[]> {
@@ -483,6 +512,7 @@ export async function fetchInsightsHistorico(
     const env = await iaRequest<{ content?: InsightFinanceiroResponseApi[] }>(
       `/insights?${params.toString()}`,
       token,
+      { cache: 'no-store' },
     );
     return env.content ?? [];
   } catch {
@@ -492,7 +522,7 @@ export async function fetchInsightsHistorico(
 
 async function iaRequest<T>(path: string, token: string | null, init?: RequestInit): Promise<T> {
   const base = getIaApiBaseUrl();
-  if (!base) throw new ApiError('API de IA nao configurada (defina EXPO_PUBLIC_IA_API_URL).', 500);
+  if (!base) throw new ApiError('API de IA não configurada (defina EXPO_PUBLIC_IA_API_URL).', 500);
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const headers = new Headers(init?.headers);
   headers.set('Accept', 'application/json');
@@ -503,14 +533,32 @@ async function iaRequest<T>(path: string, token: string | null, init?: RequestIn
   const res = await fetch(`${base}${normalizedPath}`, { ...init, headers });
   if (!res.ok) {
     const body = await res.text();
-    throw new ApiError(`[${res.status}] ${res.statusText} em ${path}${body ? ` | body: ${body}` : ''}`, res.status);
+    const preview = body.length > 200 ? `${body.slice(0, 200)}…` : body;
+    throw new ApiError(`[${res.status}] ${res.statusText} em ${path}${preview ? ` | body: ${preview}` : ''}`, res.status);
   }
   return res.json() as Promise<T>;
 }
 
-export async function fetchImportacaoHistorico(token: string | null): Promise<ImportacaoItemApi[]> {
+function normalizeUsuarioId(usuarioId: string): number | null {
+  const parsed = Number(usuarioId);
+  if (!Number.isInteger(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+export async function fetchImportacaoHistorico(token: string | null, usuarioId: string): Promise<ImportacaoItemApi[]> {
   try {
-    const env = await apiGetJson<{ importacoes: ImportacaoItemApi[] }>('/importacao/historico', token);
+    const base = getEtlApiBaseUrl();
+    if (!base) return [];
+    const usuarioIdNumerico = normalizeUsuarioId(usuarioId);
+    if (!usuarioIdNumerico) return [];
+    const url = new URL('/etl/importacao/historico', `${base}/`);
+    url.searchParams.set('usuario_id', String(usuarioIdNumerico));
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!res.ok) return [];
+    const env = (await res.json()) as { importacoes: ImportacaoItemApi[] };
     return env.importacoes ?? [];
   } catch {
     return [];
@@ -519,22 +567,98 @@ export async function fetchImportacaoHistorico(token: string | null): Promise<Im
 
 export async function postImportacaoUpload(
   token: string | null,
-  body: { tipo: string; arquivoNome: string },
-): Promise<{ id: string; mensagem: string; status: string } | null> {
+  body: {
+    usuarioId: number;
+    banco: 'c6' | 'bradesco' | 'itau';
+    file: { uri: string; name: string; mimeType?: string; webFile?: File | null };
+    persistir?: boolean;
+  },
+): Promise<
+  | {
+      ok: true;
+      data: {
+        mensagem: string;
+        banco: string;
+        arquivo_origem: string;
+        total_extraido: number;
+        duplicatas_ignoradas: number;
+        inseridas: number;
+      };
+    }
+  | {
+      ok: false;
+      error: string;
+      status?: number;
+    }
+> {
   try {
-    return await apiPostJson<{ id: string; mensagem: string; status: string }>(
-      '/importacao/upload',
-      token,
-      body,
-    );
+    const base = getEtlApiBaseUrl();
+    if (!base) return { ok: false, error: 'API ETL não configurada.' };
+
+    const formData = new FormData();
+    const mimeType = body.file.mimeType ?? (body.banco === 'itau' ? 'application/pdf' : 'text/csv');
+    if (Platform.OS === 'web') {
+      const maybeFile = body.file.webFile;
+      if (maybeFile instanceof File) {
+        formData.append('arquivo', maybeFile, body.file.name);
+      } else {
+        const blobRes = await fetch(body.file.uri);
+        const blob = await blobRes.blob();
+        formData.append('arquivo', blob, body.file.name);
+      }
+    } else {
+      formData.append('arquivo', {
+        uri: body.file.uri,
+        name: body.file.name,
+        type: mimeType,
+      } as unknown as Blob);
+    }
+
+    const uploadUrl = new URL('/etl/upload', `${base}/`);
+    uploadUrl.searchParams.set('banco', body.banco);
+    uploadUrl.searchParams.set('usuario_id', String(body.usuarioId));
+    uploadUrl.searchParams.set('persistir', body.persistir === false ? 'false' : 'true');
+    const res = await fetch(uploadUrl.toString(), {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+    });
+    if (!res.ok) {
+      let detalhe = `Falha no upload (${res.status})`;
+      try {
+        const err = (await res.json()) as { detail?: string };
+        if (err?.detail) detalhe = err.detail;
+      } catch {
+        // Ignora parse de erro e mantém mensagem padrão.
+      }
+      return { ok: false, error: detalhe, status: res.status };
+    }
+    const data = (await res.json()) as {
+      mensagem: string;
+      banco: string;
+      arquivo_origem: string;
+      total_extraido: number;
+      duplicatas_ignoradas: number;
+      inseridas: number;
+    };
+    return { ok: true, data };
   } catch {
-    return null;
+    return { ok: false, error: 'Não foi possível conectar na API ETL.' };
   }
 }
 
-export async function fetchExportacaoTransacoesCsv(token: string | null): Promise<string | null> {
+export async function fetchExportacaoTransacoesCsv(token: string | null, usuarioId: string): Promise<string | null> {
   try {
-    const res = await apiFetch(`/exportacao/transacoes?formato=csv`, { method: 'GET', token });
+    const base = getEtlApiBaseUrl();
+    if (!base) return null;
+    const usuarioIdNumerico = normalizeUsuarioId(usuarioId);
+    if (!usuarioIdNumerico) return null;
+    const url = new URL('/etl/extrato/csv', `${base}/`);
+    url.searchParams.set('usuario_id', String(usuarioIdNumerico));
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
     if (!res.ok) return null;
     return await res.text();
   } catch {

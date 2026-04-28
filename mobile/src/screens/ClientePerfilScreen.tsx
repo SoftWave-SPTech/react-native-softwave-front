@@ -14,7 +14,6 @@ import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { fetchClientePerfil } from '../services/resources';
 import type { ClientePerfilApi } from '../types/api';
-import { formatCentavosBRL } from '../utils/money';
 
 type Props = {
   onBack: () => void;
@@ -46,8 +45,6 @@ function perfilParaDados(p: ClientePerfilApi): DadoPessoal[] {
   ];
 }
 
-type ProcessoAtivoUi = NonNullable<ClientePerfilApi['processoAtivo']>;
-
 export function ClientePerfilScreen({ onBack, onLogout }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
@@ -56,8 +53,6 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
   const [dadosPessoais, setDadosPessoais] = useState<DadoPessoal[]>([]);
   const [nomeTopo, setNomeTopo] = useState('');
   const [sinceTopo, setSinceTopo] = useState('');
-  const [proc, setProc] = useState<ProcessoAtivoUi | null>(null);
-  const [notificacoesAtivas, setNotificacoesAtivas] = useState(true);
   const [modalFoto, setModalFoto] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -65,7 +60,6 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
       setDadosPessoais([]);
       setNomeTopo('');
       setSinceTopo('');
-      setProc(null);
       return;
     }
     setLoading(true);
@@ -75,19 +69,15 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
         setDadosPessoais(perfilParaDados(p));
         setNomeTopo(p.nome);
         setSinceTopo(`Cliente desde ${p.clienteDesde}`);
-        setProc(p.processoAtivo ?? null);
-        setNotificacoesAtivas(p.preferencias?.notificacoesAtivas ?? true);
       } else {
         setDadosPessoais([]);
         setNomeTopo('');
         setSinceTopo('');
-        setProc(null);
       }
     } catch {
       setDadosPessoais([]);
       setNomeTopo('');
       setSinceTopo('');
-      setProc(null);
     } finally {
       setLoading(false);
     }
@@ -143,80 +133,6 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
             ))
           )}
         </View>
-
-        {/* Configurações */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Configurações</Text>
-
-          {/* Toggle Notificações */}
-          <View style={styles.configItem}>
-            <View style={styles.configLeft}>
-              <View style={[styles.configIconWrap, { backgroundColor: '#fefce8' }]}>
-                <MaterialCommunityIcons name="bell-outline" size={16} color="#ca8a04" />
-              </View>
-              <View>
-                <Text style={styles.configLabel}>Notificações</Text>
-                <Text style={styles.configDesc}>Receber alertas de pagamentos</Text>
-              </View>
-            </View>
-            <Pressable
-              style={[styles.toggle, notificacoesAtivas ? styles.toggleActive : styles.toggleInactive]}
-              onPress={() => setNotificacoesAtivas(!notificacoesAtivas)}
-            >
-              <View style={[styles.toggleThumb, notificacoesAtivas ? styles.toggleThumbActive : styles.toggleThumbInactive]} />
-            </Pressable>
-          </View>
-
-          {/* Alterar Senha */}
-          <Pressable style={styles.configBtn}>
-            <View style={styles.configLeft}>
-              <View style={[styles.configIconWrap, { backgroundColor: '#f9fafb' }]}>
-                <MaterialCommunityIcons name="shield-outline" size={16} color="#6b7280" />
-              </View>
-              <Text style={styles.configLabel}>Alterar Senha</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#9ca3af" />
-          </Pressable>
-
-          {/* Documentos */}
-          <Pressable style={styles.configBtn}>
-            <View style={styles.configLeft}>
-              <View style={[styles.configIconWrap, { backgroundColor: '#f9fafb' }]}>
-                <MaterialCommunityIcons name="file-document-outline" size={16} color="#6b7280" />
-              </View>
-              <Text style={styles.configLabel}>Documentos</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#9ca3af" />
-          </Pressable>
-        </View>
-
-        {/* Processo Ativo */}
-        {proc ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Processo Ativo</Text>
-            <View style={styles.processoWrap}>
-              <View style={styles.processoIconWrap}>
-                <MaterialCommunityIcons name="file-document-outline" size={20} color="#0d9488" />
-              </View>
-              <View style={styles.processoInfo}>
-                <Text style={styles.processoTitulo}>{proc.titulo}</Text>
-                <Text style={styles.processoSubtitulo}>{proc.subtitulo}</Text>
-                <View style={styles.progressoSection}>
-                  <View style={styles.progressoLabelRow}>
-                    <Text style={styles.progressoLabel}>Progresso</Text>
-                    <Text style={styles.progressoPercent}>{proc.progressoPago}%</Text>
-                  </View>
-                  <View style={styles.progressoBarBg}>
-                    <View style={[styles.progressoBarFill, { width: `${proc.progressoPago}%` }]} />
-                  </View>
-                  <Text style={styles.progressoValor}>
-                    {formatCentavosBRL(proc.valorPago)} pagos de {formatCentavosBRL(proc.valorTotal)} total
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        ) : null}
 
         {/* Sair */}
         <Pressable style={styles.logoutBtn} onPress={onLogout}>
@@ -307,59 +223,6 @@ const styles = StyleSheet.create({
   dadoText: { flex: 1 },
   dadoLabel: { fontSize: 11, color: '#9ca3af' },
   dadoValue: { fontSize: 14, fontWeight: '500', color: '#111827' },
-
-  configItem: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 4,
-  },
-  configBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 4,
-  },
-  configLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  configIconWrap: {
-    width: 32, height: 32, borderRadius: 8,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  configLabel: { fontSize: 14, fontWeight: '500', color: '#111827' },
-  configDesc: { fontSize: 12, color: '#9ca3af', marginTop: 1 },
-
-  toggle: {
-    width: 48, height: 26, borderRadius: 13,
-    justifyContent: 'center', paddingHorizontal: 2,
-  },
-  toggleActive: { backgroundColor: '#0d9488' },
-  toggleInactive: { backgroundColor: '#d1d5db' },
-  toggleThumb: {
-    width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2, shadowRadius: 2, elevation: 2,
-  },
-  toggleThumbActive: { alignSelf: 'flex-end' },
-  toggleThumbInactive: { alignSelf: 'flex-start' },
-
-  processoWrap: {
-    backgroundColor: '#f0fdfa', borderRadius: 12, padding: 16,
-    flexDirection: 'row', gap: 12,
-  },
-  processoIconWrap: {
-    width: 40, height: 40, borderRadius: 8,
-    backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center',
-  },
-  processoInfo: { flex: 1 },
-  processoTitulo: { fontSize: 15, fontWeight: '600', color: '#111827' },
-  processoSubtitulo: { fontSize: 13, color: '#6b7280', marginTop: 2, marginBottom: 12 },
-  progressoSection: {},
-  progressoLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  progressoLabel: { fontSize: 13, color: '#6b7280' },
-  progressoPercent: { fontSize: 13, fontWeight: '600', color: '#0d9488' },
-  progressoBarBg: {
-    height: 8, backgroundColor: '#99f6e4', borderRadius: 4, overflow: 'hidden',
-  },
-  progressoBarFill: {
-    height: 8, backgroundColor: '#0d9488', borderRadius: 4,
-  },
-  progressoValor: { fontSize: 12, color: '#9ca3af', marginTop: 6 },
 
   logoutBtn: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16,

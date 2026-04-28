@@ -123,7 +123,7 @@ function mapearInsightParaHistorico(insight: InsightFinanceiroResponseApi): Hist
 export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
   void onNavigate;
   const { token } = useAuth();
-  const apiOn = !!getIaApiBaseUrl()?.trim();
+  const apiOn = !!getIaApiBaseUrl()?.trim() && !!token;
 
   const [tipoAnalise, setTipoAnalise] = useState('');
   const [dataInicio, setDataInicio] = useState('');
@@ -143,6 +143,7 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
     let cancelled = false;
     if (!apiOn) {
       setHistorico([]);
+      setCarregandoHistorico(false);
       return () => {
         cancelled = true;
       };
