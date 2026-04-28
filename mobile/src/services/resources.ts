@@ -457,7 +457,31 @@ export async function postIaAnalise(
   body: { tipoAnalise: string; dataInicio: string; dataFim: string },
 ): Promise<IaAnaliseResponseApi | null> {
   try {
-    return await apiPostJson<IaAnaliseResponseApi>('/ia/analise', token, body);
+    const tipoMap: Record<string, TipoInsightApi> = {
+      'receita-despesa': 'RECEITA_DESPESA',
+      'receita-categoria': 'RECEITA_POR_CATEGORIA',
+      'despesa-categoria': 'DESPESA_POR_CATEGORIA',
+      'maiores-clientes': 'MAIORES_CLIENTES',
+      'margem-lucro': 'MARGEM_LUCRO',
+      inadimplencia: 'INADIMPLENCIA',
+    };
+    const tipoInsight = tipoMap[body.tipoAnalise] ?? 'RECEITA_DESPESA';
+    const insight = await iaRequest<InsightFinanceiroResponseApi>('/insights/gerar', token, {
+      method: 'POST',
+      body: JSON.stringify({
+        tipoInsight,
+        dataInicio: body.dataInicio,
+        dataFim: body.dataFim,
+        incluirComparativoPeriodoAnterior: true,
+      }),
+    });
+    return {
+      id: String(insight.id),
+      tipoAnalise: body.tipoAnalise,
+      periodo: `${insight.dataInicio} - ${insight.dataFim}`,
+      resposta: insight.resumoIA,
+      geradoEm: insight.criadoEm,
+    };
   } catch {
     return null;
   }
@@ -468,8 +492,31 @@ export async function fetchIaHistorico(
   tipo?: string,
 ): Promise<IaHistoricoEnvelopeApi | null> {
   try {
-    const q = tipo && tipo !== 'todos' ? `?tipo=${encodeURIComponent(tipo)}` : '';
-    return await apiGetJson<IaHistoricoEnvelopeApi>(`/ia/historico${q}`, token);
+    const tipoMap: Record<string, TipoInsightApi> = {
+      'receita-despesa': 'RECEITA_DESPESA',
+      'receita-categoria': 'RECEITA_POR_CATEGORIA',
+      'despesa-categoria': 'DESPESA_POR_CATEGORIA',
+      'maiores-clientes': 'MAIORES_CLIENTES',
+      'margem-lucro': 'MARGEM_LUCRO',
+      inadimplencia: 'INADIMPLENCIA',
+    };
+    const params = new URLSearchParams({ page: '0', size: '50' });
+    if (tipo && tipo !== 'todos' && tipoMap[tipo]) {
+      params.set('tipoInsight', tipoMap[tipo]);
+    }
+    const env = await iaRequest<{ content?: InsightFinanceiroResponseApi[] }>(
+      `/insights?${params.toString()}`,
+      token,
+      { cache: 'no-store' },
+    );
+    const historico = (env.content ?? []).map((item) => ({
+      id: String(item.id),
+      tipoAnalise: item.tipoInsight,
+      periodo: `${item.dataInicio} - ${item.dataFim}`,
+      resposta: item.resumoIA,
+      geradoEm: item.criadoEm,
+    }));
+    return { total: historico.length, historico };
   } catch {
     return null;
   }
@@ -524,13 +571,26 @@ async function iaRequest<T>(path: string, token: string | null, init?: RequestIn
   const base = getIaApiBaseUrl();
   if (!base) throw new ApiError('API de IA não configurada (defina EXPO_PUBLIC_IA_API_URL).', 500);
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const headers = new Headers(init?.headers);
-  headers.set('Accept', 'application/json');
-  if (init?.body != null && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
+  const buildHeaders = (includeAuth: boolean) => {
+    const headers = new Headers(init?.headers);
+    headers.set('Accept', 'application/json');
+    if (init?.body != null && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+    if (includeAuth && token) headers.set('Authorization', `Bearer ${token}`);
+    if (!includeAuth) headers.delete('Authorization');
+    return headers;
+  };
+
+  const doRequest = async (includeAuth: boolean) => {
+    return fetch(`${base}${normalizedPath}`, { ...init, headers: buildHeaders(includeAuth) });
+  };
+
+  let res = await doRequest(Boolean(token));
+  if (res.status === 401 && token) {
+    // API-IA-MOBILE pode estar sem JWT configurado; reenvia sem Authorization.
+    res = await doRequest(false);
   }
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-  const res = await fetch(`${base}${normalizedPath}`, { ...init, headers });
   if (!res.ok) {
     const body = await res.text();
     const preview = body.length > 200 ? `${body.slice(0, 200)}…` : body;

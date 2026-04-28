@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit';
 import { Header } from '../components/Header';
@@ -14,6 +14,7 @@ import {
   fetchRelatorioRankingClientes,
   fetchRelatorioReceitaCategoria,
   fetchRelatorioReceitaDespesa,
+  postInsightGerar,
 } from '../services/resources';
 import type {
   RelatorioDespesasMesApi,
@@ -22,13 +23,15 @@ import type {
   RelatorioRankingClientesApi,
   RelatorioReceitaCategoriaApi,
   RelatorioReceitaDespesaApi,
+  TipoInsightApi,
 } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
 
 type Props = {
   onBack: () => void;
-  onNavigate: (screen: string) => void;
+  onNavigate: (screen: string, id?: string) => void;
 };
+type InsightTipo = 'linha' | 'pizza' | 'barra' | 'maioresClientes';
 
 const SCREEN_WIDTH = Dimensions.get('window').width - 40;
 
@@ -57,9 +60,37 @@ const CHART_CONFIG = {
 };
 
 const PIE_PALETTE = ['#2563eb', '#16a34a', '#f59e0b', '#8b5cf6', '#ec4899', '#0ea5e9'];
+const INSIGHT_API_TIPO: Record<InsightTipo, TipoInsightApi> = {
+  linha: 'RECEITA_DESPESA',
+  pizza: 'RECEITA_POR_CATEGORIA',
+  barra: 'DESPESA_POR_CATEGORIA',
+  maioresClientes: 'MAIORES_CLIENTES',
+};
 
 function centavosParaReaisChart(v: number): number {
   return Math.round((v / 100) * 100) / 100;
+}
+
+function toIsoDateLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function intervaloDoPeriodo(periodo: string): { dataInicio: string; dataFim: string } {
+  const hoje = new Date();
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+  if (periodo === 'ano') {
+    const inicioAno = new Date(hoje.getFullYear(), 0, 1);
+    return { dataInicio: toIsoDateLocal(inicioAno), dataFim: toIsoDateLocal(fim) };
+  }
+  if (periodo === 'semestre') {
+    const inicioSemestre = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1);
+    return { dataInicio: toIsoDateLocal(inicioSemestre), dataFim: toIsoDateLocal(fim) };
+  }
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  return { dataInicio: toIsoDateLocal(inicioMes), dataFim: toIsoDateLocal(fim) };
 }
 
 /** Exibe valor principal do KPI com fallback quando a API omite campos ou usa formato alternativo. */
@@ -82,7 +113,9 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [periodo, setPeriodo] = useState('mes');
-  const [insightAberto, setInsightAberto] = useState<'linha' | 'pizza' | 'barra' | 'maioresClientes' | null>(null);
+  const [insightAberto, setInsightAberto] = useState<InsightTipo | null>(null);
+  const [gerandoInsight, setGerandoInsight] = useState<InsightTipo | null>(null);
+  const [insightsGerados, setInsightsGerados] = useState<Partial<Record<InsightTipo, string[]>>>({});
 
   const [loading, setLoading] = useState(false);
   const [rd, setRd] = useState<RelatorioReceitaDespesaApi | null>(null);
@@ -173,7 +206,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
     return [];
   }, [ranking]);
 
-  const insights = useMemo(() => {
+  const insightsPadrao = useMemo(() => {
     return {
       linha: insightsApi?.linha?.length ? insightsApi.linha : [],
       pizza: insightsApi?.pizza?.length ? insightsApi.pizza : [],
@@ -183,8 +216,51 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
     };
   }, [insightsApi]);
 
-  const toggleInsight = (tipo: 'linha' | 'pizza' | 'barra' | 'maioresClientes' ) => {
+  const insights = useMemo(() => {
+    return {
+      linha: insightsGerados.linha?.length ? insightsGerados.linha : insightsPadrao.linha,
+      pizza: insightsGerados.pizza?.length ? insightsGerados.pizza : insightsPadrao.pizza,
+      barra: insightsGerados.barra?.length ? insightsGerados.barra : insightsPadrao.barra,
+      maioresClientes: insightsGerados.maioresClientes?.length
+        ? insightsGerados.maioresClientes
+        : insightsPadrao.maioresClientes,
+    };
+  }, [insightsGerados, insightsPadrao]);
+
+  useEffect(() => {
+    setInsightsGerados({});
+    setInsightAberto(null);
+  }, [periodo]);
+
+  const toggleInsight = (tipo: InsightTipo) => {
     setInsightAberto((prev) => (prev === tipo ? null : tipo));
+  };
+
+  const handleInsightPress = async (tipo: InsightTipo) => {
+    toggleInsight(tipo);
+    if (!apiOn || !token) {
+      Alert.alert('API', 'Token ou URL da API não disponíveis.');
+      return;
+    }
+    setGerandoInsight(tipo);
+    const { dataInicio, dataFim } = intervaloDoPeriodo(periodo);
+    const insight = await postInsightGerar(token, {
+      tipoInsight: INSIGHT_API_TIPO[tipo],
+      dataInicio,
+      dataFim,
+      incluirComparativoPeriodoAnterior: true,
+    });
+    setGerandoInsight((prev) => (prev === tipo ? null : prev));
+    if (!insight) {
+      Alert.alert('Erro', 'Não foi possível gerar o insight para este gráfico.');
+      return;
+    }
+    const bullets = (Array.isArray(insight.bullets) ? insight.bullets : [])
+      .map((item) => item?.trim())
+      .filter((item): item is string => !!item);
+    const resumo = insight.resumoIA?.trim();
+    const payload = bullets.length > 0 ? bullets : resumo ? [resumo] : ['Sem recomendações para este período.'];
+    setInsightsGerados((prev) => ({ ...prev, [tipo]: payload }));
   };
 
   const k = kpis;
@@ -275,8 +351,12 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Receita vs Despesa</Text>
-            <Pressable onPress={() => toggleInsight('linha')} style={[styles.insightBtn, insightAberto === 'linha' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'linha' ? '#0f766e' : '#0d9488'} />
+            <Pressable onPress={() => void handleInsightPress('linha')} style={[styles.insightBtn, insightAberto === 'linha' && styles.insightBtnActive]}>
+              {gerandoInsight === 'linha' ? (
+                <ActivityIndicator size="small" color="#0d9488" />
+              ) : (
+                <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'linha' ? '#0f766e' : '#0d9488'} />
+              )}
             </Pressable>
           </View>
           <LineChart
@@ -300,8 +380,12 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Receita por Categoria</Text>
-            <Pressable onPress={() => toggleInsight('pizza')} style={[styles.insightBtn, insightAberto === 'pizza' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'pizza' ? '#0f766e' : '#0d9488'} />
+            <Pressable onPress={() => void handleInsightPress('pizza')} style={[styles.insightBtn, insightAberto === 'pizza' && styles.insightBtnActive]}>
+              {gerandoInsight === 'pizza' ? (
+                <ActivityIndicator size="small" color="#0d9488" />
+              ) : (
+                <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'pizza' ? '#0f766e' : '#0d9488'} />
+              )}
             </Pressable>
           </View>
           <PieChart
@@ -322,8 +406,12 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Despesas por Mês</Text>
-            <Pressable onPress={() => toggleInsight('barra')} style={[styles.insightBtn, insightAberto === 'barra' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'barra' ? '#0f766e' : '#0d9488'} />
+            <Pressable onPress={() => void handleInsightPress('barra')} style={[styles.insightBtn, insightAberto === 'barra' && styles.insightBtnActive]}>
+              {gerandoInsight === 'barra' ? (
+                <ActivityIndicator size="small" color="#0d9488" />
+              ) : (
+                <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'barra' ? '#0f766e' : '#0d9488'} />
+              )}
             </Pressable>
           </View>
           <BarChart
@@ -343,8 +431,12 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         <View style={styles.card}>
           <View style={styles.chartHeader}>
             <Text style={styles.cardTitle}>Maiores Clientes</Text>
-            <Pressable onPress={() => toggleInsight('maioresClientes')} style={[styles.insightBtn, insightAberto === 'maioresClientes' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'maioresClientes' ? '#0f766e' : '#0d9488'} />
+            <Pressable onPress={() => void handleInsightPress('maioresClientes')} style={[styles.insightBtn, insightAberto === 'maioresClientes' && styles.insightBtnActive]}>
+              {gerandoInsight === 'maioresClientes' ? (
+                <ActivityIndicator size="small" color="#0d9488" />
+              ) : (
+                <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'maioresClientes' ? '#0f766e' : '#0d9488'} />
+              )}
             </Pressable>
             </View>
           {clientesRanking.length === 0 ? (
