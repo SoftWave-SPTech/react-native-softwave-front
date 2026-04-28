@@ -263,6 +263,30 @@ export type IaHistoricoEnvelopeApi = {
   historico: IaAnaliseResponseApi[];
 };
 
+export type TipoInsightApi =
+  | 'RECEITA_DESPESA'
+  | 'RECEITA_POR_CATEGORIA'
+  | 'DESPESA_POR_CATEGORIA'
+  | 'MAIORES_CLIENTES'
+  | 'MARGEM_LUCRO'
+  | 'INADIMPLENCIA';
+
+export type InsightFinanceiroResponseApi = {
+  id: number;
+  tenantId: number | null;
+  userId: number | null;
+  tipoInsight: TipoInsightApi;
+  dataInicio: string;
+  dataFim: string;
+  resumoIA: string;
+  bullets: string[];
+  riscos: string[];
+  oportunidades: string[];
+  scoreConfianca: number;
+  modeloIA: string;
+  criadoEm: string;
+};
+
 export type ImportacaoItemApi = {
   id: string;
   tipo: string;

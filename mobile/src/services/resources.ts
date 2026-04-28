@@ -11,6 +11,7 @@ import type {
   EscritorioDadosBancariosApi,
   IaAnaliseResponseApi,
   IaHistoricoEnvelopeApi,
+  InsightFinanceiroResponseApi,
   ImportacaoItemApi,
   NotificacaoAdvApi,
   PagamentoConferirApi,
@@ -24,12 +25,13 @@ import type {
   RelatorioRankingClientesApi,
   RelatorioReceitaCategoriaApi,
   RelatorioReceitaDespesaApi,
+  TipoInsightApi,
   TransacaoApi,
   TransacaoCreatePayload,
   TransacoesListApi,
 } from '../types/api';
+import { getIaApiBaseUrl, getEtlApiBaseUrl } from '../config/api';
 import { Platform } from 'react-native';
-import { getEtlApiBaseUrl } from '../config/api';
 import { ApiError, apiDeleteJson, apiFetch, apiGetJson, apiPatchJson, apiPostFormData, apiPostJson, apiPutJson } from './http';
 
 /** Spring / outros backends costumam envolver a lista em `{ data }` ou `{ contratos }`. */
@@ -471,6 +473,70 @@ export async function fetchIaHistorico(
   } catch {
     return null;
   }
+}
+
+export async function postInsightGerar(
+  token: string | null,
+  body: {
+    tenantId?: number;
+    tipoInsight: TipoInsightApi;
+    dataInicio: string;
+    dataFim: string;
+    incluirComparativoPeriodoAnterior: boolean;
+  },
+): Promise<InsightFinanceiroResponseApi | null> {
+  try {
+    return await iaRequest<InsightFinanceiroResponseApi>('/insights/gerar', token, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchInsightsHistorico(
+  token: string | null,
+  tenantId?: number,
+  tipoInsight?: TipoInsightApi,
+  page = 0,
+  size = 50,
+): Promise<InsightFinanceiroResponseApi[]> {
+  try {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+    });
+    if (tenantId != null) params.set('tenantId', String(tenantId));
+    if (tipoInsight) params.set('tipoInsight', tipoInsight);
+    const env = await iaRequest<{ content?: InsightFinanceiroResponseApi[] }>(
+      `/insights?${params.toString()}`,
+      token,
+      { cache: 'no-store' },
+    );
+    return env.content ?? [];
+  } catch {
+    return [];
+  }
+}
+
+async function iaRequest<T>(path: string, token: string | null, init?: RequestInit): Promise<T> {
+  const base = getIaApiBaseUrl();
+  if (!base) throw new ApiError('API de IA não configurada (defina EXPO_PUBLIC_IA_API_URL).', 500);
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const headers = new Headers(init?.headers);
+  headers.set('Accept', 'application/json');
+  if (init?.body != null && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`${base}${normalizedPath}`, { ...init, headers });
+  if (!res.ok) {
+    const body = await res.text();
+    const preview = body.length > 200 ? `${body.slice(0, 200)}…` : body;
+    throw new ApiError(`[${res.status}] ${res.statusText} em ${path}${preview ? ` | body: ${preview}` : ''}`, res.status);
+  }
+  return res.json() as Promise<T>;
 }
 
 function normalizeUsuarioId(usuarioId: string): number | null {

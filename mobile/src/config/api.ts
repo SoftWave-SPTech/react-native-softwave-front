@@ -67,6 +67,22 @@ export function getApiBaseUrl(): string | null {
   return null;
 }
 
+/**
+ * Base da API de IA (ex.: `http://IP:8084` para API-IA-MOBILE).
+ * Se não definida, retorna `null`.
+ */
+export function getIaApiBaseUrl(): string | null {
+  const fromEnv = process.env.EXPO_PUBLIC_IA_API_URL;
+  if (fromEnv && String(fromEnv).trim().length > 0) {
+    return normalizeBaseUrl(String(fromEnv).trim());
+  }
+  const extra = Constants.expoConfig?.extra as { iaApiUrl?: string } | undefined;
+  if (extra?.iaApiUrl && String(extra.iaApiUrl).trim().length > 0) {
+    return normalizeBaseUrl(String(extra.iaApiUrl).trim());
+  }
+  return null;
+}
+
 /** Base da API ETL (FastAPI), ex.: `http://192.168.0.10:8000` */
 export function getEtlApiBaseUrl(): string | null {
   const fromEnv = process.env.EXPO_PUBLIC_ETL_API_URL;
