@@ -14,6 +14,7 @@ type Props = {
 };
 
 export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
+  void onNavigate;
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
 
@@ -92,13 +93,6 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
           <InputField icon="map-marker" label="Endereço" value={endereco} onChangeText={setEndereco} />
           <Pressable style={styles.saveBtn}><Text style={styles.saveBtnText}>Salvar Alterações</Text></Pressable>
         </View>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Configurações</Text>
-          <MenuItem icon="bell-outline" label="Notificações" onPress={() => onNavigate('Notificacoes')} />
-          <MenuItem icon="lock-outline" label="Segurança" onPress={() => {}} />
-          <MenuItem icon="shield-check-outline" label="Privacidade" onPress={() => {}} />
-          <MenuItem icon="help-circle-outline" label="Ajuda e Suporte" onPress={() => {}} />
-        </View>
         <Pressable onPress={handleLogout} style={styles.logoutBtn}>
           <MaterialCommunityIcons name="logout" size={22} color="#dc2626" />
           <Text style={styles.logoutBtnText}>Sair do Aplicativo</Text>
@@ -146,16 +140,6 @@ function InputField({ icon, label, value, onChangeText, keyboardType }: { icon: 
   );
 }
 
-function MenuItem({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={styles.menuItem}>
-      <MaterialCommunityIcons name={icon as any} size={22} color="#6b7280" />
-      <Text style={styles.menuItemText}>{label}</Text>
-      <MaterialCommunityIcons name="chevron-right" size={22} color="#9ca3af" />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
@@ -178,8 +162,6 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingVertical: 12, fontSize: 16, color: '#111827' },
   saveBtn: { backgroundColor: '#0d9488', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '500' },
-  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  menuItemText: { flex: 1, fontSize: 16, color: '#111827', marginLeft: 12 },
   logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fee2e2', borderRadius: 12, paddingVertical: 14 },
   logoutBtnText: { fontSize: 16, fontWeight: '500', color: '#dc2626' },
   bottomNavWrap: { position: 'absolute', bottom: 0, left: 0, right: 0 },
