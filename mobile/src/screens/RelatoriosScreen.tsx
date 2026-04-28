@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit';
 import { Header } from '../components/Header';
 import { CardKPI } from '../components/CardKPI';
 import { BottomNav } from '../components/BottomNav';
-import { getApiBaseUrl } from '../config/api';
+import { getApiBaseUrl, getIaApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchRelatorioDespesasMes,
@@ -14,14 +14,17 @@ import {
   fetchRelatorioRankingClientes,
   fetchRelatorioReceitaCategoria,
   fetchRelatorioReceitaDespesa,
+  postInsightGerar,
 } from '../services/resources';
 import type {
+  InsightFinanceiroResponseApi,
   RelatorioDespesasMesApi,
   RelatorioInsightsApi,
   RelatorioKpisApi,
   RelatorioRankingClientesApi,
   RelatorioReceitaCategoriaApi,
   RelatorioReceitaDespesaApi,
+  TipoInsightApi,
 } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
 
@@ -57,9 +60,55 @@ const CHART_CONFIG = {
 };
 
 const PIE_PALETTE = ['#2563eb', '#16a34a', '#f59e0b', '#8b5cf6', '#ec4899', '#0ea5e9'];
+type InsightCardKey = 'linha' | 'pizza' | 'barra' | 'maioresClientes';
+
+const TIPO_INSIGHT_POR_CARD: Record<InsightCardKey, TipoInsightApi> = {
+  linha: 'RECEITA_DESPESA',
+  pizza: 'RECEITA_POR_CATEGORIA',
+  barra: 'DESPESA_POR_CATEGORIA',
+  maioresClientes: 'MAIORES_CLIENTES',
+};
 
 function centavosParaReaisChart(v: number): number {
   return Math.round((v / 100) * 100) / 100;
+}
+
+function periodoParaFaixaIso(periodo: string): { dataInicio: string; dataFim: string } {
+  const fim = new Date();
+  const inicio = new Date(fim);
+  if (periodo === 'ano') {
+    inicio.setFullYear(fim.getFullYear() - 1);
+  } else if (periodo === 'semestre') {
+    inicio.setMonth(fim.getMonth() - 6);
+  } else {
+    inicio.setMonth(fim.getMonth() - 1);
+  }
+  const toIso = (d: Date) => d.toISOString().slice(0, 10);
+  return { dataInicio: toIso(inicio), dataFim: toIso(fim) };
+}
+
+function bulletsDoInsightGerado(insight: InsightFinanceiroResponseApi): string[] {
+  const bullets = Array.isArray(insight.bullets) ? insight.bullets.filter((b) => b?.trim()) : [];
+  if (bullets.length > 0) return bullets;
+  if (insight.resumoIA?.trim()) return [insight.resumoIA.trim()];
+  return [];
+}
+
+function periodoLabel(periodo: string): string {
+  if (periodo === 'ano') return 'Ano';
+  if (periodo === 'semestre') return 'Semestre';
+  return 'Mês';
+}
+
+function formatGeradoEm(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 /** Exibe valor principal do KPI com fallback quando a API omite campos ou usa formato alternativo. */
@@ -80,9 +129,14 @@ function valorPrincipalKpi(
 export function RelatoriosScreen({ onBack, onNavigate }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
+  const iaOn = !!getIaApiBaseUrl()?.trim() && !!token;
 
   const [periodo, setPeriodo] = useState('mes');
-  const [insightAberto, setInsightAberto] = useState<'linha' | 'pizza' | 'barra' | 'maioresClientes' | null>(null);
+  const [insightAberto, setInsightAberto] = useState<InsightCardKey | null>(null);
+  const [insightsGerados, setInsightsGerados] = useState<
+    Partial<Record<InsightCardKey, { bullets: string[]; periodo: string; geradoEm?: string }>>
+  >({});
+  const [gerandoInsightCard, setGerandoInsightCard] = useState<InsightCardKey | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [rd, setRd] = useState<RelatorioReceitaDespesaApi | null>(null);
@@ -126,6 +180,12 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  useEffect(() => {
+    // Mudou período => invalida insights gerados anteriormente.
+    setInsightsGerados({});
+    setInsightAberto(null);
+  }, [periodo]);
 
   const dadosLinha = useMemo(() => {
     if (rd?.labels?.length && rd.receita?.length && rd.despesa?.length) {
@@ -175,16 +235,47 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
 
   const insights = useMemo(() => {
     return {
-      linha: insightsApi?.linha?.length ? insightsApi.linha : [],
-      pizza: insightsApi?.pizza?.length ? insightsApi.pizza : [],
-      barra: insightsApi?.barra?.length ? insightsApi.barra : [],
+      linha: insightsGerados.linha?.bullets ?? (insightsApi?.linha?.length ? insightsApi.linha : []),
+      pizza: insightsGerados.pizza?.bullets ?? (insightsApi?.pizza?.length ? insightsApi.pizza : []),
+      barra: insightsGerados.barra?.bullets ?? (insightsApi?.barra?.length ? insightsApi.barra : []),
       maioresClientes:
-        insightsApi?.maioresClientes && insightsApi.maioresClientes.length > 0 ? insightsApi.maioresClientes : [],
+        insightsGerados.maioresClientes?.bullets
+        ?? (insightsApi?.maioresClientes && insightsApi.maioresClientes.length > 0 ? insightsApi.maioresClientes : []),
     };
-  }, [insightsApi]);
+  }, [insightsApi, insightsGerados]);
 
-  const toggleInsight = (tipo: 'linha' | 'pizza' | 'barra' | 'maioresClientes' ) => {
-    setInsightAberto((prev) => (prev === tipo ? null : tipo));
+  const gerarInsightPorCard = async (tipo: InsightCardKey) => {
+    if (!iaOn || !token) {
+      Alert.alert('API IA', 'URL da API de IA não configurada.');
+      return;
+    }
+    const insightGeradoAtual = insightsGerados[tipo];
+    if (insightGeradoAtual?.periodo === periodo) {
+      setInsightAberto((prev) => (prev === tipo ? null : tipo));
+      return;
+    }
+
+    setGerandoInsightCard(tipo);
+    const { dataInicio, dataFim } = periodoParaFaixaIso(periodo);
+    try {
+      const insight = await postInsightGerar(token, {
+        tipoInsight: TIPO_INSIGHT_POR_CARD[tipo],
+        dataInicio,
+        dataFim,
+        incluirComparativoPeriodoAnterior: true,
+      });
+      if (!insight) {
+        Alert.alert('Erro', 'Não foi possível gerar o insight deste card.');
+        return;
+      }
+      setInsightsGerados((prev) => ({
+        ...prev,
+        [tipo]: { bullets: bulletsDoInsightGerado(insight), periodo, geradoEm: insight.criadoEm },
+      }));
+      setInsightAberto(tipo);
+    } finally {
+      setGerandoInsightCard(null);
+    }
   };
 
   const k = kpis;
@@ -275,8 +366,15 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Receita vs Despesa</Text>
-            <Pressable onPress={() => toggleInsight('linha')} style={[styles.insightBtn, insightAberto === 'linha' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'linha' ? '#0f766e' : '#0d9488'} />
+            <Pressable
+              onPress={() => void gerarInsightPorCard('linha')}
+              style={[styles.insightBtn, insightAberto === 'linha' && styles.insightBtnActive]}
+            >
+              {gerandoInsightCard === 'linha' ? (
+                <ActivityIndicator size="small" color="#0d9488" />
+              ) : (
+                <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'linha' ? '#0f766e' : '#0d9488'} />
+              )}
             </Pressable>
           </View>
           <LineChart
@@ -293,15 +391,28 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             <View style={styles.legendaItem}><View style={[styles.legendaDot, { backgroundColor: '#16a34a' }]} /><Text style={styles.legendaText}>Receita</Text></View>
             <View style={styles.legendaItem}><View style={[styles.legendaDot, { backgroundColor: '#dc2626' }]} /><Text style={styles.legendaText}>Despesa</Text></View>
           </View>
-          {insightAberto === 'linha' && <InsightCard bullets={insights.linha} />}
+          {insightAberto === 'linha' && (
+            <InsightCard
+              bullets={insights.linha}
+              periodo={periodoLabel(periodo)}
+              geradoEm={insightsGerados.linha?.geradoEm}
+            />
+          )}
         </View>
 
         {/* PieChart — Receita por Categoria */}
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Receita por Categoria</Text>
-            <Pressable onPress={() => toggleInsight('pizza')} style={[styles.insightBtn, insightAberto === 'pizza' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'pizza' ? '#0f766e' : '#0d9488'} />
+            <Pressable
+              onPress={() => void gerarInsightPorCard('pizza')}
+              style={[styles.insightBtn, insightAberto === 'pizza' && styles.insightBtnActive]}
+            >
+              {gerandoInsightCard === 'pizza' ? (
+                <ActivityIndicator size="small" color="#0d9488" />
+              ) : (
+                <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'pizza' ? '#0f766e' : '#0d9488'} />
+              )}
             </Pressable>
           </View>
           <PieChart
@@ -315,15 +426,28 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             absolute={false}
             style={styles.chart}
           />
-          {insightAberto === 'pizza' && <InsightCard bullets={insights.pizza} />}
+          {insightAberto === 'pizza' && (
+            <InsightCard
+              bullets={insights.pizza}
+              periodo={periodoLabel(periodo)}
+              geradoEm={insightsGerados.pizza?.geradoEm}
+            />
+          )}
         </View>
 
         {/* BarChart — Despesa por Mês */}
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Despesas por Mês</Text>
-            <Pressable onPress={() => toggleInsight('barra')} style={[styles.insightBtn, insightAberto === 'barra' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'barra' ? '#0f766e' : '#0d9488'} />
+            <Pressable
+              onPress={() => void gerarInsightPorCard('barra')}
+              style={[styles.insightBtn, insightAberto === 'barra' && styles.insightBtnActive]}
+            >
+              {gerandoInsightCard === 'barra' ? (
+                <ActivityIndicator size="small" color="#0d9488" />
+              ) : (
+                <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'barra' ? '#0f766e' : '#0d9488'} />
+              )}
             </Pressable>
           </View>
           <BarChart
@@ -337,14 +461,27 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
             yAxisLabel="R$"
             yAxisSuffix=""
           />
-          {insightAberto === 'barra' && <InsightCard bullets={insights.barra} />}
+          {insightAberto === 'barra' && (
+            <InsightCard
+              bullets={insights.barra}
+              periodo={periodoLabel(periodo)}
+              geradoEm={insightsGerados.barra?.geradoEm}
+            />
+          )}
         </View>
 
         <View style={styles.card}>
           <View style={styles.chartHeader}>
             <Text style={styles.cardTitle}>Maiores Clientes</Text>
-            <Pressable onPress={() => toggleInsight('maioresClientes')} style={[styles.insightBtn, insightAberto === 'maioresClientes' && styles.insightBtnActive]}>
-              <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'maioresClientes' ? '#0f766e' : '#0d9488'} />
+            <Pressable
+              onPress={() => void gerarInsightPorCard('maioresClientes')}
+              style={[styles.insightBtn, insightAberto === 'maioresClientes' && styles.insightBtnActive]}
+            >
+              {gerandoInsightCard === 'maioresClientes' ? (
+                <ActivityIndicator size="small" color="#0d9488" />
+              ) : (
+                <MaterialCommunityIcons name="creation" size={18} color={insightAberto === 'maioresClientes' ? '#0f766e' : '#0d9488'} />
+              )}
             </Pressable>
             </View>
           {clientesRanking.length === 0 ? (
@@ -358,7 +495,13 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
               </View>
             ))
           )}
-          {insightAberto === 'maioresClientes' && <InsightCard bullets={insights.maioresClientes} />}
+          {insightAberto === 'maioresClientes' && (
+            <InsightCard
+              bullets={insights.maioresClientes}
+              periodo={periodoLabel(periodo)}
+              geradoEm={insightsGerados.maioresClientes?.geradoEm}
+            />
+          )}
         </View>
 
         <View style={{ height: 80 }} />
@@ -370,13 +513,17 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
   );
 }
 
-function InsightCard({ bullets }: { bullets: string[] }) {
+function InsightCard({ bullets, periodo, geradoEm }: { bullets: string[]; periodo: string; geradoEm?: string }) {
+  const geradoEmLabel = geradoEm ? formatGeradoEm(geradoEm) : '';
   return (
     <View style={styles.insightCard}>
       <View style={styles.insightHeader}>
         <MaterialCommunityIcons name="creation" size={16} color="#0d9488" />
         <Text style={styles.insightTitle}>Análise IA</Text>
       </View>
+      <Text style={styles.insightMeta}>
+        {geradoEmLabel ? `Gerado para: ${periodo} • ${geradoEmLabel}` : `Gerado para: ${periodo}`}
+      </Text>
       {bullets.map((b, i) => (
         <View key={i} style={styles.insightRow}>
           <Text style={styles.insightBullet}>•</Text>
@@ -423,6 +570,7 @@ const styles = StyleSheet.create({
   insightCard: { backgroundColor: '#f0fdfa', borderWidth: 1, borderColor: '#99f6e4', borderRadius: 12, padding: 12, marginTop: 12 },
   insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   insightTitle: { fontSize: 14, fontWeight: '600', color: '#115e59' },
+  insightMeta: { fontSize: 12, color: '#0f766e', marginBottom: 8 },
   insightRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
   insightBullet: { fontSize: 14, color: '#0d9488', lineHeight: 20 },
   insightText: { flex: 1, fontSize: 13, color: '#334155', lineHeight: 20 },
