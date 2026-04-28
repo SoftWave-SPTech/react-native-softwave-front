@@ -233,9 +233,8 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
             vencimento: vencIso,
             status: status === 'pago' ? 'pago' : 'pendente',
             ...(cid != null ? { clienteId: cid } : { contraparte: subtitulo.trim() || undefined }),
-            recorrencia: tipo === 'despesa' ? recorrencia : 'sem',
-            duracaoMeses:
-              tipo === 'despesa' && recorrencia !== 'sem' && Number.isFinite(dur) && dur > 0 ? dur : null,
+            recorrencia,
+            duracaoMeses: recorrencia !== 'sem' && Number.isFinite(dur) && dur > 0 ? dur : null,
           });
         }
         setMostrarSucesso(true);
@@ -331,10 +330,6 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
                 onChange={setProcessoIdApi}
               />
             </View>
-            <Text style={styles.helpApi}>
-              Com processo: cria um honorário vinculado a ele. Sem processo: honorário avulso (só você enxerga na lista).
-              Contratos já existentes: use honorarioId na API.
-            </Text>
           </>
         )}
 
@@ -407,48 +402,46 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
           </View>
         </View>
 
-        {/* Recorrência — apenas para Despesa */}
-        {tipo === 'despesa' && (
-          <View style={styles.recorrenciaWrap}>
-            <View style={styles.recorrenciaHeader}>
-              <MaterialCommunityIcons name="autorenew" size={18} color="#6b7280" />
-              <Text style={styles.recorrenciaTitle}>
-                Recorrência <Text style={styles.required}>*</Text>
-              </Text>
-            </View>
-            <AccordionSelect
-              label=""
-              placeholder="Sem recorrência"
-              options={RECORRENCIAS}
-              value={recorrencia}
-              onChange={(v) => setRecorrencia(v as Recorrencia)}
-            />
-            {recorrencia !== 'sem' && (
-              <View style={styles.recorrenciaExtra}>
-                <Text style={styles.fieldLabel}>Duração (número de repetições)</Text>
-                <TextInput
-                  value={duracaoMeses}
-                  onChangeText={setDuracaoMeses}
-                  placeholder="Ex: 12"
-                  placeholderTextColor="#9ca3af"
-                  keyboardType="numeric"
-                  style={styles.duracaoInput}
-                />
-                {getPreviewRecorrencia() !== '' && (
-                  <View style={styles.previewCard}>
-                    <MaterialCommunityIcons name="information" size={16} color="#0d9488" />
-                    <Text style={styles.previewText}>{getPreviewRecorrencia()}</Text>
-                  </View>
-                )}
-                <View style={styles.infoCard}>
-                  <Text style={styles.infoCardText}>
-                    💡 A despesa será criada automaticamente na frequência selecionada.
-                  </Text>
-                </View>
-              </View>
-            )}
+        {/* Recorrência / Parcelamento */}
+        <View style={styles.recorrenciaWrap}>
+          <View style={styles.recorrenciaHeader}>
+            <MaterialCommunityIcons name="autorenew" size={18} color="#6b7280" />
+            <Text style={styles.recorrenciaTitle}>
+              Recorrência / Parcelamento <Text style={styles.required}>*</Text>
+            </Text>
           </View>
-        )}
+          <AccordionSelect
+            label=""
+            placeholder="Sem recorrência"
+            options={RECORRENCIAS}
+            value={recorrencia}
+            onChange={(v) => setRecorrencia(v as Recorrencia)}
+          />
+          {recorrencia !== 'sem' && (
+            <View style={styles.recorrenciaExtra}>
+              <Text style={styles.fieldLabel}>Duração (número de repetições)</Text>
+              <TextInput
+                value={duracaoMeses}
+                onChangeText={setDuracaoMeses}
+                placeholder="Ex: 12"
+                placeholderTextColor="#9ca3af"
+                keyboardType="numeric"
+                style={styles.duracaoInput}
+              />
+              {getPreviewRecorrencia() !== '' && (
+                <View style={styles.previewCard}>
+                  <MaterialCommunityIcons name="information" size={16} color="#0d9488" />
+                  <Text style={styles.previewText}>{getPreviewRecorrencia()}</Text>
+                </View>
+              )}
+              <View style={styles.infoCard}>
+                <Text style={styles.infoCardText}>
+                  💡 A {tipo === 'receita' ? 'receita' : 'despesa'} será criada automaticamente na frequência selecionada.
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
 
         {/* Comprovante */}
         <View style={styles.field}>
@@ -603,11 +596,4 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.7 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  helpApi: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 12,
-    marginTop: -4,
-    lineHeight: 18,
-  },
 });

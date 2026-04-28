@@ -26,6 +26,7 @@ import type {
   RelatorioReceitaDespesaApi,
   TransacaoApi,
   TransacaoCreatePayload,
+  TransacoesListApi,
 } from '../types/api';
 import { Platform } from 'react-native';
 import { getEtlApiBaseUrl } from '../config/api';
@@ -65,8 +66,35 @@ export async function fetchDashboardResumo(token: string | null): Promise<Dashbo
   }
 }
 
-export async function fetchTransacoes(token: string | null): Promise<TransacaoApi[]> {
-  return apiGetJson<TransacaoApi[]>('/transacoes', token);
+export async function fetchTransacoes(
+  token: string | null,
+  params?: {
+    tipo?: 'receita' | 'despesa';
+    status?: 'pago' | 'pendente' | 'atrasado' | 'cancelado';
+    periodoDias?: 15 | 30 | 60 | 90;
+    dataInicio?: string;
+    dataFim?: string;
+    page?: number;
+    limit?: number;
+  },
+): Promise<TransacoesListApi> {
+  const search = new URLSearchParams();
+  if (params?.tipo) search.set('tipo', params.tipo);
+  if (params?.status) search.set('status', params.status);
+  if (params?.periodoDias) search.set('periodoDias', String(params.periodoDias));
+  if (params?.dataInicio) search.set('dataInicio', params.dataInicio);
+  if (params?.dataFim) search.set('dataFim', params.dataFim);
+  search.set('page', String(params?.page ?? 1));
+  search.set('limit', String(params?.limit ?? 20));
+  const q = search.toString();
+  const env = await apiGetJson<TransacoesListApi>(`/transacoes${q ? `?${q}` : ''}`, token);
+  return {
+    transacoes: env.transacoes ?? [],
+    page: env.page ?? 1,
+    pageSize: env.pageSize ?? 20,
+    total: env.total ?? 0,
+    totalPages: env.totalPages ?? 1,
+  };
 }
 
 export async function fetchTransacoesRecentes(token: string | null, limit: number): Promise<TransacaoApi[]> {

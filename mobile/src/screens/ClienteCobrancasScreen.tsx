@@ -25,6 +25,7 @@ export function ClienteCobrancasScreen({ onBack, onNavigate }: Props) {
 
   const [lista, setLista] = useState<CobrancaClienteApi[]>([]);
   const [loading, setLoading] = useState(false);
+  const [filtro, setFiltro] = useState<'pendentes' | 'pagas'>('pendentes');
 
   const carregar = useCallback(async () => {
     if (!apiOn || !token) {
@@ -33,21 +34,20 @@ export function ClienteCobrancasScreen({ onBack, onNavigate }: Props) {
     }
     setLoading(true);
     try {
-      const rows = await fetchClienteCobrancas(token);
+      const rows = await fetchClienteCobrancas(token, filtro === 'pagas' ? 'pago' : 'pendente');
       setLista(rows);
     } catch {
       setLista([]);
     } finally {
       setLoading(false);
     }
-  }, [apiOn, token]);
+  }, [apiOn, token, filtro]);
 
   useEffect(() => {
     carregar();
   }, [carregar]);
 
-  const [filtro, setFiltro] = useState<'pendentes' | 'pagas'>('pendentes');
-  const cobrancasFiltradas = lista.filter((c) => (filtro === 'pendentes' ? c.status === 'pendente' : c.status === 'pago'));
+  const cobrancasFiltradas = lista;
 
   return (
     <View style={styles.container}>

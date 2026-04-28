@@ -15,6 +15,14 @@ export type TransacaoApi = {
   comprovanteUrl?: string | null;
 };
 
+export type TransacoesListApi = {
+  transacoes: TransacaoApi[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
 /** Corpo de `POST /transacoes` alinhado ao backend (honorário novo via `processoId`). */
 export type TransacaoCreatePayload = {
   tipo: 'receita' | 'despesa';

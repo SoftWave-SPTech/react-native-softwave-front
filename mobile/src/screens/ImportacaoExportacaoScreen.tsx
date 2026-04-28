@@ -81,6 +81,17 @@ function validarArquivoSelecionado(banco: BancoExtratoId, nomeArquivo: string): 
   return nome.endsWith('.csv');
 }
 
+function tiposPermitidosPicker(banco: BancoExtratoId): string[] {
+  if (banco === 'itau') {
+    return ['application/pdf', '.pdf'];
+  }
+  if (Platform.OS === 'android') {
+    // Em Android, CSV pode vir com MIME não padronizado dependendo do app de arquivos.
+    return ['text/csv', 'application/csv', 'application/vnd.ms-excel', 'text/comma-separated-values', '*/*'];
+  }
+  return ['text/csv', '.csv'];
+}
+
 /** Rótulo para histórico (API pode devolver extrato_c6, extrato, etc.). */
 function labelTipoImportacao(t: string): string {
   const mapa: Record<string, string> = {
@@ -225,7 +236,7 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
 
   const escolherArquivo = async () => {
     const resultado = await DocumentPicker.getDocumentAsync({
-      type: bancoExtrato === 'itau' ? ['application/pdf', '.pdf'] : ['text/csv', '.csv'],
+      type: tiposPermitidosPicker(bancoExtrato),
       copyToCacheDirectory: true,
       multiple: false,
     });
@@ -235,9 +246,25 @@ export function ImportacaoExportacaoScreen({ onBack, onNavigate }: Props) {
     if (!asset) return;
 
     if (!validarArquivoSelecionado(bancoExtrato, asset.name)) {
+      const mime = (asset.mimeType ?? '').toLowerCase();
+      const nome = (asset.name ?? '').toLowerCase();
+      const csvPorMime = mime.includes('csv') || mime.includes('excel') || mime === 'application/octet-stream';
+      const pdfPorMime = mime === 'application/pdf';
+      const okPorMime = bancoExtrato === 'itau' ? pdfPorMime : csvPorMime;
+      const okPorNome = bancoExtrato === 'itau' ? nome.endsWith('.pdf') : nome.endsWith('.csv');
+      if (!okPorMime && !okPorNome) {
+        Alert.alert(
+          'Formato inválido',
+          `Para ${bancoExtrato === 'itau' ? 'Itaú' : 'C6/Bradesco'} selecione arquivo ${extensaoPermitida(bancoExtrato)}.`,
+        );
+        return;
+      }
+    }
+
+    if (!asset.name) {
       Alert.alert(
-        'Formato inválido',
-        `Para ${bancoExtrato === 'itau' ? 'Itaú' : 'C6/Bradesco'} selecione arquivo ${extensaoPermitida(bancoExtrato)}.`,
+        'Arquivo inválido',
+        'Não foi possível identificar o nome do arquivo selecionado. Tente escolher pelo app Arquivos do dispositivo.',
       );
       return;
     }

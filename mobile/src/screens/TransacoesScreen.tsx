@@ -10,9 +10,11 @@ import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { mapTransacaoApiToCard, type TransacaoCardModel } from '../mappers/transacao';
 import { fetchTransacoes } from '../services/resources';
+import { parseDateBRToIso } from '../utils/money';
 
 type TipoFiltro = 'todas' | 'receita' | 'despesa';
 type StatusFiltro = 'todos' | 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
+type PeriodoFiltro = '15' | '30' | '60' | '90' | 'custom';
 
 type Props = {
   onBack: () => void;
@@ -25,22 +27,40 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
 
   const [lista, setLista] = useState<TransacaoCardModel[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  const [tipoFiltro, setTipoFiltro] = useState<TipoFiltro>('todas');
+  const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>('todos');
+  const [periodoFiltro, setPeriodoFiltro] = useState<PeriodoFiltro>('30');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
 
   const carregar = React.useCallback(async () => {
     if (!apiOn) {
       setLista([]);
+      setTotalPaginas(1);
       return;
     }
     setLoading(true);
     try {
-      const data = await fetchTransacoes(token);
-      setLista(data.map(mapTransacaoApiToCard));
+      const data = await fetchTransacoes(token, {
+        tipo: tipoFiltro === 'todas' ? undefined : tipoFiltro,
+        status: statusFiltro === 'todos' || statusFiltro === 'em-dia' ? undefined : statusFiltro,
+        periodoDias: periodoFiltro !== 'custom' ? Number(periodoFiltro) as 15 | 30 | 60 | 90 : undefined,
+        dataInicio: periodoFiltro === 'custom' ? parseDateBRToIso(dataInicio) ?? undefined : undefined,
+        dataFim: periodoFiltro === 'custom' ? parseDateBRToIso(dataFim) ?? undefined : undefined,
+        page: pagina,
+        limit: 20,
+      });
+      setLista(data.transacoes.map(mapTransacaoApiToCard));
+      setTotalPaginas(Math.max(1, data.totalPages));
     } catch {
       setLista([]);
+      setTotalPaginas(1);
     } finally {
       setLoading(false);
     }
-  }, [apiOn, token]);
+  }, [apiOn, token, tipoFiltro, statusFiltro, periodoFiltro, dataInicio, dataFim, pagina]);
 
   useEffect(() => {
     void carregar();
@@ -53,16 +73,17 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
     }, [carregar]),
   );
 
-  const [busca, setBusca] = useState('');
-  const [tipoFiltro, setTipoFiltro] = useState<TipoFiltro>('todas');
-  const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>('todos');
+  useEffect(() => {
+    setPagina(1);
+  }, [tipoFiltro, statusFiltro, periodoFiltro, dataInicio, dataFim]);
 
-  const transacoesFiltradas = lista.filter((t) => {
-    const matchBusca = busca.trim() === '' || t.title.toLowerCase().includes(busca.toLowerCase()) || t.subtitle.toLowerCase().includes(busca.toLowerCase());
-    const matchTipo = tipoFiltro === 'todas' || t.type === tipoFiltro;
-    const matchStatus = statusFiltro === 'todos' || t.status === statusFiltro;
-    return matchBusca && matchTipo && matchStatus;
-  });
+  const paginasVisiveis = React.useMemo(() => {
+    const ini = Math.max(1, pagina - 2);
+    const fim = Math.min(totalPaginas, ini + 4);
+    const pages: number[] = [];
+    for (let p = ini; p <= fim; p += 1) pages.push(p);
+    return pages;
+  }, [pagina, totalPaginas]);
 
   return (
     <View style={styles.container}>
@@ -74,15 +95,44 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
             <Text style={styles.loadingText}>Carregando transações…</Text>
           </View>
         )}
-        <View style={styles.searchBox}>
-          <MaterialCommunityIcons name="magnify" size={22} color="#9ca3af" />
-          <TextInput value={busca} onChangeText={setBusca} placeholder="Buscar transação ou cliente" placeholderTextColor="#9ca3af" style={styles.searchInput} />
+        <Text style={styles.filterLabel}>Período</Text>
+        <View style={[styles.filterRow, { flexWrap: 'wrap' }]}>
+          {([
+            { id: '15', label: '15 dias' },
+            { id: '30', label: '30 dias' },
+            { id: '60', label: '60 dias' },
+            { id: '90', label: '90 dias' },
+            { id: 'custom', label: 'Personalizado' },
+          ] as const).map((p) => (
+            <Pressable
+              key={p.id}
+              onPress={() => setPeriodoFiltro(p.id)}
+              style={[styles.filterChip, periodoFiltro === p.id && styles.chipAtivo]}
+            >
+              <Text style={[styles.filterChipText, periodoFiltro === p.id && styles.chipTextActive]}>
+                {p.label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
-        {/* <View style={styles.resumoRow}>
-          <View style={styles.resumoCard}><Text style={styles.resumoLabel}>Saldo</Text><Text style={styles.resumoValue}>{formatK(saldo)}</Text></View>
-          <View style={styles.resumoCard}><Text style={styles.resumoLabel}>Receitas</Text><Text style={[styles.resumoValue, styles.receita]}>{formatK(totalReceitas)}</Text></View>
-          <View style={styles.resumoCard}><Text style={styles.resumoLabel}>Despesas</Text><Text style={[styles.resumoValue, styles.despesa]}>{formatK(totalDespesas)}</Text></View>
-        </View> */}
+        {periodoFiltro === 'custom' && (
+          <View style={styles.customDateRow}>
+            <TextInput
+              value={dataInicio}
+              onChangeText={setDataInicio}
+              placeholder="Início DD/MM/AAAA"
+              placeholderTextColor="#9ca3af"
+              style={styles.customDateInput}
+            />
+            <TextInput
+              value={dataFim}
+              onChangeText={setDataFim}
+              placeholder="Fim DD/MM/AAAA"
+              placeholderTextColor="#9ca3af"
+              style={styles.customDateInput}
+            />
+          </View>
+        )}
         <Text style={styles.filterLabel}>Tipo</Text>
         <View style={styles.filterRow}>
           {(['todas', 'receita', 'despesa'] as const).map((t) => (
@@ -122,17 +172,44 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
           ))}
         </View>
         <View style={styles.list}>
-          {transacoesFiltradas.length === 0 ? (
+          {lista.length === 0 ? (
             <View style={styles.emptyState}>
               <MaterialCommunityIcons name="magnify-close" size={40} color="#9ca3af" />
               <Text style={styles.emptyText}>Nenhuma transação encontrada</Text>
             </View>
           ) : (
-            transacoesFiltradas.map((t) => (
+            lista.map((t) => (
               <CardTransacao key={t.id} icon={t.icon} title={t.title} subtitle={t.subtitle} value={t.value} type={t.type} status={t.status} onPress={() => onNavigate('DetalheTransacao', t.id)} />
             ))
           )}
         </View>
+        {totalPaginas > 1 && (
+          <View style={styles.paginacao}>
+            <Pressable
+              style={[styles.pageBtn, pagina <= 1 && styles.pageBtnDisabled]}
+              disabled={pagina <= 1}
+              onPress={() => setPagina((p) => Math.max(1, p - 1))}
+            >
+              <Text style={styles.pageBtnText}>Anterior</Text>
+            </Pressable>
+            {paginasVisiveis.map((p) => (
+              <Pressable
+                key={p}
+                style={[styles.pageChip, pagina === p && styles.pageChipAtivo]}
+                onPress={() => setPagina(p)}
+              >
+                <Text style={[styles.pageChipText, pagina === p && styles.pageChipTextAtivo]}>{p}</Text>
+              </Pressable>
+            ))}
+            <Pressable
+              style={[styles.pageBtn, pagina >= totalPaginas && styles.pageBtnDisabled]}
+              disabled={pagina >= totalPaginas}
+              onPress={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+            >
+              <Text style={styles.pageBtnText}>Próxima</Text>
+            </Pressable>
+          </View>
+        )}
         <View style={{ height: 100 }} />
       </ScrollView>
       <FAB onPress={() => onNavigate('NovaTransacao')} />
@@ -147,8 +224,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
-  searchInput: { flex: 1, fontSize: 16, color: '#111827' },
+  customDateRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  customDateInput: { flex: 1, backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#111827' },
   resumoRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   resumoCard: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   resumoLabel: { fontSize: 12, color: '#6b7280', marginBottom: 4 },
@@ -167,6 +244,14 @@ const styles = StyleSheet.create({
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   loadingText: { fontSize: 13, color: '#6b7280' },
   list: { gap: 12 },
+  paginacao: { marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
+  pageBtn: { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  pageBtnDisabled: { opacity: 0.5 },
+  pageBtnText: { color: '#374151', fontSize: 13, fontWeight: '500' },
+  pageChip: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  pageChipAtivo: { backgroundColor: '#111827' },
+  pageChipText: { fontSize: 13, color: '#374151' },
+  pageChipTextAtivo: { color: '#fff', fontWeight: '600' },
   bottomNavWrap: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   emptyState: { alignItems: 'center', paddingVertical: 32, gap: 8 },
   emptyText: { fontSize: 14, color: '#9ca3af' },
