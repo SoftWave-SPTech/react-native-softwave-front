@@ -74,12 +74,14 @@ export function getApiBaseUrl(): string | null {
 export function getIaApiBaseUrl(): string | null {
   const fromEnv = process.env.EXPO_PUBLIC_IA_API_URL;
   if (fromEnv && String(fromEnv).trim().length > 0) {
-    return normalizeBaseUrl(String(fromEnv).trim());
+    return normalizeBaseUrl(resolveMobileLoopback(String(fromEnv).trim()));
   }
   const extra = Constants.expoConfig?.extra as { iaApiUrl?: string } | undefined;
   if (extra?.iaApiUrl && String(extra.iaApiUrl).trim().length > 0) {
-    return normalizeBaseUrl(String(extra.iaApiUrl).trim());
+    return normalizeBaseUrl(resolveMobileLoopback(String(extra.iaApiUrl).trim()));
   }
+  const dynamic = getDynamicBaseUrlFromExpo(8084);
+  if (dynamic) return normalizeBaseUrl(dynamic);
   return null;
 }
 

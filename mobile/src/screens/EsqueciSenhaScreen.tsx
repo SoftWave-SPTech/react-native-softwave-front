@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getLoginApiBaseUrl } from '../config/api';
+import logoImage from '../../assets/softwave-logo.png';
 import {
   RESET_SENHA_REGEX,
   resetarSenhaAuth,
@@ -54,7 +55,7 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
 
   const handleReenviar = async () => {
     if (!apiAuthOn) {
-      Alert.alert('Reenviar', 'Configure EXPO_PUBLIC_AUTH_API_URL para reenviar o código pela API.');
+      Alert.alert('Reenviar', 'No momento nao foi possivel reenviar o codigo.');
       return;
     }
     try {
@@ -125,7 +126,7 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
         <View style={styles.content}>
           <View style={styles.logoWrap}>
             <View style={styles.logoCircle}>
-              <Text style={styles.logoText}>SF</Text>
+              <Image source={logoImage} style={styles.logoImage} />
             </View>
             <Text style={styles.title}>Recuperar Senha</Text>
             <Text style={styles.subtitle}>Digite seu e-mail para receber o código de recuperação</Text>
@@ -141,12 +142,6 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
               autoCapitalize="none"
               style={styles.input}
             />
-          </View>
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              💡 Com a API-AUTH-MAIL ativa, você recebe um código de {TOKEN_LEN_API} caracteres por e-mail (validade 5
-              minutos).
-            </Text>
           </View>
           <Pressable onPress={handleEnviarEmail} disabled={!email || enviandoEmail} style={[styles.button, (!email || enviandoEmail) && styles.buttonDisabled]}>
             {enviandoEmail ? (
@@ -179,10 +174,7 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
             <MaterialCommunityIcons name="email-outline" size={40} color="#0E6F73" />
           </View>
           <Text style={styles.title}>Código enviado</Text>
-          <Text style={styles.subtitle}>
-            Digite o código de {apiAuthOn ? TOKEN_LEN_API : TOKEN_LEN_MOCK}{' '}
-            {apiAuthOn ? 'caracteres' : 'dígitos'} enviado para
-          </Text>
+          <Text style={styles.subtitle}>Digite o código enviado para</Text>
           <Text style={styles.emailDestino}>{email}</Text>
           <View style={styles.field}>
             <Text style={styles.label}>Código de verificação</Text>
@@ -247,7 +239,7 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
           <Text style={styles.infoText}>
             {apiAuthOn
               ? '✓ Mínimo 8 caracteres: maiúscula, minúscula, número e símbolo (@ # $ % ^ & + =)'
-              : '✓ Mínimo de 6 caracteres (modo sem API)'}
+              : '✓ Minimo de 6 caracteres'}
           </Text>
         </View>
         <Pressable
@@ -273,6 +265,7 @@ const styles = StyleSheet.create({
   content: { flex: 1, paddingHorizontal: 20, paddingTop: 24 },
   logoWrap: { alignItems: 'center', marginBottom: 32 },
   logoCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  logoImage: { width: 120, height: 120, resizeMode: 'contain' },
   logoText: { fontSize: 28, color: '#fff', fontWeight: 'bold' },
   iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
