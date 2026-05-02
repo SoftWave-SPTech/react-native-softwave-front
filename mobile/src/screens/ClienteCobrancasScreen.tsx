@@ -19,6 +19,33 @@ function vencimentoLabel(iso: string) {
   return iso;
 }
 
+function percentualProgresso(c: CobrancaClienteApi): number {
+  const total = Number(c.totalParcelas || 0);
+  const parcelaAtual = Number(c.parcela || 0);
+  const percentualApiRaw = Number(c.percentualPago);
+  const percentualApi = Number.isFinite(percentualApiRaw) ? percentualApiRaw : null;
+  const percentualParcela =
+    total > 0
+      ? Math.round(((c.status === 'pago' ? total : Math.max(0, Math.min(total, parcelaAtual - 1))) / total) * 100)
+      : null;
+
+  let percentual = 0;
+  if (c.status === 'pago') {
+    percentual = 100;
+  } else if (percentualApi !== null && percentualApi >= 0 && percentualApi <= 100) {
+    if (percentualParcela === null) {
+      percentual = Math.round(percentualApi);
+    } else {
+      // Se o backend vier muito distante da progressão por parcelas, prioriza regra de parcelas.
+      percentual = Math.abs(percentualApi - percentualParcela) > 20 ? percentualParcela : Math.round(percentualApi);
+    }
+  } else if (percentualParcela !== null) {
+    percentual = percentualParcela;
+  }
+  if (!Number.isFinite(percentual)) return 0;
+  return Math.max(0, Math.min(100, percentual));
+}
+
 export function ClienteCobrancasScreen({ onBack, onNavigate }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
@@ -67,32 +94,37 @@ export function ClienteCobrancasScreen({ onBack, onNavigate }: Props) {
             <Text style={[styles.tabText, filtro === 'pagas' && styles.tabTextActive]}>Pagas</Text>
           </Pressable>
         </View>
-        {cobrancasFiltradas.map((c) => (
-          <Pressable key={c.id} onPress={() => onNavigate('ClientePagamento', String(c.id))} style={styles.card}>
-            <View style={styles.cardRow}>
-              <View style={styles.cardIcon}><MaterialCommunityIcons name="file-document" size={22} color="#0d9488" /></View>
-              <View style={styles.cardContent}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardLeft}>
-                    <Text style={styles.cardProcesso}>{c.processo}</Text>
-                    <Text style={styles.cardVenc}>Vencimento: {vencimentoLabel(c.vencimento)}</Text>
+        {cobrancasFiltradas.map((c) => {
+          const progresso = percentualProgresso(c);
+          return (
+            <Pressable key={c.id} onPress={() => onNavigate('ClientePagamento', String(c.id))} style={styles.card}>
+              <View style={styles.cardRow}>
+                <View style={styles.cardIcon}><MaterialCommunityIcons name="file-document" size={22} color="#0d9488" /></View>
+                <View style={styles.cardContent}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardLeft}>
+                      <Text style={styles.cardProcesso} numberOfLines={2} ellipsizeMode="tail">
+                        {c.processo}
+                      </Text>
+                      <Text style={styles.cardVenc}>Vencimento: {vencimentoLabel(c.vencimento)}</Text>
+                    </View>
+                    <TagStatus status={c.status} />
                   </View>
-                  <TagStatus status={c.status} />
-                </View>
-                <Text style={styles.cardValor}>{formatCentavosBRL(c.valor)}</Text>
-                <View style={styles.progressoWrap}>
-                  <View style={styles.progressoHeader}>
-                    <Text style={styles.progressoLabel}>Parcela {c.parcela} de {c.totalParcelas}</Text>
-                    <Text style={styles.progressoPct}>{c.percentualPago}% pago</Text>
-                  </View>
-                  <View style={styles.progressoTrack}>
-                    <View style={[styles.progressoFill, { width: `${c.percentualPago}%` }]} />
+                  <Text style={styles.cardValor}>{formatCentavosBRL(c.valor)}</Text>
+                  <View style={styles.progressoWrap}>
+                    <View style={styles.progressoHeader}>
+                      <Text style={styles.progressoLabel}>Parcela {c.parcela} de {c.totalParcelas}</Text>
+                      <Text style={styles.progressoPct}>{progresso}% pago</Text>
+                    </View>
+                    <View style={styles.progressoTrack}>
+                      <View style={[styles.progressoFill, { width: `${progresso}%` }]} />
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
-          </Pressable>
-        ))}
+            </Pressable>
+          );
+        })}
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>

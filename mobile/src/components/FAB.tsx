@@ -1,14 +1,16 @@
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
   onPress: () => void;
 };
 
 export function FAB({ onPress }: Props) {
+  const insets = useSafeAreaInsets();
   return (
-    <Pressable onPress={onPress} style={styles.fab}>
+    <Pressable onPress={onPress} style={[styles.fab, { bottom: 88 + insets.bottom }]}>
       <MaterialCommunityIcons name="plus" size={28} color="#fff" />
     </Pressable>
   );
@@ -17,7 +19,6 @@ export function FAB({ onPress }: Props) {
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
-    bottom: 80,
     right: 24,
     width: 56,
     height: 56,

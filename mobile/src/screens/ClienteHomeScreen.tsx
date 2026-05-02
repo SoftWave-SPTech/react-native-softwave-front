@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { fetchClienteDashboard } from '../services/resources';
@@ -31,7 +32,8 @@ function iniciais(nome: string): string {
   return (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 
-export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
+export function ClienteHomeScreen({ onNavigate }: Props) {
+  const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
 
@@ -71,14 +73,11 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
     <LinearGradient colors={['#0d9488', '#115e59']} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          {onBack && (
-            <Pressable onPress={onBack} style={styles.backBtn}>
-              <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
-            </Pressable>
-          )}
-          <View>
+          <View style={styles.headerTitleWrap}>
             <Text style={styles.ola}>Olá,</Text>
-            <Text style={styles.nome}>{d.nome || 'Cliente'}</Text>
+            <Text style={styles.nome} numberOfLines={2}>
+              {d.nome || 'Cliente'}
+            </Text>
           </View>
         </View>
         <View style={styles.headerBtns}>
@@ -96,7 +95,11 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
         </View>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, { paddingBottom: 120 + Math.max(insets.bottom, 12) }]}
+        showsVerticalScrollIndicator={false}
+      >
         {apiOn && loading && (
           <View style={styles.loadingRow}>
             <ActivityIndicator color="#2563eb" />
@@ -127,11 +130,13 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
             <Text style={styles.cardLabel}>Última Cobrança</Text>
           </View>
           <View style={styles.ultimaRow}>
-            <View>
-              <Text style={styles.ultimaParcela}>{ultima?.parcelaLabel ?? '—'}</Text>
+            <View style={styles.ultimaLeft}>
+              <Text style={styles.ultimaParcela} numberOfLines={2} ellipsizeMode="tail">
+                {ultima?.parcelaLabel ?? '—'}
+              </Text>
               <Text style={styles.ultimaVenc}>Vencimento: {ultima?.vencimento ?? '—'}</Text>
             </View>
-            <Text style={styles.ultimaValor}>
+            <Text style={styles.ultimaValor} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
               {ultima ? formatCentavosBRL(ultima.valor) : '—'}
             </Text>
           </View>
@@ -139,7 +144,7 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
         <Pressable onPress={() => onNavigate('ClienteCobrancas')} style={styles.btn}>
           <Text style={styles.btnText}>Minhas Cobranças</Text>
         </Pressable>
-        <View style={{ height: 24 }} />
+        <View style={{ height: 8 }} />
       </ScrollView>
     </LinearGradient>
   );
@@ -149,8 +154,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flex: 1, backgroundColor: '#f9fafb', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   header: { paddingHorizontal: 20, paddingVertical: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { padding: 4 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 },
+  headerTitleWrap: { flex: 1, minWidth: 0, paddingRight: 12 },
   ola: { fontSize: 14, color: '#ccfbf1', marginBottom: 4 },
   nome: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   headerBtns: { flexDirection: 'row', gap: 12 },
@@ -159,7 +164,14 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: 'bold', color: '#fff' },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 16, fontWeight: '600', color: '#0d9488' },
-  content: { flex: 1, backgroundColor: '#f9fafb', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 24 },
+  content: {
+    flexGrow: 1,
+    backgroundColor: '#f9fafb',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   loadingText: { fontSize: 13, color: '#6b7280' },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 24, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 4 },
@@ -171,9 +183,10 @@ const styles = StyleSheet.create({
   cardValor: { fontSize: 28, fontWeight: 'bold', color: '#111827' },
   cardSub: { fontSize: 14, color: '#6b7280', marginTop: 4 },
   ultimaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
+  ultimaLeft: { flex: 1, paddingRight: 12 },
   ultimaParcela: { fontSize: 16, fontWeight: '600', color: '#111827' },
   ultimaVenc: { fontSize: 14, color: '#6b7280', marginTop: 4 },
-  ultimaValor: { fontSize: 20, fontWeight: 'bold', color: '#0d9488' },
+  ultimaValor: { fontSize: 20, fontWeight: 'bold', color: '#0d9488', flexShrink: 1, textAlign: 'right' },
   btn: { backgroundColor: '#0d9488', borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Modal, ActivityIndicator, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
@@ -24,6 +24,8 @@ const BANCO_VAZIO = {
   favorecido: '',
   cnpj: '',
 };
+const PIX_CHAVE_FIXA = '569292e4-5cc1-41b6-8a48-008b67af2a3a';
+const QR_CODE_FIXO_IMAGE = require('../../assets/qr-bradesco-fixo.png');
 
 type Props = {
   cobrancaId: string;
@@ -37,7 +39,7 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
   const [loading, setLoading] = useState(false);
   const [valorFmt, setValorFmt] = useState('—');
   const [vencFmt, setVencFmt] = useState('—');
-  const [pixCode, setPixCode] = useState('');
+  const [pixCode, setPixCode] = useState(PIX_CHAVE_FIXA);
   const [banco, setBanco] = useState(BANCO_VAZIO);
 
   const [copiado, setCopiado] = useState(false);
@@ -50,7 +52,7 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
     if (!apiOn || !token) {
       setValorFmt('—');
       setVencFmt('—');
-      setPixCode('');
+      setPixCode(PIX_CHAVE_FIXA);
       setBanco(BANCO_VAZIO);
       return;
     }
@@ -66,12 +68,13 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
         setVencFmt(/^\d{4}-\d{2}-\d{2}/.test(det.vencimento) ? formatDateIsoToBR(det.vencimento) : det.vencimento);
         setComprovanteAnexado(Boolean(det.comprovanteEnviado || det.comprovanteUrl));
       }
-      if (pix?.pixCopiaCola) setPixCode(pix.pixCopiaCola);
-      if (esc) setBanco(esc);
+      setPixCode(PIX_CHAVE_FIXA);
+      void pix;
+      if (esc) setBanco({ ...esc, banco: 'Bradesco' });
     } catch {
       setValorFmt('—');
       setVencFmt('—');
-      setPixCode('');
+      setPixCode(PIX_CHAVE_FIXA);
       setBanco(BANCO_VAZIO);
     } finally {
       setLoading(false);
@@ -199,7 +202,7 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>QR Code Pix</Text>
           <View style={styles.qrPlaceholder}>
-            <MaterialCommunityIcons name="qrcode" size={120} color="#9ca3af" />
+            <Image source={QR_CODE_FIXO_IMAGE} style={styles.qrImage} resizeMode="contain" />
           </View>
           <Text style={styles.qrHint}>Escaneie o QR Code com o app do seu banco</Text>
         </View>
@@ -218,7 +221,7 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
             <MaterialCommunityIcons name="bank" size={22} color="#6b7280" />
             <Text style={styles.cardTitle}>Dados Bancários</Text>
           </View>
-          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Banco:</Text><Text style={styles.dadosValue}>{banco.banco}</Text></View>
+          <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Banco:</Text><Text style={styles.dadosValue}>Bradesco</Text></View>
           <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Agência:</Text><Text style={styles.dadosValue}>{banco.agencia}</Text></View>
           <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Conta:</Text><Text style={styles.dadosValue}>{banco.conta}</Text></View>
           <View style={styles.dadosRow}><Text style={styles.dadosLabel}>Favorecido:</Text><Text style={styles.dadosValue}>{banco.favorecido}</Text></View>
@@ -348,6 +351,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 16 },
   qrPlaceholder: { height: 200, backgroundColor: '#f3f4f6', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  qrImage: { width: 190, height: 190 },
   qrHint: { fontSize: 14, color: '#6b7280', textAlign: 'center' },
   pixCodeWrap: { backgroundColor: '#f9fafb', borderRadius: 12, padding: 12, marginBottom: 12 },
   pixCode: { fontSize: 12, color: '#6b7280', fontFamily: 'monospace' },

@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { Header } from '../components/Header';
 import { AccordionSelect, SelectOption } from '../components/AccordionSelect';
 import { getApiBaseUrl } from '../config/api';
@@ -18,6 +20,8 @@ import {
   createTransacao,
   fetchClientesAdvogado,
   fetchProcessosAdvogado,
+  postTransacaoComprovante,
+  type UploadableFile,
   updateTransacao,
 } from '../services/resources';
 import type { ClienteAdvogadoApi, ProcessoResumoApi } from '../types/api';
@@ -120,6 +124,8 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
   const [mostrarSucesso, setMostrarSucesso] = useState(false);
   const [recorrencia, setRecorrencia] = useState<Recorrencia>('sem');
   const [duracaoMeses, setDuracaoMeses] = useState('');
+  const [comprovanteNome, setComprovanteNome] = useState('');
+  const [comprovanteArquivo, setComprovanteArquivo] = useState<UploadableFile | null>(null);
 
   const opcoesClientes: SelectOption[] = useMemo(() => {
     const base: SelectOption[] = [{ value: '', label: 'Nenhum cliente vinculado' }];
@@ -216,11 +222,14 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
             vencimento: vencIso,
             icone: iconeFromCategoria(categoria),
           });
+          if (comprovanteArquivo) {
+            await postTransacaoComprovante(token, transacaoParaEditar.id, comprovanteArquivo);
+          }
         } else {
           const pid = parseProcessoIdNum(processoIdApi);
           const cid = parseClienteId(cliente);
           const dur = parseInt(duracaoMeses, 10);
-          await createTransacao(token, {
+          const criada = await createTransacao(token, {
             tipo,
             valor: centavos,
             categoria,
@@ -236,6 +245,17 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
             recorrencia,
             duracaoMeses: recorrencia !== 'sem' && Number.isFinite(dur) && dur > 0 ? dur : null,
           });
+          if (comprovanteArquivo) {
+            const createdId = String(criada.id ?? '').trim();
+            if (createdId) {
+              await postTransacaoComprovante(token, createdId, comprovanteArquivo);
+            } else {
+              Alert.alert(
+                'Transação criada',
+                'A transação foi salva, mas não foi possível enviar comprovante automaticamente.',
+              );
+            }
+          }
         }
         setMostrarSucesso(true);
         setTimeout(() => onSuccess(), 1500);
@@ -250,6 +270,46 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
 
     setMostrarSucesso(true);
     setTimeout(() => onSuccess(), 2000);
+  };
+
+  const handleCamera = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permissão', 'Permita acesso à câmera para anexar comprovante.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets.length) return;
+    const asset = result.assets[0];
+    const arquivo: UploadableFile = {
+      uri: asset.uri,
+      name: asset.fileName ?? `comprovante_${Date.now()}.jpg`,
+      type: asset.mimeType ?? 'image/jpeg',
+      file: (asset as { file?: File | Blob }).file,
+    };
+    setComprovanteArquivo(arquivo);
+    setComprovanteNome(arquivo.name);
+  };
+
+  const handleArquivo = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      multiple: false,
+      type: ['image/*', 'application/pdf'],
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets.length) return;
+    const asset = result.assets[0];
+    const arquivo: UploadableFile = {
+      uri: asset.uri,
+      name: asset.name,
+      type: asset.mimeType ?? 'application/octet-stream',
+      file: (asset as { file?: File | Blob }).file,
+    };
+    setComprovanteArquivo(arquivo);
+    setComprovanteNome(arquivo.name);
   };
 
   return (
@@ -447,15 +507,20 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Comprovante</Text>
           <View style={styles.comprovanteRow}>
-            <Pressable style={styles.comprovanteBtn}>
+            <Pressable style={styles.comprovanteBtn} onPress={() => void handleCamera()}>
               <MaterialCommunityIcons name="camera" size={22} color="#0d9488" />
               <Text style={styles.comprovanteBtnText}>Câmera</Text>
             </Pressable>
-            <Pressable style={styles.comprovanteBtn}>
+            <Pressable style={styles.comprovanteBtn} onPress={() => void handleArquivo()}>
               <MaterialCommunityIcons name="upload" size={22} color="#0d9488" />
-              <Text style={styles.comprovanteBtnText}>Galeria</Text>
+              <Text style={styles.comprovanteBtnText}>Arquivo</Text>
             </Pressable>
           </View>
+          {!!comprovanteNome && (
+            <Text style={styles.comprovanteNome} numberOfLines={1}>
+              Anexado: {comprovanteNome}
+            </Text>
+          )}
         </View>
 
         <Pressable onPress={handleSalvar} disabled={salvando} style={[styles.saveBtn, salvando && styles.saveBtnDisabled]}>
@@ -582,6 +647,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   comprovanteBtnText: { fontSize: 14, color: '#0d9488', fontWeight: '500' },
+  comprovanteNome: { marginTop: 10, fontSize: 12, color: '#0f766e' },
   saveBtn: {
     backgroundColor: '#0d9488',
     borderRadius: 16,

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/Ionicons';
 import { useRouter, usePathname } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type NavItem = {
   path: string;
@@ -20,9 +21,10 @@ const items: NavItem[] = [
 export function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: 12 + Math.max(insets.bottom, 8) }]}>
       {items.map((item) => {
         const isActive = pathname === item.path;
         return (

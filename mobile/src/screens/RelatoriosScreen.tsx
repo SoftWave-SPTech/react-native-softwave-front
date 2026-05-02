@@ -234,7 +234,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
     return [];
   }, [ranking]);
 
-  const insightsPadrao = useMemo(() => {
+  const insights = useMemo(() => {
     return {
       linha: insightsGerados.linha?.bullets ?? (insightsApi?.linha?.length ? insightsApi.linha : []),
       pizza: insightsGerados.pizza?.bullets ?? (insightsApi?.pizza?.length ? insightsApi.pizza : []),
@@ -277,33 +277,6 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
     } finally {
       setGerandoInsightCard(null);
     }
-  };
-
-  const handleInsightPress = async (tipo: InsightTipo) => {
-    toggleInsight(tipo);
-    if (!apiOn || !token) {
-      Alert.alert('API', 'Token ou URL da API não disponíveis.');
-      return;
-    }
-    setGerandoInsight(tipo);
-    const { dataInicio, dataFim } = intervaloDoPeriodo(periodo);
-    const insight = await postInsightGerar(token, {
-      tipoInsight: INSIGHT_API_TIPO[tipo],
-      dataInicio,
-      dataFim,
-      incluirComparativoPeriodoAnterior: true,
-    });
-    setGerandoInsight((prev) => (prev === tipo ? null : prev));
-    if (!insight) {
-      Alert.alert('Erro', 'Não foi possível gerar o insight para este gráfico.');
-      return;
-    }
-    const bullets = (Array.isArray(insight.bullets) ? insight.bullets : [])
-      .map((item) => item?.trim())
-      .filter((item): item is string => !!item);
-    const resumo = insight.resumoIA?.trim();
-    const payload = bullets.length > 0 ? bullets : resumo ? [resumo] : ['Sem recomendações para este período.'];
-    setInsightsGerados((prev) => ({ ...prev, [tipo]: payload }));
   };
 
   const k = kpis;
@@ -532,7 +505,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           )}
         </View>
 
-        <View style={{ height: 80 }} />
+        <View style={{ height: 160 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
         <BottomNav />
