@@ -6,7 +6,7 @@ export default function EsqueciSenhaPage() {
   return (
     <EsqueciSenhaScreen
       onBack={() => router.back()}
-      onSuccess={() => router.replace('/home')}
+      onSuccess={() => router.push('/home')}
     />
   );
 }

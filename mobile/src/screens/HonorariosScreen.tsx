@@ -12,6 +12,10 @@ import { useAuth } from '../context/AuthContext';
 import { fetchContratos } from '../services/resources';
 import type { ContratoApi } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
+import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
+import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
+import { MASKED_MONEY_VALUE, maskIfRestricted } from '../utils/geo';
+import { useScrollPaddingBottom } from '../utils/scrollPadding';
 
 type ContratoStatus = 'pendente' | 'atrasado' | 'pago' | 'cancelado' | 'encerrado';
 
@@ -67,6 +71,8 @@ type Props = {
 export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onNavigate }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
+  const restrict = useShouldRestrictSensitiveData();
+  const scrollPad = useScrollPaddingBottom();
 
   const [rowsApi, setRowsApi] = useState<ContratoApi[]>([]);
   const [loading, setLoading] = useState(false);
@@ -108,10 +114,10 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
       { value: 'todos', label: 'Todos os Clientes' },
       ...Array.from(new Set(lista.map((c) => c.cliente))).map((nome) => ({
         value: nome,
-        label: nome,
+        label: restrict ? maskIfRestricted(nome, true) : nome,
       })),
     ],
-    [lista],
+    [lista, restrict],
   );
 
   const contratosFiltrados = lista.filter((c) => {
@@ -123,7 +129,13 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
   return (
     <View style={styles.container}>
       <Header title="Honorários" showBack onBack={onBack} />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollPad }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <LocaisSegurosBanner />
+
         {apiOn && loading && (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color="#2563eb" />
@@ -135,7 +147,7 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
           <View style={styles.resumoVerde}>
             <Text style={styles.resumoLabel}>Total Recebido</Text>
             <Text style={styles.resumoValue} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
-              {topo.recebido}
+              {restrict ? MASKED_MONEY_VALUE : topo.recebido}
             </Text>
           </View>
           <LinearGradient
@@ -146,7 +158,7 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
           >
             <Text style={styles.resumoLabel}>A Receber</Text>
             <Text style={styles.resumoValue} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
-              {topo.aReceber}
+              {restrict ? MASKED_MONEY_VALUE : topo.aReceber}
             </Text>
           </LinearGradient>
         </View>
@@ -187,7 +199,7 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={styles.contratoClienteRow}>
-                        <Text style={styles.contratoCliente}>{c.cliente}</Text>
+                        <Text style={styles.contratoCliente}>{maskIfRestricted(c.cliente, restrict)}</Text>
                         {c.reprovado && c.status === 'pendente' && (
                           <View style={styles.reprovadoBadge}>
                             <Text style={styles.reprovadoBadgeText}>Reprovado</Text>
@@ -196,9 +208,9 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
                       </View>
                       <View style={styles.contratoProcesso}>
                         <MaterialCommunityIcons name="file-document" size={14} color="#6b7280" />
-                        <Text style={styles.contratoProcessoText}>{c.processo}</Text>
+                        <Text style={styles.contratoProcessoText}>{maskIfRestricted(c.processo, restrict)}</Text>
                       </View>
-                      <Text style={styles.contratoTipo}>{c.tipoContrato}</Text>
+                      <Text style={styles.contratoTipo}>{maskIfRestricted(c.tipoContrato, restrict)}</Text>
                     </View>
                   </View>
                   <TagStatus status={c.status as 'em-dia' | 'pendente' | 'atrasado' | 'encerrado'} />
@@ -207,22 +219,21 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
                 <View style={styles.contratoFooter}>
                   <View>
                     <Text style={styles.contratoFooterLabel}>Vencimento</Text>
-                    <Text style={styles.contratoFooterValue}>{c.vencimento}</Text>
+                    <Text style={styles.contratoFooterValue}>{maskIfRestricted(c.vencimento, restrict)}</Text>
                   </View>
                   <View style={styles.contratoFooterCenter}>
                     <Text style={styles.contratoFooterLabel}>Pago</Text>
-                    <Text style={styles.contratoPago}>{c.pago}</Text>
+                    <Text style={styles.contratoPago}>{restrict ? MASKED_MONEY_VALUE : c.pago}</Text>
                   </View>
                   <View style={styles.contratoFooterRight}>
                     <Text style={styles.contratoFooterLabel}>Total</Text>
-                    <Text style={styles.contratoTotal}>{c.total}</Text>
+                    <Text style={styles.contratoTotal}>{restrict ? MASKED_MONEY_VALUE : c.total}</Text>
                   </View>
                 </View>
               </Pressable>
             ))
           )}
         </View>
-        <View style={{ height: 160 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
         <BottomNav />
