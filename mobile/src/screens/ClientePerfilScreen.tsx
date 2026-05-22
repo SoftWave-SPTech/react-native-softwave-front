@@ -125,13 +125,13 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
               quality: 0.85,
               allowsEditing: true,
               aspect: [1, 1],
-              mediaTypes: ['images'],
+              
             })
           : await ImagePicker.launchImageLibraryAsync({
               quality: 0.85,
               allowsEditing: true,
               aspect: [1, 1],
-              mediaTypes: ['images'],
+              
             });
 
       if (result.canceled || !result.assets[0]?.uri) return;
@@ -139,15 +139,22 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
       setFotoPerfilUri(a.uri);
       if (apiOn && token) {
         const ext = a.fileName?.split('.').pop() || 'jpg';
-        const resp = await postClienteFotoPerfil(token, {
-          uri: a.uri,
-          name: a.fileName ?? `perfil_${Date.now()}.${ext}`,
-          type: a.mimeType ?? 'image/jpeg',
-          file: (a as { file?: File | Blob }).file,
-        });
-        if (resp?.fotoUrl) {
-          setFotoPerfilUri(resolverFotoPerfilUri(resp.fotoUrl) ?? a.uri);
-        }
+          const payload = {
+            uri: a.uri,
+            name: a.fileName ?? `perfil_${Date.now()}.${ext}`,
+            type: a.mimeType ?? 'image/jpeg',
+            file: (a as { file?: File | Blob }).file,
+          };
+          console.log('[UPLOAD] clienteFoto payload', { uri: payload.uri, name: payload.name, type: payload.type, hasFile: Boolean(payload.file) });
+          try {
+            const resp = await postClienteFotoPerfil(token, payload);
+            if (resp?.fotoUrl) {
+              setFotoPerfilUri(resolverFotoPerfilUri(resp.fotoUrl) ?? a.uri);
+            }
+          } catch (err) {
+            console.error('[UPLOAD] clienteFoto error', err);
+            throw err; // bubble to outer catch
+          }
       }
       setModalFoto(false);
       Alert.alert('Sucesso', 'Foto de perfil atualizada.');

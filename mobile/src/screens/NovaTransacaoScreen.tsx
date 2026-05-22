@@ -279,10 +279,10 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
+      
+      quality: 0.85,
+      allowsEditing: true,
     });
-    if (result.canceled || !result.assets.length) return;
     const asset = result.assets[0];
     const arquivo: UploadableFile = {
       uri: asset.uri,

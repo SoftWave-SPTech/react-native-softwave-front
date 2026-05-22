@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Alert, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Alert, Modal, ActivityIndicator, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
 import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
-import { fetchPerfilEscritorio } from '../services/resources';
+import { fetchPerfilEscritorio, postPerfilFoto } from '../services/resources';
 
 type Props = {
   onBack: () => void;
@@ -25,6 +26,20 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
   const [oab, setOab] = useState('');
   const [endereco, setEndereco] = useState('');
   const [modalFoto, setModalFoto] = useState(false);
+  const [fotoPerfilUri, setFotoPerfilUri] = useState<string | null>(null);
+
+  function resolverFotoPerfilUri(raw: string | null | undefined): string | null {
+    if (!raw) return null;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (raw.startsWith('file://')) return raw;
+    if (raw.startsWith('/')) {
+      const base = getApiBaseUrl();
+      if (!base) return null;
+      const origin = base.replace(/\/v1\/?$/i, '');
+      return `${origin}${raw}`;
+    }
+    return raw;
+  }
 
   const carregar = useCallback(async () => {
     if (!apiOn || !token) return;
@@ -37,6 +52,7 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
         setTelefone(p.telefone);
         setOab(p.oab);
         setEndereco(p.endereco);
+        setFotoPerfilUri(resolverFotoPerfilUri(p.fotoPerfil));
       }
     } finally {
       setLoading(false);
@@ -46,6 +62,62 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  const selecionarFoto = useCallback(async (tipo: 'camera' | 'galeria') => {
+    try {
+      const permissao =
+        tipo === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissao.granted) {
+        Alert.alert('Permissão necessária', 'Autorize o acesso para alterar a foto de perfil.');
+        return;
+      }
+
+      const result =
+        tipo === 'camera'
+          ? await ImagePicker.launchCameraAsync({
+              quality: 0.85,
+              allowsEditing: true,
+              aspect: [1, 1],
+              
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              quality: 0.85,
+              allowsEditing: true,
+              aspect: [1, 1],
+              
+            });
+
+      if (result.canceled || !result.assets[0]?.uri) return;
+      const a = result.assets[0];
+      setFotoPerfilUri(a.uri);
+      if (apiOn && token) {
+        const ext = a.fileName?.split('.').pop() || 'jpg';
+        const payload = {
+          uri: a.uri,
+          name: a.fileName ?? `perfil_${Date.now()}.${ext}`,
+          type: a.type ?? a.mimeType ?? 'image/jpeg',
+          file: (a as { file?: File | Blob }).file,
+        };
+        console.log('[UPLOAD] perfilFoto payload', { uri: payload.uri, name: payload.name, type: payload.type, hasFile: Boolean(payload.file) });
+        try {
+          const resp = await postPerfilFoto(token, payload);
+          if (resp?.fotoUrl) {
+            setFotoPerfilUri(resolverFotoPerfilUri(resp.fotoUrl) ?? a.uri);
+          }
+        } catch (err) {
+          console.error('[UPLOAD] perfilFoto error', err);
+          throw err; // bubble to outer catch which shows user Alert
+        }
+      }
+      setModalFoto(false);
+      Alert.alert('Sucesso', 'Foto de perfil atualizada.');
+    } catch {
+      Alert.alert('Erro', 'Não foi possível atualizar a foto de perfil.');
+    }
+  }, [apiOn, token]);
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja realmente sair do aplicativo?', [
@@ -67,6 +139,9 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
         <View style={styles.avatarCard}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
+            {fotoPerfilUri ? (
+              <Image source={{ uri: fotoPerfilUri }} style={styles.avatarImage} />
+            ) : (
               <Text style={styles.avatarText}>
                 {(nome || '?')
                   .trim()
@@ -76,11 +151,12 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
                   .map((w) => w[0]?.toUpperCase() ?? '')
                   .join('') || '?'}
               </Text>
-            </View>
-            <Pressable onPress={() => setModalFoto(true)} style={styles.cameraBtn}>
-              <MaterialCommunityIcons name="camera" size={16} color="#fff" />
-            </Pressable>
+            )}
           </View>
+          <Pressable onPress={() => setModalFoto(true)} style={styles.cameraBtn}>
+            <MaterialCommunityIcons name="camera" size={16} color="#fff" />
+          </Pressable>
+        </View>
           <Text style={styles.nome}>{nome}</Text>
           <Text style={styles.oab}>{oab}</Text>
         </View>
@@ -108,12 +184,12 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
           <View style={styles.bottomSheet} onStartShouldSetResponder={() => true}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Alterar Foto de Perfil</Text>
-            <Pressable style={styles.sheetOption} onPress={() => { setModalFoto(false); Alert.alert('Câmera', 'Funcionalidade de câmera disponível após permissões.'); }}>
+            <Pressable style={styles.sheetOption} onPress={() => { setModalFoto(false); void selecionarFoto('camera'); }}>
               <View style={styles.sheetOptionIcon}><MaterialCommunityIcons name="camera" size={24} color="#0d9488" /></View>
               <Text style={styles.sheetOptionText}>Tirar Foto</Text>
               <MaterialCommunityIcons name="chevron-right" size={22} color="#9ca3af" />
             </Pressable>
-            <Pressable style={styles.sheetOption} onPress={() => { setModalFoto(false); Alert.alert('Galeria', 'Funcionalidade de galeria disponível após permissões.'); }}>
+            <Pressable style={styles.sheetOption} onPress={() => { setModalFoto(false); void selecionarFoto('galeria'); }}>
               <View style={styles.sheetOptionIcon}><MaterialCommunityIcons name="image" size={24} color="#0d9488" /></View>
               <Text style={styles.sheetOptionText}>Escolher da Galeria</Text>
               <MaterialCommunityIcons name="chevron-right" size={22} color="#9ca3af" />
@@ -148,7 +224,8 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 13, color: '#6b7280' },
   avatarCard: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   avatarWrap: { position: 'relative', marginBottom: 16 },
-  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#0d9488', alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#0d9488', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarImage: { width: '100%', height: '100%' },
   avatarText: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
   cameraBtn: { position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: '#374151', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
   nome: { fontSize: 20, fontWeight: '600', color: '#111827', marginBottom: 4 },

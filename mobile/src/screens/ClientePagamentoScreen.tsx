@@ -125,16 +125,18 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
 
       const picked =
         tipo === 'camera'
-          ? await ImagePicker.launchCameraAsync({
-              quality: 0.85,
-              allowsEditing: false,
-              mediaTypes: ['images'],
-            })
+              ? await ImagePicker.launchCameraAsync({
+                  quality: 0.85,
+                  allowsEditing: true,
+                  aspect: [16, 9],
+                  
+                })
           : await ImagePicker.launchImageLibraryAsync({
-              quality: 0.85,
-              allowsEditing: false,
-              mediaTypes: ['images'],
-            });
+                  quality: 0.85,
+                  allowsEditing: true,
+                  aspect: [16, 9],
+                  
+                });
 
       if (picked.canceled || !picked.assets[0]) return;
       const a = picked.assets[0];

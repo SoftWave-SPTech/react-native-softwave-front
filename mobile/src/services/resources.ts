@@ -342,6 +342,23 @@ export async function postClienteFotoPerfil(
   return apiPostFormData<UploadFotoPerfilResponseApi>('/cliente/perfil/foto', token, fd);
 }
 
+export async function postPerfilFoto(
+  token: string | null,
+  arquivo: UploadableFile,
+): Promise<UploadFotoPerfilResponseApi> {
+  const fd = new FormData();
+  if (arquivo.file) {
+    fd.append('foto', arquivo.file, arquivo.name);
+  } else {
+    fd.append('foto', {
+      uri: arquivo.uri,
+      name: arquivo.name,
+      type: arquivo.type,
+    } as unknown as Blob);
+  }
+  return apiPostFormData<UploadFotoPerfilResponseApi>('/perfil/foto', token, fd);
+}
+
 export async function fetchClientesAdvogado(token: string | null): Promise<ClienteAdvogadoApi[]> {
   try {
     const env = await apiGetJson<ClientesListEnvelopeApi>('/clientes', token);
