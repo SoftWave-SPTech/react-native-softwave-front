@@ -244,10 +244,10 @@ export function LocaisSegurosProvider({ children }: { children: React.ReactNode 
         }
       }
 
-      setEnabledState(value);
       if (!apiOn || !token) {
         return { ok: false, error: 'API não configurada.' };
       }
+      setEnabledState(value);
       try {
         await putLocaisSegurosConfig(token, value);
         return { ok: true };
