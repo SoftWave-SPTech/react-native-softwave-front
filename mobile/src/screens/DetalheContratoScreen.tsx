@@ -14,6 +14,10 @@ import {
 } from '../services/resources';
 import type { ContratoApi, ParcelaApi } from '../types/api';
 import { formatCentavosBRL, formatDateIsoToBR } from '../utils/money';
+import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
+import { LocaisSegurosRestrictedNote } from '../components/LocaisSegurosRestrictedNote';
+import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
+import { MASKED_MONEY_VALUE, maskIfRestricted } from '../utils/geo';
 
 type ParcelaStatus = 'pago' | 'pendente';
 
@@ -84,6 +88,7 @@ type Props = {
 export function DetalheContratoScreen({ contratoId, onBack }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
+  const restrict = useShouldRestrictSensitiveData();
 
   const [loading, setLoading] = useState(false);
   const [contrato, setContrato] = useState<ContratoApi | null>(null);
@@ -125,9 +130,13 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
   const progressoContrato =
     parcelas.length > 0 ? progressoPorValorParcelas(parcelas) : (contrato?.progresso ?? 0);
 
-  const clienteNome = contrato?.cliente ?? 'Cliente';
-  const valorTitulo = contrato ? formatCentavosBRL(contrato.total) : '—';
-  const tipoTxt = contrato?.tipoContrato ?? 'Contrato';
+  const clienteNome = maskIfRestricted(contrato?.cliente ?? 'Cliente', restrict);
+  const valorTitulo = restrict
+    ? MASKED_MONEY_VALUE
+    : contrato
+      ? formatCentavosBRL(contrato.total)
+      : '—';
+  const tipoTxt = maskIfRestricted(contrato?.tipoContrato ?? 'Contrato', restrict);
   const statusContratoTag =
     parcelas.length > 0
       ? inferirStatusContrato(parcelas, progressoContrato)
@@ -169,6 +178,8 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
     <View style={styles.container}>
       <Header title="Detalhe do Contrato" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <LocaisSegurosBanner />
+
         {apiOn && loading && (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color="#2563eb" />
@@ -185,7 +196,9 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
           <View style={styles.progressoWrap}>
             <View style={styles.progressoHeader}>
               <Text style={styles.progressoLabel}>Percentual Pago</Text>
-              <Text style={styles.progressoPct}>{progressoContrato}%</Text>
+              <Text style={styles.progressoPct}>
+                {maskIfRestricted(`${progressoContrato}%`, restrict)}
+              </Text>
             </View>
             <BarraProgresso percentage={progressoContrato} />
           </View>
@@ -193,7 +206,7 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
         {contrato?.descricao ? (
           <View style={styles.descCard}>
             <Text style={styles.descTitle}>Descrição</Text>
-            <Text style={styles.descText}>{contrato.descricao}</Text>
+            <Text style={styles.descText}>{maskIfRestricted(contrato.descricao, restrict)}</Text>
           </View>
         ) : null}
         <Text style={styles.sectionTitle}>Parcelas</Text>
@@ -211,24 +224,29 @@ export function DetalheContratoScreen({ contratoId, onBack }: Props) {
                   <Text style={[styles.parcelaNumText, p.status === 'pago' ? styles.parcelaNumTextPago : styles.parcelaNumTextPendente]}>{p.numero}</Text>
                 </View>
                 <View>
-                  <Text style={styles.parcelaValor}>{p.valor}</Text>
-                  <Text style={styles.parcelaVenc}>Vencimento: {p.vencimento}</Text>
+                  <Text style={styles.parcelaValor}>{restrict ? MASKED_MONEY_VALUE : p.valor}</Text>
+                  <Text style={styles.parcelaVenc}>
+                    Vencimento: {maskIfRestricted(p.vencimento, restrict)}
+                  </Text>
                 </View>
               </View>
               <TagStatus status={p.status} />
             </View>
-            {p.status === 'pendente' && (
-              <View style={styles.parcelaActions}>
-                <Pressable onPress={() => gerarCobranca(p)} style={styles.btnGerar}>
-                  <MaterialCommunityIcons name="send" size={18} color="#0d9488" />
-                  <Text style={styles.btnGerarText}>Gerar Cobrança</Text>
-                </Pressable>
-                <Pressable onPress={() => marcarPago(p)} style={styles.btnPago}>
-                  <MaterialCommunityIcons name="check" size={18} color="#16a34a" />
-                  <Text style={styles.btnPagoText}>Marcar Pago</Text>
-                </Pressable>
-              </View>
-            )}
+            {p.status === 'pendente' &&
+              (restrict ? (
+                <LocaisSegurosRestrictedNote />
+              ) : (
+                <View style={styles.parcelaActions}>
+                  <Pressable onPress={() => gerarCobranca(p)} style={styles.btnGerar}>
+                    <MaterialCommunityIcons name="send" size={18} color="#0d9488" />
+                    <Text style={styles.btnGerarText}>Gerar Cobrança</Text>
+                  </Pressable>
+                  <Pressable onPress={() => marcarPago(p)} style={styles.btnPago}>
+                    <MaterialCommunityIcons name="check" size={18} color="#16a34a" />
+                    <Text style={styles.btnPagoText}>Marcar Pago</Text>
+                  </Pressable>
+                </View>
+              ))}
           </View>
         ))}
         <View style={{ height: 40 }} />

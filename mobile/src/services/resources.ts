@@ -30,6 +30,7 @@ import type {
   TransacaoCreatePayload,
   TransacoesListApi,
 } from '../types/api';
+import type { LocalSeguro, LocalSeguroPayload, LocaisSegurosApiResponse } from '../types/locaisSeguros';
 import { getIaApiBaseUrl, getEtlApiBaseUrl } from '../config/api';
 import { Platform } from 'react-native';
 import { ApiError, apiDeleteJson, apiFetch, apiGetJson, apiPatchJson, apiPostFormData, apiPostJson, apiPutJson } from './http';
@@ -875,10 +876,104 @@ export async function fetchClientePerfil(token: string | null): Promise<ClienteP
   }
 }
 
+export type ClientePerfilUpdateBody = {
+  email: string;
+  telefone: string;
+  endereco: string;
+};
+
+export async function putClientePerfil(
+  token: string | null,
+  body: ClientePerfilUpdateBody,
+): Promise<{ mensagem?: string }> {
+  return apiPutJson('/cliente/perfil', token, body);
+}
+
+export type PerfilEscritorioUpdateBody = {
+  nome: string;
+  email: string;
+  telefone: string;
+  endereco: string;
+};
+
+export async function putPerfilEscritorio(
+  token: string | null,
+  body: PerfilEscritorioUpdateBody,
+): Promise<{ mensagem?: string }> {
+  return apiPutJson('/perfil', token, body);
+}
+
 export async function fetchPerfilEscritorio(token: string | null): Promise<PerfilEscritorioApi | null> {
   try {
     return await apiGetJson<PerfilEscritorioApi>('/perfil', token);
   } catch {
     return null;
   }
+}
+
+function mapLocalSeguroFromApi(raw: Record<string, unknown>): LocalSeguro {
+  return {
+    id: String(raw.id ?? ''),
+    nome: String(raw.nome ?? ''),
+    cep: String(raw.cep ?? ''),
+    logradouro: String(raw.logradouro ?? ''),
+    numero: String(raw.numero ?? ''),
+    complemento: String(raw.complemento ?? ''),
+    cidade: String(raw.cidade ?? ''),
+    uf: String(raw.uf ?? ''),
+    endereco: String(raw.endereco ?? ''),
+    latitude: Number(raw.latitude ?? 0),
+    longitude: Number(raw.longitude ?? 0),
+    raio: Number(raw.raio ?? 100),
+    ativo: raw.ativo !== false,
+  };
+}
+
+export async function fetchLocaisSeguros(token: string | null): Promise<LocaisSegurosApiResponse | null> {
+  try {
+    const data = await apiGetJson<{ enabled?: boolean; locais?: Record<string, unknown>[] }>(
+      '/locais-seguros',
+      token,
+    );
+    const locais = (data.locais ?? []).map((l) => mapLocalSeguroFromApi(l));
+    return { enabled: Boolean(data.enabled), locais };
+  } catch {
+    return null;
+  }
+}
+
+export async function putLocaisSegurosConfig(
+  token: string | null,
+  enabled: boolean,
+): Promise<{ enabled?: boolean }> {
+  return apiPutJson('/locais-seguros/config', token, { enabled });
+}
+
+export async function postLocalSeguro(
+  token: string | null,
+  body: LocalSeguroPayload,
+): Promise<LocalSeguro | null> {
+  const res = await apiPostJson<{ local?: Record<string, unknown> }>('/locais-seguros', token, body);
+  if (res.local) return mapLocalSeguroFromApi(res.local);
+  return null;
+}
+
+export async function putLocalSeguro(
+  token: string | null,
+  id: string,
+  body: LocalSeguroPayload,
+): Promise<LocalSeguro | null> {
+  const rawId = id.startsWith('loc_') ? id : `loc_${id}`;
+  const res = await apiPutJson<{ local?: Record<string, unknown> }>(
+    `/locais-seguros/${encodeURIComponent(rawId)}`,
+    token,
+    body,
+  );
+  if (res.local) return mapLocalSeguroFromApi(res.local);
+  return null;
+}
+
+export async function deleteLocalSeguro(token: string | null, id: string): Promise<void> {
+  const rawId = id.startsWith('loc_') ? id : `loc_${id}`;
+  await apiDeleteJson(`/locais-seguros/${encodeURIComponent(rawId)}`, token);
 }

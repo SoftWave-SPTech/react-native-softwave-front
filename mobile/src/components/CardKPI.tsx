@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
+import { MASKED_MONEY_VALUE } from '../utils/geo';
 
 type Props = {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -11,14 +13,16 @@ type Props = {
 };
 
 export function CardKPI({ icon, title, value, variation, variationType }: Props) {
+  const restrict = useShouldRestrictSensitiveData();
+  const displayValue = restrict ? MASKED_MONEY_VALUE : value;
   return (
     <View style={styles.card}>
       <View style={styles.iconWrap}>
         <MaterialCommunityIcons name={icon} size={18} color="#0d9488" />
       </View>
       <Text style={styles.title}>{title}</Text>
-      <Text style={styles.value}>{value}</Text>
-      {variation && (
+      <Text style={styles.value}>{displayValue}</Text>
+      {variation && !restrict && (
         <Text style={[styles.variation, variationType === 'negative' ? styles.negative : styles.positive]}>
           {variation}
         </Text>
