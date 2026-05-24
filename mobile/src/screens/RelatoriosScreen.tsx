@@ -1,7 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Dimensions, ActivityIndicator, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LineChart, PieChart, BarChart } from 'react-native-chart-kit';
+import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 import { Header } from '../components/Header';
 import { CardKPI } from '../components/CardKPI';
 import { BottomNav } from '../components/BottomNav';
@@ -9,7 +18,6 @@ import { getApiBaseUrl, getIaApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchRelatorioDespesasMes,
-  fetchRelatorioInsights,
   fetchRelatorioKpis,
   fetchRelatorioRankingClientes,
   fetchRelatorioReceitaCategoria,
@@ -19,7 +27,6 @@ import {
 import type {
   InsightFinanceiroResponseApi,
   RelatorioDespesasMesApi,
-  RelatorioInsightsApi,
   RelatorioKpisApi,
   RelatorioRankingClientesApi,
   RelatorioReceitaCategoriaApi,
@@ -32,36 +39,83 @@ type Props = {
   onBack: () => void;
   onNavigate: (screen: string, id?: string) => void;
 };
-type InsightTipo = 'linha' | 'pizza' | 'barra' | 'maioresClientes';
+type InsightCardKey = 'linha' | 'pizza' | 'barra' | 'maioresClientes';
 
-const SCREEN_WIDTH = Dimensions.get('window').width - 40;
-
-/** Estrutura mínima para os gráficos quando a API ainda não retornou dados. */
-const CHART_VAZIO_LINHA = {
-  labels: ['—'],
-  datasets: [
-    { data: [0], color: () => '#16a34a', strokeWidth: 2 },
-    { data: [0], color: () => '#dc2626', strokeWidth: 2 },
-  ],
-  legend: ['Receita', 'Despesa'],
-};
-const CHART_VAZIO_PIZZA = [
-  { name: '—', value: 1, color: '#e5e7eb', legendFontColor: '#9ca3af', legendFontSize: 13 },
-];
-const CHART_VAZIO_BARRA = { labels: ['—'], datasets: [{ data: [0] }] };
-
-const CHART_CONFIG = {
-  backgroundGradientFrom: '#fff',
-  backgroundGradientTo: '#fff',
-  color: (opacity = 1) => `rgba(13, 148, 136, ${opacity})`,
-  labelColor: () => '#6b7280',
-  strokeWidth: 2,
-  decimalPlaces: 0,
-  propsForDots: { r: '4', strokeWidth: '2', stroke: '#0d9488' },
-};
+const SCROLL_H_PADDING = 20;
+const CARD_H_PADDING = 16;
+const Y_AXIS_WIDTH = 44;
+const CHART_INITIAL_SPACING = 8;
+const CHART_END_SPACING = 8;
+const CHART_HEIGHT = 168;
 
 const PIE_PALETTE = ['#2563eb', '#16a34a', '#f59e0b', '#8b5cf6', '#ec4899', '#0ea5e9'];
-type InsightCardKey = 'linha' | 'pizza' | 'barra' | 'maioresClientes';
+
+type ChartLayout = {
+  plotWidth: number;
+  spacing: number;
+  barWidth: number;
+};
+
+type PieSlice = {
+  value: number;
+  color: string;
+  nome: string;
+  percentual: number;
+  valorLabel: string;
+};
+
+function defaultChartInnerWidth(windowWidth: number): number {
+  return windowWidth - SCROLL_H_PADDING * 2 - CARD_H_PADDING * 2;
+}
+
+function computeChartLayout(pointCount: number, innerWidth: number): ChartLayout {
+  const plotWidth = Math.max(120, innerWidth - Y_AXIS_WIDTH);
+  const points = Math.max(pointCount, 1);
+
+  if (points === 1) {
+    return { plotWidth, spacing: 20, barWidth: 24 };
+  }
+
+  const available = plotWidth - CHART_INITIAL_SPACING - CHART_END_SPACING;
+  const spacing = Math.max(8, Math.floor(available / (points - 1)));
+  const barWidth = Math.min(26, Math.max(10, Math.floor(spacing * 0.55)));
+
+  return { plotWidth, spacing, barWidth };
+}
+
+/** Escala do eixo Y alinhada aos dados do período. */
+function computeChartScale(values: number[]): { maxValue: number; stepValue: number; noOfSections: number } {
+  const noOfSections = 4;
+  const finite = values.filter((v) => Number.isFinite(v));
+  const max = finite.length ? Math.max(...finite, 0) : 0;
+
+  if (max <= 0) {
+    const stepValue = 2.5;
+    return { maxValue: stepValue * noOfSections, stepValue, noOfSections };
+  }
+
+  const padded = max * 1.12;
+  let stepValue: number;
+  if (padded <= 10) {
+    stepValue = Math.max(1, Math.ceil(padded / noOfSections));
+  } else {
+    const rawStep = padded / noOfSections;
+    const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+    const normalized = rawStep / magnitude;
+    const nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+    stepValue = nice * magnitude;
+  }
+
+  return { maxValue: stepValue * noOfSections, stepValue, noOfSections };
+}
+
+function formatYAxisLabel(value: string): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return value;
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `${Math.round(n / 1_000)}k`;
+  return String(Math.round(n));
+}
 
 const TIPO_INSIGHT_POR_CARD: Record<InsightCardKey, TipoInsightApi> = {
   linha: 'RECEITA_DESPESA',
@@ -121,16 +175,21 @@ function valorPrincipalKpi(
   if (!k) return fallback;
   const item = k[chave];
   if (!item || item.valor === undefined || item.valor === null) return fallback;
-  if (chave === 'ticketMedio' && typeof item.valor === 'number') {
-    return formatCentavosBRL(item.valor);
+  if (chave === 'ticketMedio') {
+    const raw = item.valor;
+    const n = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+    if (Number.isFinite(n) && n > 0) return formatCentavosBRL(n);
   }
   return String(item.valor);
 }
 
 export function RelatoriosScreen({ onBack, onNavigate }: Props) {
+  const { width: windowWidth } = useWindowDimensions();
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
   const iaOn = !!getIaApiBaseUrl()?.trim() && !!token;
+
+  const [chartInnerWidth, setChartInnerWidth] = useState(defaultChartInnerWidth(windowWidth));
 
   const [periodo, setPeriodo] = useState('mes');
   const [insightAberto, setInsightAberto] = useState<InsightCardKey | null>(null);
@@ -145,7 +204,6 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
   const [dm, setDm] = useState<RelatorioDespesasMesApi | null>(null);
   const [kpis, setKpis] = useState<RelatorioKpisApi | null>(null);
   const [ranking, setRanking] = useState<RelatorioRankingClientesApi | null>(null);
-  const [insightsApi, setInsightsApi] = useState<RelatorioInsightsApi | null>(null);
 
   const carregar = useCallback(async () => {
     if (!apiOn || !token) {
@@ -154,29 +212,30 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
       setDm(null);
       setKpis(null);
       setRanking(null);
-      setInsightsApi(null);
       return;
     }
     setLoading(true);
     try {
-      const [a, b, c, d, e, f] = await Promise.all([
+      const [a, b, c, d, e] = await Promise.all([
         fetchRelatorioReceitaDespesa(token, periodo),
         fetchRelatorioReceitaCategoria(token, periodo),
         fetchRelatorioDespesasMes(token, periodo),
         fetchRelatorioKpis(token, periodo),
         fetchRelatorioRankingClientes(token, periodo),
-        fetchRelatorioInsights(token, periodo),
       ]);
       setRd(a);
       setRc(b);
       setDm(c);
       setKpis(d);
       setRanking(e);
-      setInsightsApi(f);
     } finally {
       setLoading(false);
     }
   }, [apiOn, token, periodo]);
+
+  useEffect(() => {
+    setChartInnerWidth(defaultChartInnerWidth(windowWidth));
+  }, [windowWidth]);
 
   useEffect(() => {
     carregar();
@@ -188,43 +247,105 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
     setInsightAberto(null);
   }, [periodo]);
 
-  const dadosLinha = useMemo(() => {
-    if (rd?.labels?.length && rd.receita?.length && rd.despesa?.length) {
-      return {
-        labels: rd.labels,
-        datasets: [
-          { data: rd.receita.map(centavosParaReaisChart), color: () => '#16a34a', strokeWidth: 2 },
-          { data: rd.despesa.map(centavosParaReaisChart), color: () => '#dc2626', strokeWidth: 2 },
-        ],
-        legend: ['Receita', 'Despesa'],
-      };
+  const lineDataSet = useMemo(() => {
+    const labels = rd?.labels ?? [];
+    if (labels.length === 0) {
+      return [
+        {
+          data: [{ value: 0, label: '—' }],
+          color: '#16a34a',
+          thickness: 2,
+        },
+      ];
     }
-    return CHART_VAZIO_LINHA;
+
+    return [
+      {
+        data: labels.map((label, i) => ({
+          value: centavosParaReaisChart(Number(rd?.receita?.[i] ?? 0)),
+          label,
+          labelTextStyle: { color: '#6b7280', fontSize: 9 },
+        })),
+        color: '#16a34a',
+        thickness: 2,
+        hideDataPoints: labels.length > 8,
+      },
+      {
+        data: labels.map((_, i) => ({
+          value: centavosParaReaisChart(Number(rd?.despesa?.[i] ?? 0)),
+        })),
+        color: '#dc2626',
+        thickness: 2,
+        hideDataPoints: labels.length > 8,
+      },
+    ];
   }, [rd]);
 
-  const dadosPizza = useMemo(() => {
+  const lineChartValues = useMemo(
+    () =>
+      lineDataSet.flatMap((serie) => serie.data.map((ponto) => ponto.value)),
+    [lineDataSet],
+  );
+
+  const lineChartScale = useMemo(() => computeChartScale(lineChartValues), [lineChartValues]);
+
+  const linePlotWidth = useMemo(
+    () => Math.max(120, chartInnerWidth - Y_AXIS_WIDTH),
+    [chartInnerWidth],
+  );
+
+  const dadosPizza = useMemo((): PieSlice[] => {
     const cats = rc?.categorias;
     if (cats && cats.length > 0) {
       return cats.map((cat, i) => ({
-        name: cat.nome,
         value: centavosParaReaisChart(cat.valor),
         color: PIE_PALETTE[i % PIE_PALETTE.length],
-        legendFontColor: '#374151',
-        legendFontSize: 13,
+        nome: cat.nome,
+        percentual: cat.percentual,
+        valorLabel: formatCentavosBRL(cat.valor),
       }));
     }
-    return CHART_VAZIO_PIZZA;
+    return [{ value: 1, color: '#e5e7eb', nome: 'Sem dados', percentual: 0, valorLabel: '—' }];
   }, [rc]);
+
+  const dadosPizzaChart = useMemo(
+    () => dadosPizza.map(({ value, color }) => ({ value, color })),
+    [dadosPizza],
+  );
 
   const dadosBarra = useMemo(() => {
     if (dm?.labels?.length && dm.despesas?.length) {
-      return {
-        labels: dm.labels,
-        datasets: [{ data: dm.despesas.map(centavosParaReaisChart) }],
-      };
+      const comValor = dm.labels
+        .map((label, i) => ({
+          value: centavosParaReaisChart(dm.despesas[i] ?? 0),
+          label,
+          frontColor: '#dc2626',
+          labelTextStyle: { color: '#6b7280', fontSize: 10 },
+        }))
+        .filter((item) => item.value > 0);
+      if (comValor.length > 0) return comValor;
     }
-    return CHART_VAZIO_BARRA;
+    return [{ value: 0, label: '—', frontColor: '#dc2626' }];
   }, [dm]);
+
+  const barChartScale = useMemo(
+    () => computeChartScale(dadosBarra.map((d) => d.value)),
+    [dadosBarra],
+  );
+
+  const barChartLayout = useMemo(
+    () => computeChartLayout(dadosBarra.length, chartInnerWidth),
+    [dadosBarra.length, chartInnerWidth],
+  );
+
+  const pieRadius = useMemo(
+    () => Math.min(88, Math.max(64, Math.floor((chartInnerWidth - 48) / 2.6))),
+    [chartInnerWidth],
+  );
+
+  const handleChartLayout = useCallback((width: number) => {
+    if (width > 0) setChartInnerWidth(width);
+  }, []);
 
   const clientesRanking = useMemo(() => {
     const list = ranking?.clientes;
@@ -236,14 +357,12 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
 
   const insightsPadrao = useMemo(() => {
     return {
-      linha: insightsGerados.linha?.bullets ?? (insightsApi?.linha?.length ? insightsApi.linha : []),
-      pizza: insightsGerados.pizza?.bullets ?? (insightsApi?.pizza?.length ? insightsApi.pizza : []),
-      barra: insightsGerados.barra?.bullets ?? (insightsApi?.barra?.length ? insightsApi.barra : []),
-      maioresClientes:
-        insightsGerados.maioresClientes?.bullets
-        ?? (insightsApi?.maioresClientes && insightsApi.maioresClientes.length > 0 ? insightsApi.maioresClientes : []),
+      linha: insightsGerados.linha?.bullets ?? [],
+      pizza: insightsGerados.pizza?.bullets ?? [],
+      barra: insightsGerados.barra?.bullets ?? [],
+      maioresClientes: insightsGerados.maioresClientes?.bullets ?? [],
     };
-  }, [insightsApi, insightsGerados]);
+  }, [insightsGerados]);
 
   const gerarInsightPorCard = async (tipo: InsightCardKey) => {
     if (!iaOn || !token) {
@@ -277,33 +396,6 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
     } finally {
       setGerandoInsightCard(null);
     }
-  };
-
-  const handleInsightPress = async (tipo: InsightTipo) => {
-    toggleInsight(tipo);
-    if (!apiOn || !token) {
-      Alert.alert('API', 'Token ou URL da API não disponíveis.');
-      return;
-    }
-    setGerandoInsight(tipo);
-    const { dataInicio, dataFim } = intervaloDoPeriodo(periodo);
-    const insight = await postInsightGerar(token, {
-      tipoInsight: INSIGHT_API_TIPO[tipo],
-      dataInicio,
-      dataFim,
-      incluirComparativoPeriodoAnterior: true,
-    });
-    setGerandoInsight((prev) => (prev === tipo ? null : prev));
-    if (!insight) {
-      Alert.alert('Erro', 'Não foi possível gerar o insight para este gráfico.');
-      return;
-    }
-    const bullets = (Array.isArray(insight.bullets) ? insight.bullets : [])
-      .map((item) => item?.trim())
-      .filter((item): item is string => !!item);
-    const resumo = insight.resumoIA?.trim();
-    const payload = bullets.length > 0 ? bullets : resumo ? [resumo] : ['Sem recomendações para este período.'];
-    setInsightsGerados((prev) => ({ ...prev, [tipo]: payload }));
   };
 
   const k = kpis;
@@ -405,23 +497,35 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
               )}
             </Pressable>
           </View>
-          <LineChart
-            data={dadosLinha}
-            width={SCREEN_WIDTH - 32}
-            height={180}
-            chartConfig={CHART_CONFIG}
-            bezier
-            style={styles.chart}
-            withInnerLines={false}
-            fromZero
-          />
+          <ChartPlotContainer width={chartInnerWidth} onLayoutWidth={handleChartLayout}>
+            <LineChart
+              dataSet={lineDataSet}
+              parentWidth={chartInnerWidth}
+              width={linePlotWidth}
+              adjustToWidth
+              height={CHART_HEIGHT}
+              maxValue={lineChartScale.maxValue}
+              stepValue={lineChartScale.stepValue}
+              noOfSections={lineChartScale.noOfSections}
+              initialSpacing={CHART_INITIAL_SPACING}
+              endSpacing={CHART_END_SPACING}
+              yAxisLabelWidth={Y_AXIS_WIDTH}
+              rulesLength={linePlotWidth}
+              overflowTop={0}
+              onlyPositive
+              formatYLabel={formatYAxisLabel}
+              yAxisTextStyle={{ color: '#6b7280', fontSize: 10 }}
+              xAxisLabelTextStyle={{ color: '#6b7280', fontSize: 9 }}
+              isAnimated
+            />
+          </ChartPlotContainer>
           <View style={styles.legenda}>
             <View style={styles.legendaItem}><View style={[styles.legendaDot, { backgroundColor: '#16a34a' }]} /><Text style={styles.legendaText}>Receita</Text></View>
             <View style={styles.legendaItem}><View style={[styles.legendaDot, { backgroundColor: '#dc2626' }]} /><Text style={styles.legendaText}>Despesa</Text></View>
           </View>
           {insightAberto === 'linha' && (
             <InsightCard
-              bullets={insights.linha}
+              bullets={insightsPadrao.linha}
               periodo={periodoLabel(periodo)}
               geradoEm={insightsGerados.linha?.geradoEm}
             />
@@ -443,20 +547,23 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
               )}
             </Pressable>
           </View>
-          <PieChart
-            data={dadosPizza}
-            width={SCREEN_WIDTH - 32}
-            height={180}
-            chartConfig={CHART_CONFIG}
-            accessor="value"
-            backgroundColor="transparent"
-            paddingLeft="16"
-            absolute={false}
-            style={styles.chart}
-          />
+          <ChartPlotContainer width={chartInnerWidth} onLayoutWidth={handleChartLayout}>
+            <View style={styles.pieWrap}>
+              <PieChart
+                data={dadosPizzaChart}
+                donut
+                radius={pieRadius}
+                innerRadius={Math.round(pieRadius * 0.58)}
+                innerCircleColor="#fff"
+                strokeColor="#fff"
+                strokeWidth={2}
+              />
+            </View>
+            <PieLegend items={dadosPizza} />
+          </ChartPlotContainer>
           {insightAberto === 'pizza' && (
             <InsightCard
-              bullets={insights.pizza}
+              bullets={insightsPadrao.pizza}
               periodo={periodoLabel(periodo)}
               geradoEm={insightsGerados.pizza?.geradoEm}
             />
@@ -478,20 +585,31 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
               )}
             </Pressable>
           </View>
-          <BarChart
-            data={dadosBarra}
-            width={SCREEN_WIDTH - 32}
-            height={180}
-            chartConfig={{ ...CHART_CONFIG, color: (opacity = 1) => `rgba(220, 38, 38, ${opacity})` }}
-            style={styles.chart}
-            fromZero
-            showValuesOnTopOfBars
-            yAxisLabel="R$"
-            yAxisSuffix=""
-          />
+          <ChartPlotContainer width={chartInnerWidth} onLayoutWidth={handleChartLayout}>
+            <BarChart
+              data={dadosBarra}
+              parentWidth={chartInnerWidth}
+              width={Math.max(120, chartInnerWidth - Y_AXIS_WIDTH)}
+              adjustToWidth
+              height={CHART_HEIGHT}
+              maxValue={barChartScale.maxValue}
+              stepValue={barChartScale.stepValue}
+              noOfSections={barChartScale.noOfSections}
+              barWidth={barChartLayout.barWidth}
+              initialSpacing={CHART_INITIAL_SPACING}
+              endSpacing={CHART_END_SPACING}
+              yAxisLabelWidth={Y_AXIS_WIDTH}
+              rulesLength={Math.max(120, chartInnerWidth - Y_AXIS_WIDTH)}
+              overflowTop={0}
+              formatYLabel={formatYAxisLabel}
+              yAxisTextStyle={{ color: '#6b7280', fontSize: 10 }}
+              xAxisLabelTextStyle={{ color: '#6b7280', fontSize: 10 }}
+              isAnimated
+            />
+          </ChartPlotContainer>
           {insightAberto === 'barra' && (
             <InsightCard
-              bullets={insights.barra}
+              bullets={insightsPadrao.barra}
               periodo={periodoLabel(periodo)}
               geradoEm={insightsGerados.barra?.geradoEm}
             />
@@ -525,7 +643,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           )}
           {insightAberto === 'maioresClientes' && (
             <InsightCard
-              bullets={insights.maioresClientes}
+              bullets={insightsPadrao.maioresClientes}
               periodo={periodoLabel(periodo)}
               geradoEm={insightsGerados.maioresClientes?.geradoEm}
             />
@@ -537,6 +655,44 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
       <View style={styles.bottomNavWrap}>
         <BottomNav />
       </View>
+    </View>
+  );
+}
+
+function ChartPlotContainer({
+  children,
+  width,
+  onLayoutWidth,
+}: {
+  children: React.ReactNode;
+  width: number;
+  onLayoutWidth: (width: number) => void;
+}) {
+  return (
+    <View
+      style={[styles.chartPlotWrap, { maxWidth: width }]}
+      onLayout={(e) => onLayoutWidth(e.nativeEvent.layout.width)}
+    >
+      {children}
+    </View>
+  );
+}
+
+function PieLegend({ items }: { items: PieSlice[] }) {
+  return (
+    <View style={styles.pieLegend}>
+      {items.map((item, index) => (
+        <View key={`${item.nome}-${index}`} style={styles.pieLegendRow}>
+          <View style={[styles.pieLegendDot, { backgroundColor: item.color }]} />
+          <View style={styles.pieLegendTextWrap}>
+            <Text style={styles.pieLegendNome} numberOfLines={2}>
+              {item.nome}
+            </Text>
+            <Text style={styles.pieLegendValor}>{item.valorLabel}</Text>
+          </View>
+          <Text style={styles.pieLegendPct}>{item.percentual}%</Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -585,12 +741,20 @@ const styles = StyleSheet.create({
   periodoChipTextActive: { color: '#fff' },
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
   kpiItem: { width: '47%' },
-  chartCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
+  chartCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   chartTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
   insightBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#f0fdfa', alignItems: 'center', justifyContent: 'center' },
   insightBtnActive: { backgroundColor: '#ccfbf1' },
-  chart: { borderRadius: 8, marginLeft: -16 },
+  chartPlotWrap: { width: '100%', overflow: 'hidden' },
+  pieWrap: { alignItems: 'center', paddingVertical: 8 },
+  pieLegend: { marginTop: 12, gap: 10 },
+  pieLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pieLegendDot: { width: 12, height: 12, borderRadius: 6, flexShrink: 0 },
+  pieLegendTextWrap: { flex: 1, minWidth: 0 },
+  pieLegendNome: { fontSize: 14, fontWeight: '500', color: '#111827', lineHeight: 18 },
+  pieLegendValor: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  pieLegendPct: { fontSize: 14, fontWeight: '600', color: '#374151', flexShrink: 0, minWidth: 36, textAlign: 'right' },
   legenda: { flexDirection: 'row', gap: 16, marginTop: 8 },
   legendaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendaDot: { width: 10, height: 10, borderRadius: 5 },

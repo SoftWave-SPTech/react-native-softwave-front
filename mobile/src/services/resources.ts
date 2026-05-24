@@ -30,7 +30,8 @@ import type {
   TransacaoCreatePayload,
   TransacoesListApi,
 } from '../types/api';
-import { getIaApiBaseUrl, getEtlApiBaseUrl } from '../config/api';
+import { prepareUploadFile } from '../utils/uploadFile';
+import { getEtlApiBaseUrl, getIaApiBaseUrl } from '../config/api';
 import { Platform } from 'react-native';
 import { ApiError, apiDeleteJson, apiFetch, apiGetJson, apiPatchJson, apiPostFormData, apiPostJson, apiPutJson } from './http';
 
@@ -113,6 +114,7 @@ function notifIdFromApi(id: string | number): string {
 
 export async function fetchNotificacoesAdvogado(token: string | null): Promise<NotificacaoAdvApi[]> {
   const env = await apiGetJson<{
+    naoLidas?: number;
     notificacoes: Array<{
       id: string | number;
       tipo: string;
@@ -134,6 +136,15 @@ export async function fetchNotificacoesAdvogado(token: string | null): Promise<N
       lida: r.lida,
     };
   });
+}
+
+export async function fetchNotificacoesNaoLidasAdvogado(token: string | null): Promise<number> {
+  try {
+    const env = await apiGetJson<{ naoLidas?: number }>('/notificacoes?limit=1', token);
+    return env.naoLidas ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 export async function putNotificacaoAdvLida(token: string | null, id: string): Promise<void> {
@@ -282,18 +293,43 @@ export async function postCobrancaComprovante(
   cobrancaId: string,
   arquivo: UploadableFile,
 ): Promise<UploadComprovanteResponseApi> {
+  const prepared = await prepareUploadFile(arquivo);
   const fd = new FormData();
-  if (arquivo.file) {
-    fd.append('arquivo', arquivo.file, arquivo.name);
+  if (prepared.file) {
+    fd.append('arquivo', prepared.file, prepared.name);
   } else {
     fd.append('arquivo', {
-      uri: arquivo.uri,
-      name: arquivo.name,
-      type: arquivo.type,
+      uri: prepared.uri,
+      name: prepared.name,
+      type: prepared.type,
     } as unknown as Blob);
   }
   return apiPostFormData<UploadComprovanteResponseApi>(
     `/cobrancas/${encodeURIComponent(cobrancaId)}/comprovante`,
+    token,
+    fd,
+  );
+}
+
+export async function postTransacaoComprovante(
+  token: string | null,
+  transacaoId: string,
+  arquivo: UploadableFile,
+): Promise<UploadComprovanteResponseApi> {
+  const rawId = transacaoId.startsWith('txn_') ? transacaoId.substring(4) : transacaoId;
+  const prepared = await prepareUploadFile(arquivo);
+  const fd = new FormData();
+  if (prepared.file) {
+    fd.append('arquivo', prepared.file, prepared.name);
+  } else {
+    fd.append('arquivo', {
+      uri: prepared.uri,
+      name: prepared.name,
+      type: prepared.type,
+    } as unknown as Blob);
+  }
+  return apiPostFormData<UploadComprovanteResponseApi>(
+    `/transacoes/${encodeURIComponent(rawId)}/comprovante`,
     token,
     fd,
   );
@@ -367,7 +403,7 @@ export async function updatePagamentoConferir(
 }
 
 function relatorioPeriodoQuery(periodo: string): string {
-  const p = periodo === 'ano' ? 'ano' : 'mes';
+  const p = periodo === 'ano' || periodo === 'semestre' ? periodo : 'mes';
   return `?periodo=${p}`;
 }
 

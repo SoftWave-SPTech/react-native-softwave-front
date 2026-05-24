@@ -11,7 +11,7 @@ import { FAB } from '../components/FAB';
 import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { mapTransacaoApiToCard, type TransacaoCardModel } from '../mappers/transacao';
-import { fetchDashboardResumo, fetchTransacoesRecentes, syncPagamentosDashboardCount } from '../services/resources';
+import { fetchDashboardResumo, fetchNotificacoesNaoLidasAdvogado, fetchTransacoesRecentes, syncPagamentosDashboardCount } from '../services/resources';
 import type { DashboardResumoApi } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
 
@@ -46,6 +46,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
   const [dash, setDash] = useState<DashboardResumoApi | null>(null);
   const [recent, setRecent] = useState<TransacaoCardModel[]>([]);
   const [loading, setLoading] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
 
   const effectiveDash = dash ?? DASHBOARD_VAZIO;
 
@@ -57,7 +58,11 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
     }
     setLoading(true);
     try {
-      const [d, tx] = await Promise.all([fetchDashboardResumo(token), fetchTransacoesRecentes(token, 4)]);
+      const [d, tx, naoLidas] = await Promise.all([
+        fetchDashboardResumo(token),
+        fetchTransacoesRecentes(token, 4),
+        fetchNotificacoesNaoLidasAdvogado(token),
+      ]);
       try {
         await syncPagamentosDashboardCount(token);
       } catch {
@@ -67,6 +72,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
       if (dAfter) setDash(dAfter);
       else if (d) setDash(d);
       setRecent(tx.map(mapTransacaoApiToCard));
+      setNotifCount(naoLidas);
     } catch {
       setDash(null);
       setRecent([]);
@@ -104,6 +110,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
     <View style={styles.container}>
       <Header
         showNotification
+        notificationBadgeCount={notifCount}
         showAvatar
         onNotification={() => onNavigate('Notificacoes')}
         onAvatar={() => onNavigate('Perfil')}

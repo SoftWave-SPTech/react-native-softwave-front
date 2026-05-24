@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { AuthGuard } from '../../src/components/AuthGuard';
 
 /**
  * Tabs layout for the main authenticated area.
@@ -7,6 +8,7 @@ import { Tabs } from 'expo-router';
  */
 export default function TabsLayout() {
   return (
+    <AuthGuard>
     <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
       <Tabs.Screen name="home" />
       <Tabs.Screen name="transacoes" />
@@ -14,5 +16,6 @@ export default function TabsLayout() {
       <Tabs.Screen name="honorarios" />
       <Tabs.Screen name="relatorios" />
     </Tabs>
+    </AuthGuard>
   );
 }

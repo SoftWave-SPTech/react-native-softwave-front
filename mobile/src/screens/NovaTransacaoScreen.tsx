@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { Header } from '../components/Header';
 import { AccordionSelect, SelectOption } from '../components/AccordionSelect';
 import { getApiBaseUrl } from '../config/api';
@@ -18,11 +19,18 @@ import {
   createTransacao,
   fetchClientesAdvogado,
   fetchProcessosAdvogado,
+  postTransacaoComprovante,
   updateTransacao,
+  type UploadableFile,
 } from '../services/resources';
 import type { ClienteAdvogadoApi, ProcessoResumoApi } from '../types/api';
 import { parseClienteId, parseProcessoIdNum } from '../utils/apiIds';
 import { parseDateBRToIso, parseValorInputToCentavos } from '../utils/money';
+import {
+  cameraPickerOptions,
+  galleryPickerOptions,
+  uploadFileFromImageAsset,
+} from '../utils/uploadFile';
 
 type Recorrencia = 'sem' | 'semanal' | 'mensal' | 'anual';
 
@@ -120,6 +128,7 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
   const [mostrarSucesso, setMostrarSucesso] = useState(false);
   const [recorrencia, setRecorrencia] = useState<Recorrencia>('sem');
   const [duracaoMeses, setDuracaoMeses] = useState('');
+  const [arquivoComprovante, setArquivoComprovante] = useState<UploadableFile | null>(null);
 
   const opcoesClientes: SelectOption[] = useMemo(() => {
     const base: SelectOption[] = [{ value: '', label: 'Nenhum cliente vinculado' }];
@@ -168,6 +177,27 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
     if (recorrencia === 'mensal') return `${dur} meses (~${Math.round(dur / 12)} anos)`;
     if (recorrencia === 'anual') return `${dur} anos`;
     return '';
+  };
+
+  const selecionarComprovante = async (origem: 'camera' | 'galeria') => {
+    try {
+      const permissao =
+        origem === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissao.granted) {
+        Alert.alert('Permissão necessária', 'Autorize acesso à câmera/galeria.');
+        return;
+      }
+      const picked =
+        origem === 'camera'
+          ? await ImagePicker.launchCameraAsync(cameraPickerOptions())
+          : await ImagePicker.launchImageLibraryAsync(galleryPickerOptions());
+      if (picked.canceled || !picked.assets[0]) return;
+      setArquivoComprovante(uploadFileFromImageAsset(picked.assets[0]));
+    } catch {
+      Alert.alert('Erro', 'Não foi possível selecionar a imagem.');
+    }
   };
 
   const handleSalvar = async () => {
@@ -220,7 +250,7 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
           const pid = parseProcessoIdNum(processoIdApi);
           const cid = parseClienteId(cliente);
           const dur = parseInt(duracaoMeses, 10);
-          await createTransacao(token, {
+          const created = await createTransacao(token, {
             tipo,
             valor: centavos,
             categoria,
@@ -236,6 +266,9 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
             recorrencia,
             duracaoMeses: recorrencia !== 'sem' && Number.isFinite(dur) && dur > 0 ? dur : null,
           });
+          if (arquivoComprovante && created.id) {
+            await postTransacaoComprovante(token, created.id, arquivoComprovante);
+          }
         }
         setMostrarSucesso(true);
         setTimeout(() => onSuccess(), 1500);
@@ -444,19 +477,26 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
         </View>
 
         {/* Comprovante */}
+        {!modoEdicao && (
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Comprovante</Text>
           <View style={styles.comprovanteRow}>
-            <Pressable style={styles.comprovanteBtn}>
+            <Pressable style={styles.comprovanteBtn} onPress={() => void selecionarComprovante('camera')}>
               <MaterialCommunityIcons name="camera" size={22} color="#0d9488" />
               <Text style={styles.comprovanteBtnText}>Câmera</Text>
             </Pressable>
-            <Pressable style={styles.comprovanteBtn}>
+            <Pressable style={styles.comprovanteBtn} onPress={() => void selecionarComprovante('galeria')}>
               <MaterialCommunityIcons name="upload" size={22} color="#0d9488" />
               <Text style={styles.comprovanteBtnText}>Galeria</Text>
             </Pressable>
           </View>
+          {arquivoComprovante && (
+            <Text style={styles.comprovanteNome} numberOfLines={1}>
+              Anexo: {arquivoComprovante.name}
+            </Text>
+          )}
         </View>
+        )}
 
         <Pressable onPress={handleSalvar} disabled={salvando} style={[styles.saveBtn, salvando && styles.saveBtnDisabled]}>
           {salvando ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>{modoEdicao ? 'Salvar Alterações' : 'Salvar Transação'}</Text>}
@@ -582,6 +622,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   comprovanteBtnText: { fontSize: 14, color: '#0d9488', fontWeight: '500' },
+  comprovanteNome: { marginTop: 8, fontSize: 13, color: '#6b7280' },
   saveBtn: {
     backgroundColor: '#0d9488',
     borderRadius: 16,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getLoginApiBaseUrl } from '../config/api';
@@ -82,8 +82,9 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
           Alert.alert('Erro', result.error);
           return;
         }
-        Alert.alert('Senha alterada', 'Você já pode fazer login com a nova senha.');
-        onSuccess();
+        Alert.alert('Senha alterada', 'Você já pode fazer login com a nova senha.', [
+          { text: 'OK', onPress: onSuccess },
+        ]);
       } finally {
         setSalvandoSenha(false);
       }
@@ -216,53 +217,84 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
         <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
         <Text style={styles.headerText}>Voltar</Text>
       </Pressable>
-      <View style={styles.content}>
-        <View style={styles.iconCircle}>
-          <MaterialCommunityIcons name="lock-outline" size={40} color="#0E6F73" />
-        </View>
-        <Text style={styles.title}>Nova Senha</Text>
-        <Text style={styles.subtitle}>Crie uma senha forte para sua conta</Text>
-        <View style={styles.field}>
-          <Text style={styles.label}>Nova senha</Text>
-          <TextInput value={novaSenha} onChangeText={setNovaSenha} placeholder="••••••••" placeholderTextColor="rgba(255,255,255,0.5)" secureTextEntry style={styles.input} />
-        </View>
-        <View style={styles.field}>
-          <Text style={styles.label}>Confirmar senha</Text>
-          <TextInput value={confirmaSenha} onChangeText={setConfirmaSenha} placeholder="••••••••" placeholderTextColor="rgba(255,255,255,0.5)" secureTextEntry style={styles.input} />
-        </View>
-        {senhasDiferentes && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠️ As senhas não coincidem</Text>
-          </View>
-        )}
-        <View style={styles.infoBox}>
-          <Text style={styles.infoText}>
-            {apiAuthOn
-              ? '✓ Mínimo 8 caracteres: maiúscula, minúscula, número e símbolo (@ # $ % ^ & + =)'
-              : '✓ Minimo de 6 caracteres'}
-          </Text>
-        </View>
-        <Pressable
-          onPress={handleRedefinirSenha}
-          disabled={!podeRedefinir || salvandoSenha}
-          style={[styles.button, (!podeRedefinir || salvandoSenha) && styles.buttonDisabled]}
+      <KeyboardAvoidingView
+        style={styles.flex1}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
+      >
+        <ScrollView
+          style={styles.flex1}
+          contentContainerStyle={styles.contentScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {salvandoSenha ? (
-            <ActivityIndicator color="#0E6F73" />
-          ) : (
-            <Text style={styles.buttonText}>Redefinir Senha</Text>
+          <View style={styles.iconCircle}>
+            <MaterialCommunityIcons name="lock-outline" size={40} color="#0E6F73" />
+          </View>
+          <Text style={styles.title}>Nova Senha</Text>
+          <Text style={styles.subtitle}>Crie uma senha forte para sua conta</Text>
+          <View style={styles.field}>
+            <Text style={styles.label}>Nova senha</Text>
+            <TextInput
+              value={novaSenha}
+              onChangeText={setNovaSenha}
+              placeholder="••••••••"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              secureTextEntry
+              textContentType="password"
+              autoComplete="password-new"
+              style={styles.inputSenha}
+            />
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.label}>Confirmar senha</Text>
+            <TextInput
+              value={confirmaSenha}
+              onChangeText={setConfirmaSenha}
+              placeholder="••••••••"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              secureTextEntry
+              textContentType="newPassword"
+              autoComplete="password-new"
+              style={styles.inputSenha}
+            />
+          </View>
+          {senhasDiferentes && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>⚠️ As senhas não coincidem</Text>
+            </View>
           )}
-        </Pressable>
-      </View>
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>
+              {apiAuthOn
+                ? '✓ Mínimo 8 caracteres: maiúscula, minúscula, número e símbolo (@ # $ % ^ & + =)'
+                : '✓ Minimo de 6 caracteres'}
+            </Text>
+          </View>
+          <Pressable
+            onPress={handleRedefinirSenha}
+            disabled={!podeRedefinir || salvandoSenha}
+            style={[styles.button, (!podeRedefinir || salvandoSenha) && styles.buttonDisabled]}
+          >
+            {salvandoSenha ? (
+              <ActivityIndicator color="#0E6F73" />
+            ) : (
+              <Text style={styles.buttonText}>Redefinir Senha</Text>
+            )}
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  flex1: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 24 },
   headerText: { color: '#fff', fontSize: 16 },
   content: { flex: 1, paddingHorizontal: 20, paddingTop: 24 },
+  contentScroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 },
   logoWrap: { alignItems: 'center', marginBottom: 32 },
   logoCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   logoImage: { width: 120, height: 120, resizeMode: 'contain' },
@@ -274,6 +306,7 @@ const styles = StyleSheet.create({
   field: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: 16, marginBottom: 12 },
   label: { color: '#fff', fontSize: 12, marginBottom: 8 },
   input: { color: '#fff', fontSize: 16 },
+  inputSenha: { color: '#fff', fontSize: 16, minHeight: 48, paddingVertical: 12 },
   tokenInput: { fontSize: 22, fontWeight: 'bold', letterSpacing: 4 },
   infoBox: { backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 16, padding: 16, marginBottom: 12 },
   infoText: { color: 'rgba(255,255,255,0.9)', fontSize: 14 },
