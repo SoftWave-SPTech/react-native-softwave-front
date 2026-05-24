@@ -6,6 +6,7 @@ type Props = {
   title?: string;
   showBack?: boolean;
   showNotification?: boolean;
+  notificationBadgeCount?: number;
   showAvatar?: boolean;
   onBack?: () => void;
   onNotification?: () => void;
@@ -16,6 +17,7 @@ export function Header({
   title,
   showBack = false,
   showNotification = false,
+  notificationBadgeCount = 0,
   showAvatar = false,
   onBack,
   onNotification,
@@ -44,7 +46,15 @@ export function Header({
         {showNotification && (
           <Pressable onPress={onNotification} style={[styles.iconButton, styles.notificationBtn]}>
             <MaterialCommunityIcons name="bell-outline" size={22} color="#374151" />
-            <View style={styles.badge} />
+            {notificationBadgeCount > 0 && (
+              <View style={styles.badge}>
+                {notificationBadgeCount > 9 ? (
+                  <Text style={styles.badgeCountText}>9+</Text>
+                ) : notificationBadgeCount > 1 ? (
+                  <Text style={styles.badgeCountText}>{notificationBadgeCount}</Text>
+                ) : null}
+              </View>
+            )}
           </Pressable>
         )}
         {showAvatar && (
@@ -89,12 +99,21 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 8,
+    top: 6,
+    right: 6,
+    minWidth: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  badgeCountText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 10,
   },
   title: {
     fontSize: 18,

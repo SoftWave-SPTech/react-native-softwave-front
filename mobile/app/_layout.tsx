@@ -1,14 +1,22 @@
 import { Stack } from 'expo-router';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../src/context/AuthContext';
+import { LocaisSegurosGate } from '../src/context/LocaisSegurosContext';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
 
 export default function RootLayout() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
+    <LocaisSegurosGate>
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container} edges={['top']}>
-    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: '#fff' },
+      }}
+    >
       <Stack.Screen name="index" />
       <Stack.Screen name="esqueci-senha" />
       <Stack.Screen name="(tabs)" />
@@ -19,17 +27,13 @@ export default function RootLayout() {
       <Stack.Screen name="importacao-exportacao" />
       <Stack.Screen name="notificacoes" />
       <Stack.Screen name="perfil" />
+      <Stack.Screen name="locais-seguros" />
+      <Stack.Screen name="ajuda-suporte" />
       <Stack.Screen name="cliente" />
     </Stack>
-      </SafeAreaView>
     </SafeAreaProvider>
+    </LocaisSegurosGate>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-});

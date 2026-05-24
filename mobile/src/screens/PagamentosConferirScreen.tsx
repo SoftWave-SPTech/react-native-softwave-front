@@ -14,6 +14,9 @@ import {
 import { ApiError } from '../services/http';
 import type { PagamentoConferirApi } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
+import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
+import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
+import { MASKED_MONEY_VALUE, maskIfRestricted } from '../utils/geo';
 
 type Props = {
   onBack: () => void;
@@ -23,6 +26,7 @@ type Props = {
 export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
   void onNavigate;
   const { token } = useAuth();
+  const restrict = useShouldRestrictSensitiveData();
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [lista, setLista] = useState<PagamentoConferirApi[]>([]);
@@ -126,6 +130,7 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
             <Text style={styles.loadingText}>Carregando…</Text>
           </View>
         )}
+        <LocaisSegurosBanner />
         <View style={styles.alertBox}>
           <Text style={styles.alertText}>
             <Text style={styles.alertBold}>{pendentes.length} pagamentos</Text> aguardando confirmação
@@ -136,25 +141,39 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
             <View style={styles.cardHeader}>
               <View style={styles.cardIcon}><MaterialCommunityIcons name="file-image-outline" size={24} color="#0d9488" /></View>
               <View style={styles.cardContent}>
-                <Text style={styles.cardCliente}>{p.cliente}</Text>
-                <View style={styles.cardProcesso}><MaterialCommunityIcons name="file-document" size={14} color="#6b7280" /><Text style={styles.cardProcessoText}>{p.processo}</Text></View>
-                <Text style={styles.cardData}>{p.data}</Text>
-                <Text style={styles.cardValor}>{formatCentavosBRL(p.valor)}</Text>
+                <Text style={styles.cardCliente}>{maskIfRestricted(p.cliente, restrict)}</Text>
+                <View style={styles.cardProcesso}>
+                  <MaterialCommunityIcons name="file-document" size={14} color="#6b7280" />
+                  <Text style={styles.cardProcessoText}>{maskIfRestricted(p.processo, restrict)}</Text>
+                </View>
+                <Text style={styles.cardData}>{maskIfRestricted(p.data, restrict)}</Text>
+                <Text style={styles.cardValor}>
+                  {restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(p.valor)}
+                </Text>
               </View>
             </View>
             <Pressable onPress={() => setSelectedPagamento(p.id)} style={styles.verBtn}>
               <Text style={styles.verBtnText}>Visualizar Comprovante</Text>
             </Pressable>
-            <View style={styles.actionsRow}>
-              <Pressable onPress={() => setModalRejeicao(p.id)} disabled={busyId === p.id} style={styles.reprovarBtn}>
-                <MaterialCommunityIcons name="close" size={18} color="#dc2626" />
-                <Text style={styles.reprovarBtnText}>Reprovar</Text>
-              </Pressable>
-              <Pressable onPress={() => handleConfirmar(p.id)} disabled={busyId === p.id} style={styles.aprovarBtn}>
-                <MaterialCommunityIcons name="check" size={18} color="#15803d" />
-                <Text style={styles.aprovarBtnText}>Aprovar</Text>
-              </Pressable>
-            </View>
+            {restrict ? (
+              <View style={styles.restrictedActions}>
+                <MaterialCommunityIcons name="shield-lock-outline" size={18} color="#0f766e" />
+                <Text style={styles.restrictedActionsText}>
+                  Aprovar e reprovar disponíveis apenas em um local seguro.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.actionsRow}>
+                <Pressable onPress={() => setModalRejeicao(p.id)} disabled={busyId === p.id} style={styles.reprovarBtn}>
+                  <MaterialCommunityIcons name="close" size={18} color="#dc2626" />
+                  <Text style={styles.reprovarBtnText}>Reprovar</Text>
+                </Pressable>
+                <Pressable onPress={() => handleConfirmar(p.id)} disabled={busyId === p.id} style={styles.aprovarBtn}>
+                  <MaterialCommunityIcons name="check" size={18} color="#15803d" />
+                  <Text style={styles.aprovarBtnText}>Aprovar</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         ))}
         <View style={{ height: 80 }} />
@@ -225,6 +244,17 @@ const styles = StyleSheet.create({
   cardValor: { fontSize: 18, fontWeight: '600', color: '#0d9488', marginTop: 8 },
   verBtn: { paddingVertical: 10, backgroundColor: '#f3f4f6', borderRadius: 12, alignItems: 'center', marginBottom: 12 },
   verBtnText: { fontSize: 14, color: '#6b7280' },
+  restrictedActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: '#f0fdfa',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#99f6e4',
+  },
+  restrictedActionsText: { flex: 1, fontSize: 13, color: '#0f766e', lineHeight: 18 },
   actionsRow: { flexDirection: 'row', gap: 8 },
   reprovarBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, backgroundColor: '#fee2e2', borderRadius: 12 },
   reprovarBtnText: { fontSize: 14, color: '#dc2626', fontWeight: '500' },

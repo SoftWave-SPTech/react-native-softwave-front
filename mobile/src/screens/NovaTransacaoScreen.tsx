@@ -21,12 +21,16 @@ import {
   fetchClientesAdvogado,
   fetchProcessosAdvogado,
   postTransacaoComprovante,
-  type UploadableFile,
   updateTransacao,
+  type UploadableFile,
 } from '../services/resources';
 import type { ClienteAdvogadoApi, ProcessoResumoApi } from '../types/api';
 import { parseClienteId, parseProcessoIdNum } from '../utils/apiIds';
 import { parseDateBRToIso, parseValorInputToCentavos } from '../utils/money';
+import {
+  cameraPickerOptions,
+  uploadFileFromImageAsset,
+} from '../utils/uploadFile';
 
 type Recorrencia = 'sem' | 'semanal' | 'mensal' | 'anual';
 
@@ -273,25 +277,20 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
   };
 
   const handleCamera = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Permissão', 'Permita acesso à câmera para anexar comprovante.');
-      return;
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permissão', 'Permita acesso à câmera para anexar comprovante.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync(cameraPickerOptions());
+      if (result.canceled || !result.assets[0]) return;
+      const arquivo = uploadFileFromImageAsset(result.assets[0]);
+      setComprovanteArquivo(arquivo);
+      setComprovanteNome(arquivo.name);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível capturar a imagem.');
     }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets.length) return;
-    const asset = result.assets[0];
-    const arquivo: UploadableFile = {
-      uri: asset.uri,
-      name: asset.fileName ?? `comprovante_${Date.now()}.jpg`,
-      type: asset.mimeType ?? 'image/jpeg',
-      file: (asset as { file?: File | Blob }).file,
-    };
-    setComprovanteArquivo(arquivo);
-    setComprovanteNome(arquivo.name);
   };
 
   const handleArquivo = async () => {
@@ -504,6 +503,7 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
         </View>
 
         {/* Comprovante */}
+        {!modoEdicao && (
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Comprovante</Text>
           <View style={styles.comprovanteRow}>
@@ -522,6 +522,7 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
             </Text>
           )}
         </View>
+        )}
 
         <Pressable onPress={handleSalvar} disabled={salvando} style={[styles.saveBtn, salvando && styles.saveBtnDisabled]}>
           {salvando ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>{modoEdicao ? 'Salvar Alterações' : 'Salvar Transação'}</Text>}

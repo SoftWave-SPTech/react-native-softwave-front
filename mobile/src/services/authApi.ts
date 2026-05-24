@@ -172,8 +172,13 @@ export async function loginWithApi(email: string, senha: string): Promise<
     return { ok: false, error: 'API não configurada (EXPO_PUBLIC_AUTH_API_URL ou EXPO_PUBLIC_API_URL).' };
   }
 
+  const loginUrl = `${base}/auth/login`;
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    console.log('[loginWithApi] POST', loginUrl);
+  }
+
   try {
-    const res = await fetch(`${base}/auth/login`, {
+    const res = await fetch(loginUrl, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -214,11 +219,16 @@ export async function loginWithApi(email: string, senha: string): Promise<
 
     return { ok: true, data: normalized };
   } catch {
+    const devHint =
+      typeof __DEV__ !== 'undefined' && __DEV__
+        ? ` (URL tentada: ${loginUrl})`
+        : '';
     return {
       ok: false,
       isNetworkError: true,
       error:
-        'Não foi possível conectar ao servidor de login. Confira EXPO_PUBLIC_AUTH_API_URL (API-AUTH-MAIL, ex.: porta 8083) e o IP na rede.',
+        'Não foi possível conectar ao servidor de login. Confira EXPO_PUBLIC_AUTH_API_URL (API-AUTH-MAIL, ex.: porta 8083) e o IP na rede.' +
+        devHint,
     };
   }
 }

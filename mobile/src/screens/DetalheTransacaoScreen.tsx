@@ -10,6 +10,10 @@ import { useAuth } from '../context/AuthContext';
 import { deleteTransacao, fetchTransacaoById, updateTransacao } from '../services/resources';
 import type { TransacaoApi } from '../types/api';
 import { formatCentavosBRL, formatDateIsoToBR } from '../utils/money';
+import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
+import { LocaisSegurosRestrictedNote } from '../components/LocaisSegurosRestrictedNote';
+import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
+import { MASKED_MONEY_VALUE, MASKED_TEXT_VALUE, maskIfRestricted } from '../utils/geo';
 
 type Props = {
   transacaoId: string;
@@ -45,6 +49,7 @@ function transacaoToEditParams(t: TransacaoApi): Record<string, string> {
 export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditarComDados }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
+  const restrict = useShouldRestrictSensitiveData();
 
   const [loading, setLoading] = useState(false);
   const [transacao, setTransacao] = useState<TransacaoApi | null>(null);
@@ -206,20 +211,25 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditar
   const tx = transacao!;
   const statusLocal = tx.status;
   const tipo = tx.tipo;
-  const valorFmt = formatCentavosBRL(tx.valor);
-  const titulo = tx.titulo;
-  const categoriaFmt =
-    tx.categoria != null && tx.categoria !== '' ? CATEGORIA_LABEL[tx.categoria] ?? tx.categoria : '—';
-  const clienteFmt = tx.tipo === 'receita' ? tx.subtitulo : tx.subtitulo;
-  const processoFmt = tx.tipo === 'despesa' ? tx.subtitulo : '—';
-  const dataEmissao = tx.data ? formatDateIsoToBR(tx.data) : '—';
-  const vencFmt = tx.vencimento ? formatDateIsoToBR(tx.vencimento) : '—';
-  const descricao = tx.titulo;
+  const valorFmt = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(tx.valor);
+  const titulo = maskIfRestricted(tx.titulo, restrict);
+  const categoriaFmt = restrict
+    ? MASKED_TEXT_VALUE
+    : tx.categoria != null && tx.categoria !== ''
+      ? CATEGORIA_LABEL[tx.categoria] ?? tx.categoria
+      : '—';
+  const clienteFmt = maskIfRestricted(tx.subtitulo, restrict);
+  const processoFmt = tx.tipo === 'despesa' ? maskIfRestricted(tx.subtitulo, restrict) : '—';
+  const dataEmissao = restrict ? MASKED_TEXT_VALUE : tx.data ? formatDateIsoToBR(tx.data) : '—';
+  const vencFmt = restrict ? MASKED_TEXT_VALUE : tx.vencimento ? formatDateIsoToBR(tx.vencimento) : '—';
+  const descricao = maskIfRestricted(tx.titulo, restrict);
 
   return (
     <View style={styles.container}>
       <Header title="Detalhes da Transação" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <LocaisSegurosBanner />
+
         {mutando && (
           <View style={styles.mutatingBanner}>
             <ActivityIndicator size="small" color="#2563eb" />
@@ -255,25 +265,37 @@ export function DetalheTransacaoScreen({ transacaoId, onBack, onEditar, onEditar
           <Text style={styles.cardTitle}>Descrição</Text>
           <Text style={styles.descricao}>{descricao}</Text>
         </View>
-        <Pressable onPress={() => setModalComprovante(true)} style={styles.comprovanteBtn}>
-          <MaterialCommunityIcons name="file-document" size={22} color="#2563eb" />
-          <Text style={styles.comprovanteBtnText}>Visualizar Comprovante</Text>
-        </Pressable>
-        <View style={styles.actionsRow}>
-          <Pressable onPress={abrirEdicao} style={styles.btnEditar}>
-            <MaterialCommunityIcons name="pencil" size={22} color="#fff" />
-            <Text style={styles.btnEditarText}>Editar</Text>
-          </Pressable>
-          <Pressable onPress={handleExcluir} style={styles.btnExcluir}>
-            <MaterialCommunityIcons name="trash-can-outline" size={22} color="#dc2626" />
-            <Text style={styles.btnExcluirText}>Excluir</Text>
-          </Pressable>
-        </View>
-        {(statusLocal === 'pendente' || statusLocal === 'atrasado') && (
-          <View style={styles.statusActions}>
-            <Pressable onPress={handleMarcarComoPago} style={styles.btnPago}><MaterialCommunityIcons name="check-circle" size={22} color="#fff" /><Text style={styles.btnPagoText}>Marcar como Pago</Text></Pressable>
-            <Pressable onPress={handleCancelarTransacao} style={styles.btnCancelar}><MaterialCommunityIcons name="close-circle-outline" size={22} color="#6b7280" /><Text style={styles.btnCancelarText}>Cancelar Transação</Text></Pressable>
-          </View>
+        {restrict ? (
+          <LocaisSegurosRestrictedNote />
+        ) : (
+          <>
+            <Pressable onPress={() => setModalComprovante(true)} style={styles.comprovanteBtn}>
+              <MaterialCommunityIcons name="file-document" size={22} color="#2563eb" />
+              <Text style={styles.comprovanteBtnText}>Visualizar Comprovante</Text>
+            </Pressable>
+            <View style={styles.actionsRow}>
+              <Pressable onPress={abrirEdicao} style={styles.btnEditar}>
+                <MaterialCommunityIcons name="pencil" size={22} color="#fff" />
+                <Text style={styles.btnEditarText}>Editar</Text>
+              </Pressable>
+              <Pressable onPress={handleExcluir} style={styles.btnExcluir}>
+                <MaterialCommunityIcons name="trash-can-outline" size={22} color="#dc2626" />
+                <Text style={styles.btnExcluirText}>Excluir</Text>
+              </Pressable>
+            </View>
+            {(statusLocal === 'pendente' || statusLocal === 'atrasado') && (
+              <View style={styles.statusActions}>
+                <Pressable onPress={handleMarcarComoPago} style={styles.btnPago}>
+                  <MaterialCommunityIcons name="check-circle" size={22} color="#fff" />
+                  <Text style={styles.btnPagoText}>Marcar como Pago</Text>
+                </Pressable>
+                <Pressable onPress={handleCancelarTransacao} style={styles.btnCancelar}>
+                  <MaterialCommunityIcons name="close-circle-outline" size={22} color="#6b7280" />
+                  <Text style={styles.btnCancelarText}>Cancelar Transação</Text>
+                </Pressable>
+              </View>
+            )}
+          </>
         )}
         <View style={{ height: 40 }} />
       </ScrollView>

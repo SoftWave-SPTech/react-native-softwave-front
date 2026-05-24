@@ -1,4 +1,5 @@
 import { Slot } from 'expo-router';
+import { AuthGuard } from '../../src/components/AuthGuard';
 
 /**
  * Cliente group layout using Slot — renders matched child routes
@@ -6,5 +7,9 @@ import { Slot } from 'expo-router';
  * by the root Stack in app/_layout.tsx).
  */
 export default function ClienteLayout() {
-  return <Slot />;
+  return (
+    <AuthGuard>
+      <Slot />
+    </AuthGuard>
+  );
 }
