@@ -1,18 +1,105 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { CardKPI } from '../components/CardKPI';
 import { CardTransacao } from '../components/CardTransacao';
 import { BottomNav } from '../components/BottomNav';
 import { FAB } from '../components/FAB';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import { mapTransacaoApiToCard, type TransacaoCardModel } from '../mappers/transacao';
+import { fetchDashboardResumo, fetchTransacoesRecentes, syncPagamentosDashboardCount } from '../services/resources';
+import type { DashboardResumoApi } from '../types/api';
+import { formatCentavosBRL } from '../utils/money';
 
 type Props = {
   onBack?: () => void;
   onNavigate: (screen: string, id?: string) => void;
 };
 
+/** Placeholder só para layout quando a API ainda não devolveu o resumo (valores zerados). */
+const DASHBOARD_VAZIO: DashboardResumoApi = {
+  id: 0,
+  valorDisponivel: 0,
+  lucroLiquidoMes: 0,
+  receitaMensal: 0,
+  despesaMensal: 0,
+  pendentes: 0,
+  variacaoReceita: '—',
+  variacaoPendentes: '—',
+  variacaoDespesa: '—',
+  variacaoLucro: '—',
+  pagamentosParaConferir: 0,
+};
+
+function variationTypeFromString(s: string): 'positive' | 'negative' {
+  return s.trim().startsWith('-') ? 'negative' : 'positive';
+}
+
 export function HomeScreen({ onBack, onNavigate }: Props) {
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
+
+  const [dash, setDash] = useState<DashboardResumoApi | null>(null);
+  const [recent, setRecent] = useState<TransacaoCardModel[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const effectiveDash = dash ?? DASHBOARD_VAZIO;
+
+  const carregar = React.useCallback(async () => {
+    if (!apiOn) {
+      setDash(null);
+      setRecent([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const [d, tx] = await Promise.all([fetchDashboardResumo(token), fetchTransacoesRecentes(token, 4)]);
+      try {
+        await syncPagamentosDashboardCount(token);
+      } catch {
+        /* mantém resumo do GET */
+      }
+      const dAfter = await fetchDashboardResumo(token);
+      if (dAfter) setDash(dAfter);
+      else if (d) setDash(d);
+      setRecent(tx.map(mapTransacaoApiToCard));
+    } catch {
+      setDash(null);
+      setRecent([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiOn, token]);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void carregar();
+      return undefined;
+    }, [carregar]),
+  );
+
+  const heroValor = useMemo(
+    () => formatCentavosBRL(effectiveDash.valorDisponivel),
+    [effectiveDash.valorDisponivel],
+  );
+  const heroLucro = useMemo(
+    () => formatCentavosBRL(effectiveDash.lucroLiquidoMes),
+    [effectiveDash.lucroLiquidoMes],
+  );
+
+  const receitaVal = formatCentavosBRL(effectiveDash.receitaMensal);
+  const pendentesVal = formatCentavosBRL(effectiveDash.pendentes);
+  const despesaVal = formatCentavosBRL(effectiveDash.despesaMensal);
+  const lucroVal = formatCentavosBRL(effectiveDash.lucroLiquidoMes);
+
   return (
     <View style={styles.container}>
       <Header
@@ -23,41 +110,70 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
       />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Hero Card */}
-        <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>Valor disponível</Text>
-          <Text style={styles.heroValue}>R$ 145.280,00</Text>
-          <View style={styles.heroRow}>
-            <MaterialCommunityIcons name="trending-up" size={16} color="#bfdbfe" />
-            <Text style={styles.heroSubtext}>Lucro líquido do mês: R$ 42.500,00</Text>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Atualizando dados…</Text>
           </View>
-        </View>
+        )}
 
-        {/* KPIs Grid */}
+        <LinearGradient colors={['#14b8a6', '#0e7490']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
+          <Text style={styles.heroLabel}>Valor disponível</Text>
+          <Text style={styles.heroValue}>{heroValor}</Text>
+          <View style={styles.heroRow}>
+            <MaterialCommunityIcons name="trending-up" size={16} color="#ccfbf1" />
+            <Text style={styles.heroSubtext}>Lucro líquido do mês: {heroLucro}</Text>
+          </View>
+        </LinearGradient>
+
         <View style={styles.kpiGrid}>
           <View style={styles.kpiItem}>
-            <CardKPI icon="cash" title="Receita Mensal" value="R$ 85.400" variation="+12%" variationType="positive" />
+            <CardKPI
+              icon="cash"
+              title="Receita Mensal"
+              value={receitaVal}
+              variation={effectiveDash.variacaoReceita}
+              variationType={variationTypeFromString(effectiveDash.variacaoReceita)}
+            />
           </View>
           <View style={styles.kpiItem}>
-            <CardKPI icon="clock-outline" title="Pendentes" value="R$ 28.300" variation="-5%" variationType="positive" />
+            <CardKPI
+              icon="clock-outline"
+              title="Pendentes"
+              value={pendentesVal}
+              variation={effectiveDash.variacaoPendentes}
+              variationType={variationTypeFromString(effectiveDash.variacaoPendentes)}
+            />
           </View>
           <View style={styles.kpiItem}>
-            <CardKPI icon="trending-down" title="Despesa Mensal" value="R$ 42.900" variation="+8%" variationType="negative" />
+            <CardKPI
+              icon="trending-down"
+              title="Despesa Mensal"
+              value={despesaVal}
+              variation={effectiveDash.variacaoDespesa}
+              variationType={variationTypeFromString(effectiveDash.variacaoDespesa)}
+            />
           </View>
           <View style={styles.kpiItem}>
-            <CardKPI icon="trending-up" title="Lucro Líquido" value="R$ 42.500" variation="+15%" variationType="positive" />
+            <CardKPI
+              icon="trending-up"
+              title="Lucro Líquido"
+              value={lucroVal}
+              variation={effectiveDash.variacaoLucro}
+              variationType={variationTypeFromString(effectiveDash.variacaoLucro)}
+            />
           </View>
         </View>
 
-        {/* Insights IA */}
         <View style={styles.insightsCard}>
           <View style={styles.insightsIconWrap}>
-            <MaterialCommunityIcons name="lightbulb-outline" size={20} color="#b45309" />
+            <MaterialCommunityIcons name="lightbulb-outline" size={20} color="#0d9488" />
           </View>
           <View style={styles.insightsContent}>
             <Text style={styles.insightsTitle}>Insights Inteligentes</Text>
-            <Text style={styles.insightsText}>60% da receita vem de 2 clientes principais</Text>
-            <Text style={styles.insightsText}>Você possui R$ 40.000 a receber nos próximos 30 dias</Text>
+            <Text style={styles.insightsText}>
+              Os resumos aparecem conforme os dados retornados pela API.
+            </Text>
             <Pressable onPress={() => onNavigate('AssistenteIA')} style={styles.insightsLink}>
               <Text style={styles.insightsLinkText}>Ver Assistente IA</Text>
               <Text style={styles.insightsLinkArrow}>→</Text>
@@ -65,7 +181,6 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
           </View>
         </View>
 
-        {/* Transações Recentes */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Transações Recentes</Text>
@@ -74,43 +189,32 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
             </Pressable>
           </View>
           <View style={styles.transactionsList}>
-            <CardTransacao
-              icon="briefcase"
-              title="Honorários - Processo 1234"
-              subtitle="João Silva"
-              value="R$ 5.000,00"
-              type="receita"
-              status="pago"
-              onPress={() => onNavigate('DetalheTransacao', '1')}
-            />
-            <CardTransacao
-              icon="file-document"
-              title="Custas Judiciais"
-              subtitle="Processo 5678"
-              value="R$ 850,00"
-              type="despesa"
-              status="pendente"
-              onPress={() => onNavigate('DetalheTransacao', '2')}
-            />
-            <CardTransacao
-              icon="credit-card"
-              title="Honorários - Consultoria"
-              subtitle="Maria Santos"
-              value="R$ 3.200,00"
-              type="receita"
-              status="atrasado"
-              onPress={() => onNavigate('DetalheTransacao', '3')}
-            />
+            {recent.length === 0 ? (
+              <Text style={styles.emptyRecent}>Nenhuma transação recente.</Text>
+            ) : (
+              recent.map((t) => (
+                <CardTransacao
+                  key={t.id}
+                  icon={t.icon}
+                  title={t.title}
+                  subtitle={t.subtitle}
+                  value={t.value}
+                  type={t.type}
+                  status={t.status}
+                  onPress={() => onNavigate('DetalheTransacao', t.id)}
+                />
+              ))
+            )}
           </View>
         </View>
 
         {/* Ações Rápidas */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ações Rápidas</Text>
           <View style={styles.actionsGrid}>
             <Pressable style={styles.actionCard} onPress={() => onNavigate('Honorarios')}>
               <View style={[styles.actionIcon, styles.actionIconBlue]}>
-                <MaterialCommunityIcons name="briefcase" size={20} color="#2563eb" />
+                <MaterialCommunityIcons name="briefcase" size={20} color="#0d9488" />
               </View>
               <Text style={styles.actionLabel}>Honorários</Text>
             </Pressable>
@@ -131,19 +235,19 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
             </Pressable>
             <Pressable style={styles.actionCard} onPress={() => onNavigate('NovaTransacao')}>
               <View style={[styles.actionIcon, styles.actionIconPurple]}>
-                <MaterialCommunityIcons name="credit-card" size={20} color="#7c3aed" />
+                <MaterialCommunityIcons name="credit-card" size={20} color="#0d9488" />
               </View>
               <Text style={styles.actionLabel}>Nova Transação</Text>
             </Pressable>
           </View>
-        </View>
+        </View> */}
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
       <FAB onPress={() => onNavigate('NovaTransacao')} />
       <View style={styles.bottomNavWrap}>
-        <BottomNav activeScreen="Home" onNavigate={onNavigate} />
+        <BottomNav />
       </View>
     </View>
   );
@@ -162,15 +266,26 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 32,
   },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  loadingText: { fontSize: 13, color: '#6b7280' },
   heroCard: {
-    backgroundColor: '#3b82f6',
     borderRadius: 16,
     padding: 24,
     marginBottom: 16,
+    shadowColor: '#115e59',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 5,
   },
   heroLabel: {
     fontSize: 14,
-    color: '#bfdbfe',
+    color: '#ccfbf1',
     marginBottom: 8,
   },
   heroValue: {
@@ -186,7 +301,7 @@ const styles = StyleSheet.create({
   },
   heroSubtext: {
     fontSize: 14,
-    color: '#bfdbfe',
+    color: '#ccfbf1',
   },
   kpiGrid: {
     flexDirection: 'row',
@@ -199,18 +314,23 @@ const styles = StyleSheet.create({
   },
   insightsCard: {
     flexDirection: 'row',
-    backgroundColor: '#fffbeb',
+    backgroundColor: '#f0fdfa',
     borderWidth: 1,
-    borderColor: '#fde68a',
+    borderColor: '#99f6e4',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
+    shadowColor: '#115e59',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   insightsIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#fef3c7',
+    backgroundColor: '#ccfbf1',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -236,12 +356,12 @@ const styles = StyleSheet.create({
   },
   insightsLinkText: {
     fontSize: 14,
-    color: '#b45309',
+    color: '#0f766e',
     fontWeight: '500',
   },
   insightsLinkArrow: {
     fontSize: 18,
-    color: '#b45309',
+    color: '#115e59',
   },
   section: {
     marginBottom: 16,
@@ -260,10 +380,15 @@ const styles = StyleSheet.create({
   },
   sectionLink: {
     fontSize: 14,
-    color: '#2563eb',
+    color: '#0d9488',
   },
   transactionsList: {
     gap: 12,
+  },
+  emptyRecent: {
+    fontSize: 14,
+    color: '#9ca3af',
+    paddingVertical: 8,
   },
   actionsGrid: {
     flexDirection: 'row',
@@ -276,10 +401,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   actionCardBadge: {
     position: 'relative',
@@ -292,10 +417,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  actionIconBlue: { backgroundColor: '#dbeafe' },
+  actionIconBlue: { backgroundColor: '#ccfbf1' },
   actionIconGreen: { backgroundColor: '#dcfce7' },
   actionIconAmber: { backgroundColor: '#fef3c7' },
-  actionIconPurple: { backgroundColor: '#f3e8ff' },
+  actionIconPurple: { backgroundColor: '#ccfbf1' },
   actionLabel: {
     fontSize: 14,
     fontWeight: '500',

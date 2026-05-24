@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Modal } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, TextInput, ScrollView, Pressable, StyleSheet, Modal, ActivityIndicator, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
-
-const PAGAMENTOS = [
-  { id: 1, cliente: 'João Silva', processo: 'Processo 1234/2025', valor: 'R$ 6.000,00', data: '15/02/2026' },
-  { id: 2, cliente: 'Maria Santos', processo: 'Processo 5678/2025', valor: 'R$ 3.200,00', data: '14/02/2026' },
-  { id: 3, cliente: 'Carlos Oliveira', processo: 'Processo 9012/2025', valor: 'R$ 5.500,00', data: '13/02/2026' },
-];
+import { ComprovantePreviewModal } from '../components/ComprovantePreviewModal';
+import { getApiBaseUrl } from '../config/api';
+import { useAuth } from '../context/AuthContext';
+import {
+  fetchPagamentosPendentes,
+  syncPagamentosDashboardCount,
+  updatePagamentoConferir,
+} from '../services/resources';
+import { ApiError } from '../services/http';
+import type { PagamentoConferirApi } from '../types/api';
+import { formatCentavosBRL } from '../utils/money';
 
 type Props = {
   onBack: () => void;
@@ -16,14 +21,98 @@ type Props = {
 };
 
 export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
-  const [selectedPagamento, setSelectedPagamento] = useState<number | null>(null);
-  const [modalRejeicao, setModalRejeicao] = useState<number | null>(null);
-  const [motivoRejeicao, setMotivoRejeicao] = useState('');
+  void onNavigate;
+  const { token } = useAuth();
+  const apiOn = !!getApiBaseUrl() && !!token;
 
-  const handleRejeitar = () => {
-    if (motivoRejeicao.trim()) {
-      setModalRejeicao(null);
-      setMotivoRejeicao('');
+  const [lista, setLista] = useState<PagamentoConferirApi[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busyId, setBusyId] = useState<string | number | null>(null);
+
+  const carregar = useCallback(async () => {
+    if (!apiOn) {
+      setLista([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const rows = await fetchPagamentosPendentes(token);
+      setLista(rows);
+    } catch {
+      setLista([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiOn, token]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const [selectedPagamento, setSelectedPagamento] = useState<string | number | null>(null);
+  const [modalRejeicao, setModalRejeicao] = useState<string | number | null>(null);
+  const [motivoRejeicao, setMotivoRejeicao] = useState('');
+  const [modalAprovacao, setModalAprovacao] = useState<string | number | null>(null);
+
+  const pendentes = lista.filter((p) => p.status === 'pendente');
+
+  const urlComprovante = (() => {
+    if (selectedPagamento == null) return '';
+    const pag = lista.find((p) => p.id === selectedPagamento);
+    return pag?.comprovanteUrl ?? '';
+  })();
+
+  const handleRejeitar = async () => {
+    if (!motivoRejeicao.trim() || modalRejeicao == null) return;
+    const id = modalRejeicao;
+    if (apiOn && token) {
+      try {
+        setBusyId(id);
+        await updatePagamentoConferir(token, id, { status: 'reprovado', motivoRejeicao: motivoRejeicao.trim() });
+        await syncPagamentosDashboardCount(token);
+        await carregar();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) {
+          Alert.alert('Sessão expirada', 'Faça login novamente para concluir a reprovação.');
+        } else {
+          Alert.alert('Erro ao reprovar', 'Não foi possível reprovar o pagamento agora.');
+        }
+      } finally {
+        setBusyId(null);
+      }
+    } else {
+      setLista((prev) => prev.filter((p) => p.id !== id));
+    }
+    setModalRejeicao(null);
+    setMotivoRejeicao('');
+  };
+
+  const handleConfirmar = (id: string | number) => {
+    setSelectedPagamento(null);
+    setModalAprovacao(id);
+  };
+
+  const handleConcluirAprovacao = async () => {
+    const id = modalAprovacao;
+    setModalAprovacao(null);
+    if (id == null) return;
+    if (apiOn && token) {
+      try {
+        setBusyId(id);
+        await updatePagamentoConferir(token, id, { status: 'aprovado' });
+        await syncPagamentosDashboardCount(token);
+        await carregar();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) {
+          Alert.alert('Sessão expirada', 'Faça login novamente para concluir a aprovação.');
+        } else {
+          Alert.alert('Erro ao aprovar', 'Não foi possível aprovar o pagamento agora.');
+        }
+      } finally {
+        setBusyId(null);
+      }
+    } else {
+      setLista((prev) => prev.filter((p) => p.id !== id));
     }
   };
 
@@ -31,29 +120,37 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
     <View style={styles.container}>
       <Header title="Pagamentos a Conferir" showBack onBack={onBack} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {apiOn && loading && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.loadingText}>Carregando…</Text>
+          </View>
+        )}
         <View style={styles.alertBox}>
-          <Text style={styles.alertText}><Text style={styles.alertBold}>{PAGAMENTOS.length} pagamentos</Text> aguardando confirmação</Text>
+          <Text style={styles.alertText}>
+            <Text style={styles.alertBold}>{pendentes.length} pagamentos</Text> aguardando confirmação
+          </Text>
         </View>
-        {PAGAMENTOS.map((p) => (
+        {pendentes.map((p) => (
           <View key={p.id} style={styles.card}>
             <View style={styles.cardHeader}>
-              <View style={styles.cardIcon}><MaterialCommunityIcons name="file-image-outline" size={24} color="#2563eb" /></View>
+              <View style={styles.cardIcon}><MaterialCommunityIcons name="file-image-outline" size={24} color="#0d9488" /></View>
               <View style={styles.cardContent}>
                 <Text style={styles.cardCliente}>{p.cliente}</Text>
                 <View style={styles.cardProcesso}><MaterialCommunityIcons name="file-document" size={14} color="#6b7280" /><Text style={styles.cardProcessoText}>{p.processo}</Text></View>
                 <Text style={styles.cardData}>{p.data}</Text>
-                <Text style={styles.cardValor}>{p.valor}</Text>
+                <Text style={styles.cardValor}>{formatCentavosBRL(p.valor)}</Text>
               </View>
             </View>
             <Pressable onPress={() => setSelectedPagamento(p.id)} style={styles.verBtn}>
               <Text style={styles.verBtnText}>Visualizar Comprovante</Text>
             </Pressable>
             <View style={styles.actionsRow}>
-              <Pressable onPress={() => setModalRejeicao(p.id)} style={styles.reprovarBtn}>
+              <Pressable onPress={() => setModalRejeicao(p.id)} disabled={busyId === p.id} style={styles.reprovarBtn}>
                 <MaterialCommunityIcons name="close" size={18} color="#dc2626" />
                 <Text style={styles.reprovarBtnText}>Reprovar</Text>
               </Pressable>
-              <Pressable style={styles.aprovarBtn}>
+              <Pressable onPress={() => handleConfirmar(p.id)} disabled={busyId === p.id} style={styles.aprovarBtn}>
                 <MaterialCommunityIcons name="check" size={18} color="#15803d" />
                 <Text style={styles.aprovarBtnText}>Aprovar</Text>
               </Pressable>
@@ -63,17 +160,30 @@ export function PagamentosConferirScreen({ onBack, onNavigate }: Props) {
         <View style={{ height: 80 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
-        <BottomNav activeScreen="PagamentosConferir" onNavigate={onNavigate} />
+        <BottomNav />
       </View>
 
-      <Modal visible={!!selectedPagamento} transparent animationType="fade">
-        <Pressable style={styles.modalOverlay} onPress={() => setSelectedPagamento(null)}>
-          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-            <Text style={styles.modalTitle}>Comprovante de Pagamento</Text>
-            <View style={styles.comprovantePlaceholder}><MaterialCommunityIcons name="file-image-outline" size={64} color="#9ca3af" /></View>
-            <Pressable onPress={() => setSelectedPagamento(null)} style={styles.modalFechar}><Text style={styles.modalFecharText}>Fechar</Text></Pressable>
+      <ComprovantePreviewModal
+        visible={!!selectedPagamento}
+        onClose={() => setSelectedPagamento(null)}
+        token={token}
+        comprovanteUrl={urlComprovante}
+        downloadName={`comprovante-${String(selectedPagamento ?? 'pagamento')}`}
+      />
+
+      <Modal visible={!!modalAprovacao} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.sucessoIcon}>
+              <MaterialCommunityIcons name="check-circle" size={56} color="#16a34a" />
+            </View>
+            <Text style={styles.sucessoTitle}>Pagamento Aprovado!</Text>
+            <Text style={styles.sucessoSubtitle}>O cliente será notificado sobre a aprovação do pagamento.</Text>
+            <Pressable onPress={handleConcluirAprovacao} style={styles.btnConcluir}>
+              <Text style={styles.btnConcluirText}>Concluir</Text>
+            </Pressable>
           </View>
-        </Pressable>
+        </View>
       </Modal>
 
       <Modal visible={!!modalRejeicao} transparent animationType="fade">
@@ -99,18 +209,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
-  alertBox: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 16, padding: 16, marginBottom: 16 },
-  alertText: { fontSize: 14, color: '#92400e' },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  loadingText: { fontSize: 13, color: '#6b7280' },
+  alertBox: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#64748b', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  alertText: { fontSize: 14, color: '#334155' },
   alertBold: { fontWeight: '600' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12 },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardHeader: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  cardIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
+  cardIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#ccfbf1', alignItems: 'center', justifyContent: 'center' },
   cardContent: { flex: 1 },
   cardCliente: { fontSize: 16, fontWeight: '600', color: '#111827' },
   cardProcesso: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   cardProcessoText: { fontSize: 14, color: '#6b7280' },
   cardData: { fontSize: 12, color: '#6b7280', marginTop: 4 },
-  cardValor: { fontSize: 18, fontWeight: '600', color: '#2563eb', marginTop: 8 },
+  cardValor: { fontSize: 18, fontWeight: '600', color: '#0d9488', marginTop: 8 },
   verBtn: { paddingVertical: 10, backgroundColor: '#f3f4f6', borderRadius: 12, alignItems: 'center', marginBottom: 12 },
   verBtnText: { fontSize: 14, color: '#6b7280' },
   actionsRow: { flexDirection: 'row', gap: 8 },
@@ -133,5 +245,9 @@ const styles = StyleSheet.create({
   modalDisabled: { opacity: 0.5 },
   modalFechar: { backgroundColor: '#111827', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   modalFecharText: { fontSize: 16, fontWeight: '500', color: '#fff' },
-  comprovantePlaceholder: { height: 200, backgroundColor: '#f3f4f6', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  sucessoIcon: { alignItems: 'center', marginBottom: 16 },
+  sucessoTitle: { fontSize: 20, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 8 },
+  sucessoSubtitle: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 24 },
+  btnConcluir: { backgroundColor: '#0d9488', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  btnConcluirText: { fontSize: 16, fontWeight: '600', color: '#fff' },
 });

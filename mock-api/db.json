@@ -1,0 +1,687 @@
+{
+  "usuarios": [
+    {
+      "id": "usr_1",
+      "email": "advogado@softwave.com",
+      "senha": "123456",
+      "nome": "Silva & Associados",
+      "tipo": "advogado",
+      "fotoPerfil": null
+    },
+    {
+      "id": "usr_2",
+      "email": "cliente@softwave.com",
+      "senha": "123456",
+      "nome": "João Silva",
+      "tipo": "cliente",
+      "fotoPerfil": null
+    }
+  ],
+  "dashboardResumo": [
+    {
+      "id": 1,
+      "valorDisponivel": 14523325,
+      "lucroLiquidoMes": 4250000,
+      "receitaMensal": 8540000,
+      "despesaMensal": 4290000,
+      "pendentes": 2830000,
+      "variacaoReceita": "+12%",
+      "variacaoPendentes": "-5%",
+      "variacaoDespesa": "+8%",
+      "variacaoLucro": "+15%",
+      "pagamentosParaConferir": 1
+    }
+  ],
+  "transacoes": [
+    {
+      "id": "txn_5",
+      "titulo": "Honorários - Processo 9012",
+      "subtitulo": "Carlos Oliveira",
+      "valor": 800000,
+      "tipo": "receita",
+      "status": "pago",
+      "categoria": "honorarios",
+      "clienteId": "cli_3",
+      "data": "2026-03-12",
+      "vencimento": "2026-03-25",
+      "icone": "briefcase",
+      "ordem": 5
+    },
+    {
+      "id": "txn_4",
+      "titulo": "Aluguel do Escritório",
+      "subtitulo": "Despesa Fixa",
+      "valor": 450000,
+      "tipo": "despesa",
+      "status": "pago",
+      "categoria": "aluguel",
+      "data": "2026-03-05",
+      "vencimento": "2026-03-05",
+      "icone": "receipt",
+      "ordem": 4
+    },
+    {
+      "id": "txn_1",
+      "titulo": "Honorários - Processo 1234",
+      "subtitulo": "João Silva",
+      "valor": 500000,
+      "tipo": "receita",
+      "status": "pago",
+      "categoria": "honorarios",
+      "clienteId": "cli_1",
+      "data": "2026-03-10",
+      "vencimento": "2026-03-15",
+      "icone": "briefcase",
+      "ordem": 3
+    },
+    {
+      "id": "txn_2",
+      "titulo": "Custas Judiciais",
+      "subtitulo": "Processo 5678",
+      "valor": 85000,
+      "tipo": "despesa",
+      "status": "pendente",
+      "categoria": "custas",
+      "data": "2026-03-08",
+      "vencimento": "2026-03-20",
+      "icone": "file-document",
+      "ordem": 2
+    },
+    {
+      "id": "txn_3",
+      "titulo": "Honorários - Consultoria",
+      "subtitulo": "Maria Santos",
+      "valor": 320000,
+      "tipo": "receita",
+      "status": "atrasado",
+      "categoria": "consultoria",
+      "clienteId": "cli_2",
+      "data": "2026-02-01",
+      "vencimento": "2026-02-10",
+      "icone": "credit-card",
+      "ordem": 1
+    },
+    {
+      "id": "txn_1775677287004",
+      "titulo": "Nova transação ",
+      "subtitulo": "Receita",
+      "valor": 100000,
+      "tipo": "receita",
+      "status": "pago",
+      "categoria": "honorarios",
+      "data": "2026-06-01",
+      "vencimento": "2026-06-01",
+      "icone": "briefcase",
+      "ordem": 6
+    }
+  ],
+  "contratos": [
+    {
+      "id": 1,
+      "clienteId": "cli_1",
+      "cliente": "João Silva",
+      "processo": "Processo 1234/2025",
+      "tipoContrato": "Êxito",
+      "status": "encerrado",
+      "progresso": 100,
+      "vencimento": "15/05/2026",
+      "total": 2500000,
+      "pago": 2500000,
+      "encerrado": true,
+      "reprovado": false,
+      "descricao": "Contrato de honorários por êxito na ação cível — Processo 1234/2025.",
+      "criadoEm": "2025-02-01T09:00:00Z"
+    },
+    {
+      "id": 2,
+      "clienteId": "cli_2",
+      "cliente": "Maria Santos",
+      "processo": "Processo 5678/2025",
+      "tipoContrato": "Parcelas",
+      "status": "pendente",
+      "progresso": 83,
+      "vencimento": "20/06/2026",
+      "total": 1800000,
+      "pago": 1500000,
+      "encerrado": false,
+      "reprovado": true,
+      "descricao": "Honorários em parcelas mensais — Processo 5678/2025.",
+      "criadoEm": "2025-05-10T14:00:00Z"
+    },
+    {
+      "id": 3,
+      "clienteId": "cli_3",
+      "cliente": "Carlos Oliveira",
+      "processo": "Processo 9012/2025",
+      "tipoContrato": "Fixo Mensal",
+      "status": "encerrado",
+      "progresso": 100,
+      "vencimento": "10/04/2026",
+      "total": 1200000,
+      "pago": 1200000,
+      "encerrado": true,
+      "reprovado": false,
+      "descricao": "Mensalidade fixa de acompanhamento processual — Processo 9012/2025.",
+      "criadoEm": "2025-08-01T10:30:00Z"
+    },
+    {
+      "id": 4,
+      "clienteId": "cli_4",
+      "cliente": "Ana Costa",
+      "processo": "Processo 3456/2024",
+      "tipoContrato": "Êxito",
+      "status": "encerrado",
+      "progresso": 100,
+      "vencimento": "01/01/2025",
+      "total": 800000,
+      "pago": 800000,
+      "encerrado": true,
+      "reprovado": false,
+      "descricao": "Contrato encerrado após quitação integral — Processo 3456/2024.",
+      "criadoEm": "2024-06-15T11:00:00Z"
+    }
+  ],
+  "parcelas": [
+    {
+      "id": "par_1_1",
+      "contratoId": 1,
+      "numero": 1,
+      "valor": 500000,
+      "vencimento": "2026-01-15",
+      "status": "pago"
+    },
+    {
+      "id": "par_1_2",
+      "contratoId": 1,
+      "numero": 2,
+      "valor": 500000,
+      "vencimento": "2026-02-15",
+      "status": "pago"
+    },
+    {
+      "id": "par_1_3",
+      "contratoId": 1,
+      "numero": 3,
+      "valor": 500000,
+      "vencimento": "2026-03-15",
+      "status": "pago"
+    },
+    {
+      "id": "par_1_4",
+      "contratoId": 1,
+      "numero": 4,
+      "valor": 500000,
+      "vencimento": "2026-04-15",
+      "status": "pago"
+    },
+    {
+      "id": "par_1_5",
+      "contratoId": 1,
+      "numero": 5,
+      "valor": 500000,
+      "vencimento": "2026-05-15",
+      "status": "pago"
+    },
+    {
+      "id": "par_2_1",
+      "contratoId": 2,
+      "numero": 1,
+      "valor": 300000,
+      "vencimento": "2026-01-20",
+      "status": "pago"
+    },
+    {
+      "id": "par_2_2",
+      "contratoId": 2,
+      "numero": 2,
+      "valor": 300000,
+      "vencimento": "2026-02-20",
+      "status": "pago"
+    },
+    {
+      "id": "par_2_3",
+      "contratoId": 2,
+      "numero": 3,
+      "valor": 300000,
+      "vencimento": "2026-03-20",
+      "status": "pago"
+    },
+    {
+      "id": "par_2_4",
+      "contratoId": 2,
+      "numero": 4,
+      "valor": 300000,
+      "vencimento": "2026-04-20",
+      "status": "pago"
+    },
+    {
+      "id": "par_2_5",
+      "contratoId": 2,
+      "numero": 5,
+      "valor": 300000,
+      "vencimento": "2026-05-20",
+      "status": "pago"
+    },
+    {
+      "id": "par_2_6",
+      "contratoId": 2,
+      "numero": 6,
+      "valor": 300000,
+      "vencimento": "2026-06-20",
+      "status": "pendente"
+    },
+    {
+      "id": "par_3_1",
+      "contratoId": 3,
+      "numero": 1,
+      "valor": 300000,
+      "vencimento": "2026-01-10",
+      "status": "pago"
+    },
+    {
+      "id": "par_3_2",
+      "contratoId": 3,
+      "numero": 2,
+      "valor": 300000,
+      "vencimento": "2026-02-10",
+      "status": "pago"
+    },
+    {
+      "id": "par_3_3",
+      "contratoId": 3,
+      "numero": 3,
+      "valor": 300000,
+      "vencimento": "2026-03-10",
+      "status": "pago"
+    },
+    {
+      "id": "par_3_4",
+      "contratoId": 3,
+      "numero": 4,
+      "valor": 300000,
+      "vencimento": "2026-04-10",
+      "status": "pago"
+    },
+    {
+      "id": "par_4_1",
+      "contratoId": 4,
+      "numero": 1,
+      "valor": 200000,
+      "vencimento": "2024-10-01",
+      "status": "pago"
+    },
+    {
+      "id": "par_4_2",
+      "contratoId": 4,
+      "numero": 2,
+      "valor": 200000,
+      "vencimento": "2024-11-01",
+      "status": "pago"
+    },
+    {
+      "id": "par_4_3",
+      "contratoId": 4,
+      "numero": 3,
+      "valor": 200000,
+      "vencimento": "2024-12-01",
+      "status": "pago"
+    },
+    {
+      "id": "par_4_4",
+      "contratoId": 4,
+      "numero": 4,
+      "valor": 200000,
+      "vencimento": "2025-01-01",
+      "status": "pago"
+    }
+  ],
+  "pagamentosParaConferir": [
+    {
+      "id": 1,
+      "cliente": "João Silva",
+      "processo": "Processo 1234/2025",
+      "valor": 600000,
+      "data": "15/02/2026",
+      "status": "pendente"
+    },
+    {
+      "id": 2,
+      "cliente": "Maria Santos",
+      "processo": "Processo 5678/2025",
+      "valor": 320000,
+      "data": "14/02/2026",
+      "status": "aprovado"
+    },
+    {
+      "id": 3,
+      "cliente": "Carlos Oliveira",
+      "processo": "Processo 9012/2025",
+      "valor": 550000,
+      "data": "13/02/2026",
+      "status": "aprovado"
+    }
+  ],
+  "notificacoesAdvogado": [
+    {
+      "id": 1,
+      "tipo": "pagamento",
+      "titulo": "Novo pagamento recebido",
+      "mensagem": "João Silva realizou o pagamento de R$ 5.000,00",
+      "data": "Há 2 horas",
+      "lida": true
+    },
+    {
+      "id": 2,
+      "tipo": "alerta",
+      "titulo": "Pagamento pendente",
+      "mensagem": "Honorários de Maria Santos vence amanhã",
+      "data": "Há 4 horas",
+      "lida": true
+    },
+    {
+      "id": 3,
+      "tipo": "sucesso",
+      "titulo": "Pagamento confirmado",
+      "mensagem": "Comprovante aprovado para o processo #1234",
+      "data": "Ontem",
+      "lida": true
+    }
+  ],
+  "notificacoesCliente": [
+    {
+      "id": 1,
+      "tipo": "pagamento",
+      "titulo": "Pagamento confirmado",
+      "mensagem": "Seu pagamento de R$ 6.000,00 foi confirmado",
+      "data": "Hoje, 14:30",
+      "lida": false,
+      "icon": "check-circle-outline",
+      "color": "green"
+    },
+    {
+      "id": 2,
+      "tipo": "cobranca",
+      "titulo": "Nova cobrança disponível",
+      "mensagem": "Parcela de R$ 7.000,00 vence em 15/04/2026",
+      "data": "Hoje, 09:15",
+      "lida": false,
+      "icon": "currency-usd",
+      "color": "blue"
+    }
+  ],
+  "clienteDashboard": [
+    {
+      "id": 1,
+      "nome": "João Silva",
+      "totalPago": 1500000,
+      "totalPendente": 1000000,
+      "totalContrato": 2500000,
+      "percentualPago": 60,
+      "parcelasRestantes": 3,
+      "notificacoesNaoLidas": 2,
+      "ultimaCobranca": {
+        "id": "cob_003",
+        "descricao": "Parcela 3/4",
+        "parcelaLabel": "Parcela 3/4",
+        "vencimento": "15/03/2026",
+        "valor": 600000,
+        "status": "pendente"
+      }
+    }
+  ],
+  "relatoriosCache": {
+    "receitaDespesa": {
+      "labels": [
+        "Jan",
+        "Fev",
+        "Mar"
+      ],
+      "receita": [
+        6500000,
+        7200000,
+        8500000
+      ],
+      "despesa": [
+        3800000,
+        4200000,
+        3500000
+      ]
+    },
+    "receitaCategoria": {
+      "categorias": [
+        {
+          "nome": "Honorários",
+          "valor": 6500000,
+          "percentual": 65
+        },
+        {
+          "nome": "Consultoria",
+          "valor": 2000000,
+          "percentual": 20
+        },
+        {
+          "nome": "Outros",
+          "valor": 1500000,
+          "percentual": 15
+        }
+      ]
+    },
+    "despesasMes": {
+      "labels": [
+        "Jan",
+        "Fev",
+        "Mar"
+      ],
+      "despesas": [
+        1580000,
+        1850000,
+        1220000
+      ]
+    },
+    "kpis": {
+      "margemLucro": {
+        "valor": "49.8%",
+        "variacao": "+2.3%",
+        "tipo": "positivo"
+      },
+      "ticketMedio": {
+        "valor": 854000,
+        "variacao": "+5%",
+        "tipo": "positivo"
+      },
+      "inadimplencia": {
+        "valor": "12%",
+        "variacao": "-3%",
+        "tipo": "positivo"
+      },
+      "crescimento": {
+        "valor": "15%",
+        "variacao": "+8%",
+        "tipo": "positivo"
+      }
+    },
+    "rankingClientes": {
+      "clientes": [
+        {
+          "id": "cli_001",
+          "nome": "João Silva",
+          "valor": 2500000
+        },
+        {
+          "id": "cli_002",
+          "nome": "Maria Santos",
+          "valor": 1800000
+        },
+        {
+          "id": "cli_003",
+          "nome": "Carlos Oliveira",
+          "valor": 1200000
+        }
+      ]
+    },
+    "insights": {
+      "linha": [
+        "Receita cresceu 30% em 3 meses — ritmo acima da média do setor.",
+        "Despesas caíram 8% de Fev para Mar, indicando controle de custos.",
+        "Margem líquida melhorou de 41% para 59% no período analisado."
+      ],
+      "pizza": [
+        "Honorários representam 65% da receita total — alta dependência.",
+        "Consultoria tem margem maior que honorários — potencial de crescimento.",
+        "Diversificar fontes de receita pode reduzir riscos operacionais."
+      ],
+      "barra": [
+        "Janeiro foi o mês mais caro em despesas (R$ 15.800).",
+        "Redução de 34% nas despesas de Fev para Mar — tendência positiva.",
+        "Monitorar categorias de custo variável para manter a queda."
+      ],
+      "maioresClientes": [
+        "João Silva é o cliente que mais gerou receita (R$ 25.000).",
+        "Ana Costa é o cliente que menos gerou receita (R$ 8.500)."
+      ]
+    }
+  },
+  "cobrancas": [
+    {
+      "id": "cob_001",
+      "processo": "Processo 1234/2025",
+      "descricao": "Honorários — Parcela 1/4",
+      "valor": 600000,
+      "vencimento": "2026-01-15",
+      "status": "pago",
+      "parcela": 1,
+      "totalParcelas": 4,
+      "percentualPago": 25
+    },
+    {
+      "id": "cob_002",
+      "processo": "Processo 1234/2025",
+      "descricao": "Honorários — Parcela 2/4",
+      "valor": 600000,
+      "vencimento": "2026-02-15",
+      "status": "pago",
+      "parcela": 2,
+      "totalParcelas": 4,
+      "percentualPago": 50
+    },
+    {
+      "id": "cob_003",
+      "processo": "Processo 1234/2025",
+      "descricao": "Honorários advocatícios — Parcela 3/4",
+      "valor": 600000,
+      "vencimento": "2026-03-15",
+      "status": "pendente",
+      "parcela": 3,
+      "totalParcelas": 4,
+      "percentualPago": 50
+    },
+    {
+      "id": "cob_004",
+      "processo": "Processo 1234/2025",
+      "descricao": "Honorários — Parcela 4/4",
+      "valor": 600000,
+      "vencimento": "2026-04-15",
+      "status": "pendente",
+      "parcela": 4,
+      "totalParcelas": 4,
+      "percentualPago": 50
+    }
+  ],
+  "escritorioDadosBancarios": [
+    {
+      "id": 1,
+      "banco": "Banco do Brasil",
+      "agencia": "1234-5",
+      "conta": "67890-1",
+      "favorecido": "Silva & Associados",
+      "cnpj": "12.345.678/0001-90"
+    }
+  ],
+  "clientePerfil": [
+    {
+      "usuarioId": "usr_2",
+      "id": "cli_perfil_1",
+      "nome": "João Silva",
+      "email": "cliente@softwave.com",
+      "telefone": "(11) 98765-4321",
+      "endereco": "Av. Paulista, 1500 - Bela Vista, São Paulo/SP",
+      "cpf": "123.456.789-00",
+      "clienteDesde": "Fev/2024",
+      "fotoPerfil": null,
+      "processoAtivo": {
+        "id": "proc_001",
+        "titulo": "Processo 1234/2025",
+        "subtitulo": "Advocacia Cível - Honorários",
+        "progressoPago": 60,
+        "valorPago": 1500000,
+        "valorTotal": 2500000
+      },
+      "preferencias": {
+        "notificacoesAtivas": true
+      }
+    }
+  ],
+  "perfilEscritorio": [
+    {
+      "usuarioId": "usr_1",
+      "id": "esc_1",
+      "nome": "Silva & Associados",
+      "email": "advogado@softwave.com",
+      "telefone": "(11) 3456-7890",
+      "oab": "OAB/SP 123.456",
+      "endereco": "Av. Paulista, 1000 - São Paulo/SP",
+      "fotoPerfil": null
+    }
+  ],
+  "iaHistorico": [
+    {
+      "id": "ia_seed_1",
+      "tipoAnalise": "receita-despesa",
+      "periodo": "2026-01 – 2026-03",
+      "resposta": "No período, receita e despesa mantiveram equilíbrio favorável. Recomenda-se acompanhar a projeção do segundo trimestre.",
+      "geradoEm": "2026-03-01T10:00:00.000Z"
+    },
+    {
+      "id": "ia_seed_2",
+      "tipoAnalise": "maiores-clientes",
+      "periodo": "2026-01 – 2026-03",
+      "resposta": "Concentração de receita nos três maiores clientes permanece dentro do esperado para o porte do escritório.",
+      "geradoEm": "2026-02-15T14:30:00.000Z"
+    }
+  ],
+  "importacaoHistorico": [
+    {
+      "id": "imp_seed_1",
+      "tipo": "extrato",
+      "arquivo": "extrato_janeiro_2026.csv",
+      "data": "2026-02-15T11:00:00.000Z",
+      "status": "concluido",
+      "registros": 45,
+      "novos": 32,
+      "atualizados": 13,
+      "erros": 0
+    },
+    {
+      "id": "imp_seed_2",
+      "tipo": "transacoes",
+      "arquivo": "transacoes_backup.xlsx",
+      "data": "2026-02-10T09:20:00.000Z",
+      "status": "concluido",
+      "registros": 120,
+      "novos": 0,
+      "atualizados": 120,
+      "erros": 0
+    },
+    {
+      "id": "imp_seed_3",
+      "tipo": "extrato",
+      "arquivo": "extrato_dezembro_2025.csv",
+      "data": "2026-02-05T16:45:00.000Z",
+      "status": "concluido",
+      "registros": 0,
+      "novos": 0,
+      "atualizados": 0,
+      "erros": 15
+    }
+  ]
+}

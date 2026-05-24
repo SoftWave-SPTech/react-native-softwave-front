@@ -14,7 +14,10 @@ import { PerfilScreen } from './src/screens/PerfilScreen';
 import { ClienteHomeScreen } from './src/screens/ClienteHomeScreen';
 import { ClienteCobrancasScreen } from './src/screens/ClienteCobrancasScreen';
 import { ClientePagamentoScreen } from './src/screens/ClientePagamentoScreen';
-import { PlaceholderScreen } from './src/screens/PlaceholderScreen';
+import { AssistenteIAScreen } from './src/screens/AssistenteIAScreen';
+import { ImportacaoExportacaoScreen } from './src/screens/ImportacaoExportacaoScreen';
+import { ClienteNotificacoesScreen } from './src/screens/ClienteNotificacoesScreen';
+import { ClientePerfilScreen } from './src/screens/ClientePerfilScreen';
 
 export type Screen =
   | 'Login'
@@ -45,13 +48,6 @@ const CLIENTE_BACK: Record<string, Screen> = {
   ClientePerfil: 'ClienteHome',
 };
 
-const PLACEHOLDER_TITLES: Record<string, string> = {
-  AssistenteIA: 'Assistente IA',
-  ImportacaoExportacao: 'Importação & Exportação',
-  ClienteNotificacoes: 'Notificações',
-  ClientePerfil: 'Meu Perfil',
-};
-
 export default function App() {
   const [screen, setScreen] = useState<Screen>('Login');
   const [paramId, setParamId] = useState<string>('');
@@ -74,9 +70,11 @@ export default function App() {
   if (screen === 'Login') {
     return (
       <LoginScreen
-        onLogin={() => navigate('Home')}
+        onLogin={async () => {
+          navigate('Home');
+          return { success: true };
+        }}
         onEsqueciSenha={() => navigate('EsqueciSenha')}
-        onClienteAcesso={() => navigate('ClienteHome')}
       />
     );
   }
@@ -116,9 +114,20 @@ export default function App() {
     );
   }
 
-  if (screen === 'ClienteNotificacoes' || screen === 'ClientePerfil') {
-    const title = PLACEHOLDER_TITLES[screen] ?? screen;
-    return <PlaceholderScreen title={title} onBack={goBack} />;
+  if (screen === 'ClienteNotificacoes') {
+    return <ClienteNotificacoesScreen onBack={goBack} />;
+  }
+
+  if (screen === 'ClientePerfil') {
+    return <ClientePerfilScreen onBack={goBack} onLogout={() => navigate('Login')} />;
+  }
+
+  if (screen === 'AssistenteIA') {
+    return <AssistenteIAScreen onBack={goBack} onNavigate={navigateAny} />;
+  }
+
+  if (screen === 'ImportacaoExportacao') {
+    return <ImportacaoExportacaoScreen onBack={goBack} onNavigate={navigateAny} />;
   }
 
   if (screen === 'Transacoes') {
@@ -152,6 +161,7 @@ export default function App() {
   if (screen === 'Honorarios') {
     return (
       <HonorariosScreen
+        routePath="honorarios"
         onBack={goBack}
         onNavigate={navigateAny}
       />
@@ -204,6 +214,5 @@ export default function App() {
     );
   }
 
-  const title = PLACEHOLDER_TITLES[screen] ?? screen;
-  return <PlaceholderScreen title={title} onBack={goBack} />;
+  return null;
 }

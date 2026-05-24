@@ -9,7 +9,7 @@ type Props = {
   subtitle: string;
   value: string;
   type: 'receita' | 'despesa';
-  status: 'pago' | 'pendente' | 'atrasado' | 'em-dia';
+  status: 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
   onPress?: () => void;
 };
 
@@ -47,10 +47,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   iconWrap: {
     width: 48,

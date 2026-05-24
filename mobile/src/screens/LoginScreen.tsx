@@ -1,42 +1,59 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import logoImage from '../../assets/softwave-logo.png';
 
 type Props = {
-  onLogin: () => void;
+  onLogin: (email: string, senha: string) => Promise<{ success: boolean; error?: string }>;
   onEsqueciSenha?: () => void;
-  onClienteAcesso?: () => void;
 };
 
-export function LoginScreen({ onLogin, onEsqueciSenha, onClienteAcesso }: Props) {
+export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState('');
 
-  const handleLogin = () => {
-    onLogin();
+  const handleLogin = async () => {
+    if (!email.trim() || !senha.trim()) {
+      setErro('Preencha o e-mail e a senha.');
+      return;
+    }
+    setErro('');
+    setCarregando(true);
+    const resultado = await onLogin(email, senha);
+    setCarregando(false);
+    if (!resultado.success) {
+      setErro(resultado.error ?? 'Erro ao realizar login.');
+    }
   };
 
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
       <View style={styles.card}>
-        {/* Logo / título */}
+        {/* Logo */}
         <View style={styles.logoContainer}>
           <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>SF</Text>
+            <Image source={logoImage} style={styles.logoImage} />
+            {/* <Text style={styles.logoText}></Text> */}
           </View>
           <Text style={styles.title}>SoftWave Finance</Text>
           <Text style={styles.subtitle}>Gestão financeira para advocacia</Text>
         </View>
 
-        {/* Campo email */}
+        {/* Campo e-mail */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>E-mail</Text>
           <TextInput
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(v) => { setEmail(v); setErro(''); }}
             placeholder="seu@email.com"
-            placeholderTextColor="rgba(255,255,255,0.6)"
+            placeholderTextColor="rgba(255,255,255,0.5)"
             keyboardType="email-address"
             autoCapitalize="none"
+            autoCorrect={false}
             style={styles.input}
           />
         </View>
@@ -44,41 +61,63 @@ export function LoginScreen({ onLogin, onEsqueciSenha, onClienteAcesso }: Props)
         {/* Campo senha */}
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Senha</Text>
-          <TextInput
-            value={senha}
-            onChangeText={setSenha}
-            placeholder="••••••••"
-            placeholderTextColor="rgba(255,255,255,0.6)"
-            secureTextEntry
-            style={styles.input}
-          />
+          <View style={styles.senhaRow}>
+            <TextInput
+              value={senha}
+              onChangeText={(v) => { setSenha(v); setErro(''); }}
+              placeholder="••••••••"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              secureTextEntry={!senhaVisivel}
+              style={[styles.input, styles.senhaInput]}
+            />
+            <Pressable onPress={() => setSenhaVisivel((v) => !v)} style={styles.senhaOlho}>
+              <MaterialCommunityIcons
+                name={senhaVisivel ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color="rgba(255,255,255,0.7)"
+              />
+            </Pressable>
+          </View>
         </View>
 
-        {/* Botão entrar */}
-        <Pressable onPress={handleLogin} style={styles.button}>
-          <Text style={styles.buttonText}>Entrar</Text>
+        {/* Mensagem de erro */}
+        {erro ? (
+          <View style={styles.erroBox}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#fca5a5" />
+            <Text style={styles.erroText}>{erro}</Text>
+          </View>
+        ) : null}
+
+        {/* Botão Entrar */}
+        <Pressable
+          onPress={handleLogin}
+          style={({ pressed }) => [
+            styles.button,
+            carregando && styles.buttonLoading,
+            !carregando && pressed && styles.buttonPressed,
+          ]}
+          disabled={carregando}
+        >
+          {carregando ? (
+            <ActivityIndicator color="#0E6F73" />
+          ) : (
+            <Text style={styles.buttonText}>Entrar</Text>
+          )}
         </Pressable>
 
-        {/* Link esqueci senha */}
-        <Pressable onPress={onEsqueciSenha ?? (() => {})} style={styles.linkContainer}>
+        {/* Esqueci minha senha */}
+        <Pressable onPress={onEsqueciSenha} style={styles.linkContainer}>
           <Text style={styles.linkText}>Esqueci minha senha</Text>
         </Pressable>
 
-        {/* Acesso Cliente */}
-        {onClienteAcesso && (
-          <Pressable onPress={onClienteAcesso} style={[styles.linkContainer, styles.clienteLink]}>
-            <Text style={styles.linkText}>Acesso para Cliente →</Text>
-          </Pressable>
-        )}
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0E6F73',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
@@ -92,16 +131,21 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logoCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  logoImage: {
+    width: 136,
+    height: 136,
+    resizeMode: 'contain',
   },
   logoText: {
-    fontSize: 32,
+    fontSize: 30,
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
@@ -113,47 +157,75 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#CCF5F2',
+    color: '#ccfbf1',
   },
   fieldContainer: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
-    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     marginBottom: 12,
   },
   label: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
     marginBottom: 4,
+    fontWeight: '500',
+    letterSpacing: 0.5,
   },
   input: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
+  },
+  senhaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  senhaInput: {
+    flex: 1,
+  },
+  senhaOlho: {
+    paddingLeft: 8,
+  },
+  erroBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(239,68,68,0.2)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  erroText: {
+    color: '#fca5a5',
+    fontSize: 13,
+    flex: 1,
   },
   button: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
+  },
+  buttonLoading: {
+    opacity: 0.85,
+  },
+  buttonPressed: {
+    backgroundColor: '#f0fdfa',
   },
   buttonText: {
     color: '#0E6F73',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 16,
   },
   linkContainer: {
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 16,
   },
   linkText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: 14,
-  },
-  clienteLink: {
-    marginTop: 24,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
   },
 });

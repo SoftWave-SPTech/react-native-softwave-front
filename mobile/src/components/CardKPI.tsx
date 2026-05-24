@@ -14,7 +14,7 @@ export function CardKPI({ icon, title, value, variation, variationType }: Props)
   return (
     <View style={styles.card}>
       <View style={styles.iconWrap}>
-        <MaterialCommunityIcons name={icon} size={18} color="#2563eb" />
+        <MaterialCommunityIcons name={icon} size={18} color="#0d9488" />
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.value}>{value}</Text>
@@ -33,16 +33,16 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   iconWrap: {
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#f0fdfa',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
