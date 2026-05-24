@@ -14,6 +14,9 @@ import { mapTransacaoApiToCard, type TransacaoCardModel } from '../mappers/trans
 import { fetchDashboardResumo, fetchNotificacoesNaoLidasAdvogado, fetchTransacoesRecentes, syncPagamentosDashboardCount } from '../services/resources';
 import type { DashboardResumoApi } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
+import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
+import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
+import { MASKED_MONEY_VALUE } from '../utils/geo';
 
 type Props = {
   onBack?: () => void;
@@ -41,6 +44,7 @@ function variationTypeFromString(s: string): 'positive' | 'negative' {
 
 export function HomeScreen({ onBack, onNavigate }: Props) {
   const { token } = useAuth();
+  const restrict = useShouldRestrictSensitiveData();
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [dash, setDash] = useState<DashboardResumoApi | null>(null);
@@ -92,19 +96,19 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
     }, [carregar]),
   );
 
-  const heroValor = useMemo(
-    () => formatCentavosBRL(effectiveDash.valorDisponivel),
-    [effectiveDash.valorDisponivel],
-  );
-  const heroLucro = useMemo(
-    () => formatCentavosBRL(effectiveDash.lucroLiquidoMes),
-    [effectiveDash.lucroLiquidoMes],
-  );
+  const heroValor = useMemo(() => {
+    if (restrict) return MASKED_MONEY_VALUE;
+    return formatCentavosBRL(effectiveDash.valorDisponivel);
+  }, [effectiveDash.valorDisponivel, restrict]);
+  const heroLucro = useMemo(() => {
+    if (restrict) return MASKED_MONEY_VALUE;
+    return formatCentavosBRL(effectiveDash.lucroLiquidoMes);
+  }, [effectiveDash.lucroLiquidoMes, restrict]);
 
-  const receitaVal = formatCentavosBRL(effectiveDash.receitaMensal);
-  const pendentesVal = formatCentavosBRL(effectiveDash.pendentes);
-  const despesaVal = formatCentavosBRL(effectiveDash.despesaMensal);
-  const lucroVal = formatCentavosBRL(effectiveDash.lucroLiquidoMes);
+  const receitaVal = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(effectiveDash.receitaMensal);
+  const pendentesVal = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(effectiveDash.pendentes);
+  const despesaVal = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(effectiveDash.despesaMensal);
+  const lucroVal = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(effectiveDash.lucroLiquidoMes);
 
   return (
     <View style={styles.container}>
@@ -123,6 +127,8 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
             <Text style={styles.loadingText}>Atualizando dados…</Text>
           </View>
         )}
+
+        <LocaisSegurosBanner />
 
         <LinearGradient colors={['#14b8a6', '#0e7490']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
           <Text style={styles.heroLabel}>Valor disponível</Text>

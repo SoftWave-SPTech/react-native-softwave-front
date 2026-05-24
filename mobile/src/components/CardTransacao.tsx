@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { TagStatus } from './TagStatus';
+import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
+import { MASKED_MONEY_VALUE, maskIfRestricted } from '../utils/geo';
 
 type Props = {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -14,6 +16,10 @@ type Props = {
 };
 
 export function CardTransacao({ icon, title, subtitle, value, type, status, onPress }: Props) {
+  const restrict = useShouldRestrictSensitiveData();
+  const displayValue = restrict ? MASKED_MONEY_VALUE : value;
+  const displayTitle = maskIfRestricted(title, restrict);
+  const displaySubtitle = maskIfRestricted(subtitle, restrict);
   const isReceita = type === 'receita';
   return (
     <Pressable onPress={onPress} style={styles.card}>
@@ -25,12 +31,12 @@ export function CardTransacao({ icon, title, subtitle, value, type, status, onPr
         />
       </View>
       <View style={styles.content}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        <Text style={styles.title}>{displayTitle}</Text>
+        <Text style={styles.subtitle}>{displaySubtitle}</Text>
       </View>
       <View style={styles.right}>
         <Text style={[styles.value, isReceita ? styles.valueReceita : styles.valueDespesa]}>
-          {isReceita ? '+' : '-'} {value}
+          {restrict ? displayValue : `${isReceita ? '+' : '-'} ${displayValue}`}
         </Text>
         <TagStatus status={status} />
       </View>

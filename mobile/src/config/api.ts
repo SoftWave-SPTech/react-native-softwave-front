@@ -104,5 +104,13 @@ export function getEtlApiBaseUrl(): string | null {
 
 /** URL usada só no fluxo de login (`/auth/login`). */
 export function getLoginApiBaseUrl(): string | null {
-  return getAuthBaseUrl() ?? getApiBaseUrl();
+  const auth = getAuthBaseUrl();
+  const api = getApiBaseUrl();
+  if (typeof __DEV__ !== 'undefined' && __DEV__ && !auth && api) {
+    // Sem EXPO_PUBLIC_AUTH_API_URL o app chama o backend-mobile (8080/v1), que não expõe /auth/login.
+    console.warn(
+      '[api] EXPO_PUBLIC_AUTH_API_URL vazio — login usará EXPO_PUBLIC_API_URL. Defina a base da API-AUTH-MAIL (porta 8083), ex.: http://192.168.x.x:8083',
+    );
+  }
+  return auth ?? api;
 }

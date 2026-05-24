@@ -9,7 +9,10 @@ import { AuthGuard } from '../../src/components/AuthGuard';
 export default function TabsLayout() {
   return (
     <AuthGuard>
-    <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
+    <Tabs
+      initialRouteName="home"
+      screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}
+    >
       <Tabs.Screen name="home" />
       <Tabs.Screen name="transacoes" />
       <Tabs.Screen name="pagamentos" />
