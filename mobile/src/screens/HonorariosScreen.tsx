@@ -134,7 +134,9 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
         <View style={styles.resumoRow}>
           <View style={styles.resumoVerde}>
             <Text style={styles.resumoLabel}>Total Recebido</Text>
-            <Text style={styles.resumoValue}>{topo.recebido}</Text>
+            <Text style={styles.resumoValue} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
+              {topo.recebido}
+            </Text>
           </View>
           <LinearGradient
             colors={['#14b8a6', '#0d9488']}
@@ -143,7 +145,9 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
             style={styles.resumoAzul}
           >
             <Text style={styles.resumoLabel}>A Receber</Text>
-            <Text style={styles.resumoValue}>{topo.aReceber}</Text>
+            <Text style={styles.resumoValue} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
+              {topo.aReceber}
+            </Text>
           </LinearGradient>
         </View>
 
@@ -218,7 +222,7 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
             ))
           )}
         </View>
-        <View style={{ height: 80 }} />
+        <View style={{ height: 160 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
         <BottomNav />
@@ -237,7 +241,7 @@ const styles = StyleSheet.create({
   resumoVerde: { flex: 1, backgroundColor: '#16a34a', borderRadius: 16, padding: 16, shadowColor: '#16a34a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
   resumoAzul: { flex: 1, borderRadius: 16, padding: 16, shadowColor: '#0d9488', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
   resumoLabel: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4 },
-  resumoValue: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
+  resumoValue: { fontSize: 20, lineHeight: 24, fontWeight: 'bold', color: '#fff', flexShrink: 1 },
   tabs: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, padding: 4, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
   tabActive: { backgroundColor: '#111827' },

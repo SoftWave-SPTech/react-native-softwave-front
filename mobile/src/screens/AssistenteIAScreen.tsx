@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
 import { getIaApiBaseUrl } from '../config/api';
@@ -122,6 +123,7 @@ function mapearInsightParaHistorico(insight: InsightFinanceiroResponseApi): Hist
 
 export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
   void onNavigate;
+  const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const apiOn = !!getIaApiBaseUrl()?.trim();
 
@@ -411,11 +413,18 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
       </Modal>
 
       <Modal visible={modalDetalhe} transparent animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={() => setModalDetalhe(false)}>
-          <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setModalDetalhe(false)} />
+          <View style={[styles.modalSheet, styles.modalSheetDetalhe, { paddingBottom: 12 + Math.max(insets.bottom, 8) }]}>
             <Text style={styles.modalTitle}>Detalhes do Insight</Text>
             {insightSelecionado ? (
-              <ScrollView style={styles.modalContent}>
+              <ScrollView
+                style={styles.modalContent}
+                contentContainerStyle={styles.modalContentContainer}
+                showsVerticalScrollIndicator
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+              >
                 <Text style={styles.modalMeta}>{insightSelecionado.tipoLabel} • {insightSelecionado.data}</Text>
                 <Text style={styles.modalMeta}>{insightSelecionado.periodo}</Text>
                 <Text style={styles.modalSectionTitle}>Resumo</Text>
@@ -438,7 +447,7 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
               <Text style={styles.modalCancelText}>Fechar</Text>
             </Pressable>
           </View>
-        </Pressable>
+        </View>
       </Modal>
     </View>
   );
@@ -576,6 +585,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, paddingBottom: 36,
   },
+  modalSheetDetalhe: {
+    height: '82%',
+    display: 'flex',
+    flexDirection: 'column',
+  },
   modalTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 16 },
   modalOption: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -589,7 +603,8 @@ const styles = StyleSheet.create({
     borderRadius: 12, alignItems: 'center',
   },
   modalCancelText: { fontSize: 15, fontWeight: '600', color: '#374151' },
-  modalContent: { maxHeight: 380 },
+  modalContent: { flex: 1, minHeight: 160 },
+  modalContentContainer: { paddingBottom: 8 },
   modalMeta: { fontSize: 12, color: '#6b7280', marginBottom: 6 },
   modalSectionTitle: { fontSize: 14, color: '#111827', fontWeight: '700', marginTop: 10, marginBottom: 4 },
   modalSectionText: { fontSize: 13, color: '#374151', lineHeight: 20 },

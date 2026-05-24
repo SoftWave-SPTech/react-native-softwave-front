@@ -279,6 +279,10 @@ export type UploadComprovanteResponseApi = {
   mensagem: string;
   comprovanteUrl?: string;
 };
+export type UploadFotoPerfilResponseApi = {
+  mensagem: string;
+  fotoUrl?: string;
+};
 
 export type UploadableFile = {
   uri: string;
@@ -333,6 +337,23 @@ export async function postTransacaoComprovante(
     token,
     fd,
   );
+}
+
+export async function postClienteFotoPerfil(
+  token: string | null,
+  arquivo: UploadableFile,
+): Promise<UploadFotoPerfilResponseApi> {
+  const fd = new FormData();
+  if (arquivo.file) {
+    fd.append('foto', arquivo.file, arquivo.name);
+  } else {
+    fd.append('foto', {
+      uri: arquivo.uri,
+      name: arquivo.name,
+      type: arquivo.type,
+    } as unknown as Blob);
+  }
+  return apiPostFormData<UploadFotoPerfilResponseApi>('/cliente/perfil/foto', token, fd);
 }
 
 export async function fetchClientesAdvogado(token: string | null): Promise<ClienteAdvogadoApi[]> {
@@ -440,10 +461,17 @@ export async function fetchRelatorioDespesasMes(
   periodo: string,
 ): Promise<RelatorioDespesasMesApi | null> {
   try {
-    return await apiGetJson<RelatorioDespesasMesApi>(
+    const raw = await apiGetJson<Record<string, unknown>>(
       `/relatorios/despesas-mes${relatorioPeriodoQuery(periodo)}`,
       token,
     );
+    const labelsRaw = raw.labels;
+    const despesasRaw = raw.despesas ?? raw.despesa;
+    const labels = Array.isArray(labelsRaw) ? labelsRaw.map((x) => String(x)) : [];
+    const despesas = Array.isArray(despesasRaw)
+      ? despesasRaw.map((x) => (typeof x === 'number' ? x : Number(x) || 0))
+      : [];
+    return { labels, despesas };
   } catch {
     return null;
   }

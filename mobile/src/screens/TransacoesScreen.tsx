@@ -35,6 +35,25 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
 
+  const maskDateInput = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  };
+
+  const rangeFromPeriodo = (dias: number): { dataInicio: string; dataFim: string } => {
+    const now = new Date();
+    const ini = new Date(now);
+    const fim = new Date(now);
+    ini.setDate(now.getDate() - dias);
+    fim.setDate(now.getDate() + dias);
+    return {
+      dataInicio: ini.toISOString().slice(0, 10),
+      dataFim: fim.toISOString().slice(0, 10),
+    };
+  };
+
   const carregar = React.useCallback(async () => {
     if (!apiOn) {
       setLista([]);
@@ -43,12 +62,20 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
     }
     setLoading(true);
     try {
+      const periodoRange =
+        periodoFiltro !== 'custom' ? rangeFromPeriodo(Number(periodoFiltro)) : null;
       const data = await fetchTransacoes(token, {
         tipo: tipoFiltro === 'todas' ? undefined : tipoFiltro,
         status: statusFiltro === 'todos' || statusFiltro === 'em-dia' ? undefined : statusFiltro,
-        periodoDias: periodoFiltro !== 'custom' ? Number(periodoFiltro) as 15 | 30 | 60 | 90 : undefined,
-        dataInicio: periodoFiltro === 'custom' ? parseDateBRToIso(dataInicio) ?? undefined : undefined,
-        dataFim: periodoFiltro === 'custom' ? parseDateBRToIso(dataFim) ?? undefined : undefined,
+        periodoDias: undefined,
+        dataInicio:
+          periodoFiltro === 'custom'
+            ? parseDateBRToIso(dataInicio) ?? undefined
+            : periodoRange?.dataInicio,
+        dataFim:
+          periodoFiltro === 'custom'
+            ? parseDateBRToIso(dataFim) ?? undefined
+            : periodoRange?.dataFim,
         page: pagina,
         limit: 20,
       });
@@ -119,14 +146,14 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
           <View style={styles.customDateRow}>
             <TextInput
               value={dataInicio}
-              onChangeText={setDataInicio}
+              onChangeText={(v) => setDataInicio(maskDateInput(v))}
               placeholder="Início DD/MM/AAAA"
               placeholderTextColor="#9ca3af"
               style={styles.customDateInput}
             />
             <TextInput
               value={dataFim}
-              onChangeText={setDataFim}
+              onChangeText={(v) => setDataFim(maskDateInput(v))}
               placeholder="Fim DD/MM/AAAA"
               placeholderTextColor="#9ca3af"
               style={styles.customDateInput}

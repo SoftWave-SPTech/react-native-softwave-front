@@ -355,7 +355,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
     return [];
   }, [ranking]);
 
-  const insightsPadrao = useMemo(() => {
+  const insights = useMemo(() => {
     return {
       linha: insightsGerados.linha?.bullets ?? [],
       pizza: insightsGerados.pizza?.bullets ?? [],
@@ -650,7 +650,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           )}
         </View>
 
-        <View style={{ height: 80 }} />
+        <View style={{ height: 160 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
         <BottomNav />

@@ -97,7 +97,7 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
           <MaterialCommunityIcons name="logout" size={22} color="#dc2626" />
           <Text style={styles.logoutBtnText}>Sair do Aplicativo</Text>
         </Pressable>
-        <View style={{ height: 80 }} />
+        <View style={{ height: 140 }} />
       </ScrollView>
       <View style={styles.bottomNavWrap}>
         <BottomNav />

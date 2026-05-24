@@ -5,14 +5,17 @@ import {
   ScrollView,
   Pressable,
   Modal,
+  Image,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
-import { fetchClientePerfil } from '../services/resources';
+import { fetchClientePerfil, postClienteFotoPerfil } from '../services/resources';
 import type { ClientePerfilApi } from '../types/api';
 
 type Props = {
@@ -45,6 +48,19 @@ function perfilParaDados(p: ClientePerfilApi): DadoPessoal[] {
   ];
 }
 
+function resolverFotoPerfilUri(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith('file://')) return null;
+  if (raw.startsWith('/')) {
+    const base = getApiBaseUrl();
+    if (!base) return null;
+    const origin = base.replace(/\/v1\/?$/i, '');
+    return `${origin}${raw}`;
+  }
+  return raw;
+}
+
 export function ClientePerfilScreen({ onBack, onLogout }: Props) {
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
@@ -54,6 +70,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
   const [nomeTopo, setNomeTopo] = useState('');
   const [sinceTopo, setSinceTopo] = useState('');
   const [modalFoto, setModalFoto] = useState(false);
+  const [fotoPerfilUri, setFotoPerfilUri] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     if (!apiOn || !token) {
@@ -69,15 +86,18 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
         setDadosPessoais(perfilParaDados(p));
         setNomeTopo(p.nome);
         setSinceTopo(`Cliente desde ${p.clienteDesde}`);
+        setFotoPerfilUri(resolverFotoPerfilUri(p.fotoPerfil));
       } else {
         setDadosPessoais([]);
         setNomeTopo('');
         setSinceTopo('');
+        setFotoPerfilUri(null);
       }
     } catch {
       setDadosPessoais([]);
       setNomeTopo('');
       setSinceTopo('');
+      setFotoPerfilUri(null);
     } finally {
       setLoading(false);
     }
@@ -86,6 +106,55 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  const selecionarFoto = useCallback(async (tipo: 'camera' | 'galeria') => {
+    try {
+      const permissao =
+        tipo === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissao.granted) {
+        Alert.alert('Permissão necessária', 'Autorize o acesso para alterar a foto de perfil.');
+        return;
+      }
+
+      const result =
+        tipo === 'camera'
+          ? await ImagePicker.launchCameraAsync({
+              quality: 0.85,
+              allowsEditing: true,
+              aspect: [1, 1],
+              mediaTypes: ['images'],
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              quality: 0.85,
+              allowsEditing: true,
+              aspect: [1, 1],
+              mediaTypes: ['images'],
+            });
+
+      if (result.canceled || !result.assets[0]?.uri) return;
+      const a = result.assets[0];
+      setFotoPerfilUri(a.uri);
+      if (apiOn && token) {
+        const ext = a.fileName?.split('.').pop() || 'jpg';
+        const resp = await postClienteFotoPerfil(token, {
+          uri: a.uri,
+          name: a.fileName ?? `perfil_${Date.now()}.${ext}`,
+          type: a.mimeType ?? 'image/jpeg',
+          file: (a as { file?: File | Blob }).file,
+        });
+        if (resp?.fotoUrl) {
+          setFotoPerfilUri(resolverFotoPerfilUri(resp.fotoUrl) ?? a.uri);
+        }
+      }
+      setModalFoto(false);
+      Alert.alert('Sucesso', 'Foto de perfil atualizada.');
+    } catch {
+      Alert.alert('Erro', 'Não foi possível atualizar a foto de perfil.');
+    }
+  }, [apiOn, token]);
 
   return (
     <View style={styles.container}>
@@ -103,7 +172,15 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
           <View style={styles.avatarSection}>
             <View style={styles.avatarWrap}>
               <View style={styles.avatarCircle}>
-                <Text style={styles.avatarInitials}>{iniciais(nomeTopo)}</Text>
+                {fotoPerfilUri ? (
+                  <Image
+                    source={{ uri: fotoPerfilUri, headers: token ? { Authorization: `Bearer ${token}` } : undefined }}
+                    style={styles.avatarImage}
+                    onError={() => setFotoPerfilUri(null)}
+                  />
+                ) : (
+                  <Text style={styles.avatarInitials}>{iniciais(nomeTopo)}</Text>
+                )}
               </View>
               <Pressable style={styles.cameraBtn} onPress={() => setModalFoto(true)}>
                 <MaterialCommunityIcons name="camera" size={16} color="#fff" />
@@ -146,7 +223,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
       {/* Modal de Foto */}
       <Modal visible={modalFoto} transparent animationType="slide">
         <Pressable style={styles.modalOverlay} onPress={() => setModalFoto(false)}>
-          <View style={styles.modalSheet}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Alterar Foto de Perfil</Text>
               <Pressable onPress={() => setModalFoto(false)}>
@@ -154,7 +231,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
               </Pressable>
             </View>
 
-            <Pressable style={styles.fotoOption} onPress={() => setModalFoto(false)}>
+            <Pressable style={styles.fotoOption} onPress={() => selecionarFoto('camera')}>
               <View style={[styles.fotoIconWrap, { backgroundColor: '#ccfbf1' }]}>
                 <MaterialCommunityIcons name="camera" size={24} color="#0d9488" />
               </View>
@@ -164,7 +241,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
               </View>
             </Pressable>
 
-            <Pressable style={styles.fotoOption} onPress={() => setModalFoto(false)}>
+            <Pressable style={styles.fotoOption} onPress={() => selecionarFoto('galeria')}>
               <View style={[styles.fotoIconWrap, { backgroundColor: '#dcfce7' }]}>
                 <MaterialCommunityIcons name="image-outline" size={24} color="#16a34a" />
               </View>
@@ -177,7 +254,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
             <Pressable style={styles.modalCancel} onPress={() => setModalFoto(false)}>
               <Text style={styles.modalCancelText}>Cancelar</Text>
             </Pressable>
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </View>
@@ -204,7 +281,9 @@ const styles = StyleSheet.create({
   avatarCircle: {
     width: 96, height: 96, borderRadius: 48,
     backgroundColor: '#0d9488', alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: '100%', height: '100%' },
   avatarInitials: { fontSize: 30, fontWeight: 'bold', color: '#fff' },
   cameraBtn: {
     position: 'absolute', bottom: 0, right: 0,

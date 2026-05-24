@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { Header } from '../components/Header';
 import { AccordionSelect, SelectOption } from '../components/AccordionSelect';
 import { getApiBaseUrl } from '../config/api';
@@ -28,7 +29,6 @@ import { parseClienteId, parseProcessoIdNum } from '../utils/apiIds';
 import { parseDateBRToIso, parseValorInputToCentavos } from '../utils/money';
 import {
   cameraPickerOptions,
-  galleryPickerOptions,
   uploadFileFromImageAsset,
 } from '../utils/uploadFile';
 
@@ -128,7 +128,8 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
   const [mostrarSucesso, setMostrarSucesso] = useState(false);
   const [recorrencia, setRecorrencia] = useState<Recorrencia>('sem');
   const [duracaoMeses, setDuracaoMeses] = useState('');
-  const [arquivoComprovante, setArquivoComprovante] = useState<UploadableFile | null>(null);
+  const [comprovanteNome, setComprovanteNome] = useState('');
+  const [comprovanteArquivo, setComprovanteArquivo] = useState<UploadableFile | null>(null);
 
   const opcoesClientes: SelectOption[] = useMemo(() => {
     const base: SelectOption[] = [{ value: '', label: 'Nenhum cliente vinculado' }];
@@ -179,27 +180,6 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
     return '';
   };
 
-  const selecionarComprovante = async (origem: 'camera' | 'galeria') => {
-    try {
-      const permissao =
-        origem === 'camera'
-          ? await ImagePicker.requestCameraPermissionsAsync()
-          : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permissao.granted) {
-        Alert.alert('Permissão necessária', 'Autorize acesso à câmera/galeria.');
-        return;
-      }
-      const picked =
-        origem === 'camera'
-          ? await ImagePicker.launchCameraAsync(cameraPickerOptions())
-          : await ImagePicker.launchImageLibraryAsync(galleryPickerOptions());
-      if (picked.canceled || !picked.assets[0]) return;
-      setArquivoComprovante(uploadFileFromImageAsset(picked.assets[0]));
-    } catch {
-      Alert.alert('Erro', 'Não foi possível selecionar a imagem.');
-    }
-  };
-
   const handleSalvar = async () => {
     if (!valor || !categoria || !descricao || !vencimento) {
       Alert.alert('Campos obrigatórios', 'Preencha todos os campos marcados com *');
@@ -246,11 +226,14 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
             vencimento: vencIso,
             icone: iconeFromCategoria(categoria),
           });
+          if (comprovanteArquivo) {
+            await postTransacaoComprovante(token, transacaoParaEditar.id, comprovanteArquivo);
+          }
         } else {
           const pid = parseProcessoIdNum(processoIdApi);
           const cid = parseClienteId(cliente);
           const dur = parseInt(duracaoMeses, 10);
-          const created = await createTransacao(token, {
+          const criada = await createTransacao(token, {
             tipo,
             valor: centavos,
             categoria,
@@ -266,8 +249,16 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
             recorrencia,
             duracaoMeses: recorrencia !== 'sem' && Number.isFinite(dur) && dur > 0 ? dur : null,
           });
-          if (arquivoComprovante && created.id) {
-            await postTransacaoComprovante(token, created.id, arquivoComprovante);
+          if (comprovanteArquivo) {
+            const createdId = String(criada.id ?? '').trim();
+            if (createdId) {
+              await postTransacaoComprovante(token, createdId, comprovanteArquivo);
+            } else {
+              Alert.alert(
+                'Transação criada',
+                'A transação foi salva, mas não foi possível enviar comprovante automaticamente.',
+              );
+            }
           }
         }
         setMostrarSucesso(true);
@@ -283,6 +274,41 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
 
     setMostrarSucesso(true);
     setTimeout(() => onSuccess(), 2000);
+  };
+
+  const handleCamera = async () => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permissão', 'Permita acesso à câmera para anexar comprovante.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync(cameraPickerOptions());
+      if (result.canceled || !result.assets[0]) return;
+      const arquivo = uploadFileFromImageAsset(result.assets[0]);
+      setComprovanteArquivo(arquivo);
+      setComprovanteNome(arquivo.name);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível capturar a imagem.');
+    }
+  };
+
+  const handleArquivo = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      multiple: false,
+      type: ['image/*', 'application/pdf'],
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets.length) return;
+    const asset = result.assets[0];
+    const arquivo: UploadableFile = {
+      uri: asset.uri,
+      name: asset.name,
+      type: asset.mimeType ?? 'application/octet-stream',
+      file: (asset as { file?: File | Blob }).file,
+    };
+    setComprovanteArquivo(arquivo);
+    setComprovanteNome(arquivo.name);
   };
 
   return (
@@ -481,18 +507,18 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Comprovante</Text>
           <View style={styles.comprovanteRow}>
-            <Pressable style={styles.comprovanteBtn} onPress={() => void selecionarComprovante('camera')}>
+            <Pressable style={styles.comprovanteBtn} onPress={() => void handleCamera()}>
               <MaterialCommunityIcons name="camera" size={22} color="#0d9488" />
               <Text style={styles.comprovanteBtnText}>Câmera</Text>
             </Pressable>
-            <Pressable style={styles.comprovanteBtn} onPress={() => void selecionarComprovante('galeria')}>
+            <Pressable style={styles.comprovanteBtn} onPress={() => void handleArquivo()}>
               <MaterialCommunityIcons name="upload" size={22} color="#0d9488" />
-              <Text style={styles.comprovanteBtnText}>Galeria</Text>
+              <Text style={styles.comprovanteBtnText}>Arquivo</Text>
             </Pressable>
           </View>
-          {arquivoComprovante && (
+          {!!comprovanteNome && (
             <Text style={styles.comprovanteNome} numberOfLines={1}>
-              Anexo: {arquivoComprovante.name}
+              Anexado: {comprovanteNome}
             </Text>
           )}
         </View>
@@ -622,7 +648,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   comprovanteBtnText: { fontSize: 14, color: '#0d9488', fontWeight: '500' },
-  comprovanteNome: { marginTop: 8, fontSize: 13, color: '#6b7280' },
+  comprovanteNome: { marginTop: 10, fontSize: 12, color: '#0f766e' },
   saveBtn: {
     backgroundColor: '#0d9488',
     borderRadius: 16,
