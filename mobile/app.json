@@ -13,7 +13,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "A aplicação precisa acessar a câmera para tirar fotos de comprovantes e perfil.",
+        "NSPhotoLibraryUsageDescription": "A aplicação precisa acessar sua galeria para selecionar fotos e comprovantes.",
+        "NSPhotoLibraryAddUsageDescription": "A aplicação precisa salvar fotos na galeria para permitir salvar comprovantes e imagens de perfil.",
+        "NSMicrophoneUsageDescription": "A aplicação pode usar o microfone ao gravar vídeos (se aplicável)."
+      }
     },
     "android": {
       "adaptiveIcon": {
