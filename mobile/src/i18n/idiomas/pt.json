@@ -1,0 +1,79 @@
+{
+  "login": {
+    "title": "SoftWave Finance",
+    "subtitle": "Gestão financeira para advocacia",
+
+    "email": "E-mail",
+    "password": "Senha",
+
+    "emailPlaceholder": "seu@email.com",
+    "passwordPlaceholder": "••••••••",
+
+    "loginButton": "Entrar",
+    "forgotPassword": "Esqueci minha senha",
+
+    "requiredFields": "Preencha o e-mail e a senha.",
+    "loginError": "Erro ao realizar login."
+  },
+
+  "language": {
+    "portuguese": "PT",
+    "english": "EN"
+  },
+
+  "forgotPassword": {
+  "back": "Voltar",
+
+  "title": "Recuperar Senha",
+  "subtitle": "Digite seu e-mail para receber o código de recuperação",
+
+  "emailLabel": "E-mail cadastrado",
+  "emailPlaceholder": "seu@email.com",
+
+  "sendCode": "Enviar Código",
+
+  "rememberPassword": "Lembrou sua senha?",
+  "login": "Fazer login",
+
+  "emailSent": "E-mail enviado",
+  "emailSentMessage": "Confira sua caixa de entrada (e spam). O código tem 8 caracteres e expira em 5 minutos.",
+
+  "error": "Erro",
+
+  "resend": "Reenviar",
+  "resendTitle": "Reenviar",
+  "resendError": "No momento não foi possível reenviar o código.",
+  "resendSuccess": "Um novo código foi solicitado. Verifique seu e-mail.",
+
+  "codeSent": "Código enviado",
+  "codeSubtitle": "Digite o código enviado para",
+
+  "verificationCode": "Código de verificação",
+
+  "codeExpires": "⏱️ O código expira em 5 minutos",
+
+  "continue": "Continuar",
+
+  "didNotReceive": "Não recebeu o código?",
+
+  "newPassword": "Nova Senha",
+  "newPasswordSubtitle": "Crie uma senha forte para sua conta",
+
+  "newPasswordLabel": "Nova senha",
+  "confirmPasswordLabel": "Confirmar senha",
+
+  "passwordMismatch": "⚠️ As senhas não coincidem",
+
+  "passwordRule":
+    "✓ Mínimo 8 caracteres: maiúscula, minúscula, número e símbolo (@ # $ % ^ & + =)",
+
+  "passwordRuleMock":
+    "✓ Mínimo de 6 caracteres",
+
+  "resetPassword": "Redefinir Senha",
+
+  "passwordChanged": "Senha alterada",
+  "passwordChangedMessage":
+    "Você já pode fazer login com a nova senha."
+}
+}

@@ -4,6 +4,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getLoginApiBaseUrl } from '../config/api';
 import logoImage from '../../assets/softwave-logo.png';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n/idiomas/i18n';
 import {
   RESET_SENHA_REGEX,
   resetarSenhaAuth,
@@ -23,6 +25,7 @@ type Props = {
 };
 
 export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
+  const { t } = useTranslation();
   const [etapa, setEtapa] = useState<Etapa>('email');
   const [email, setEmail] = useState('');
   const [token, setToken] = useState('');
@@ -39,12 +42,12 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
         setEnviandoEmail(true);
         const result = await solicitarResetSenhaAuth(email.trim());
         if (!result.ok) {
-          Alert.alert('Erro', result.error);
+          Alert.alert(t('forgotPassword.error'), result.error);
           return;
         }
         Alert.alert(
-          'E-mail enviado',
-          'Confira sua caixa de entrada (e spam). O código tem 8 caracteres e expira em 5 minutos.',
+          t('forgotPassword.emailSent'),
+          t('forgotPassword.emailSentMessage')
         );
       } finally {
         setEnviandoEmail(false);
@@ -55,17 +58,26 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
 
   const handleReenviar = async () => {
     if (!apiAuthOn) {
-      Alert.alert('Reenviar', 'No momento nao foi possivel reenviar o codigo.');
+      Alert.alert(
+        t('forgotPassword.resendTitle'),
+        t('forgotPassword.resendError')
+      );
       return;
     }
     try {
       setEnviandoEmail(true);
       const result = await solicitarResetSenhaAuth(email.trim());
       if (!result.ok) {
-        Alert.alert('Erro', result.error);
+        Alert.alert(
+          t('forgotPassword.error'),
+          result.error
+        );
         return;
       }
-      Alert.alert('Enviado', 'Um novo código foi solicitado. Verifique seu e-mail.');
+      Alert.alert(
+        t('forgotPassword.resend'),
+        t('forgotPassword.resendSuccess')
+      );
     } finally {
       setEnviandoEmail(false);
     }
@@ -79,10 +91,16 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
         setSalvandoSenha(true);
         const result = await resetarSenhaAuth(token, novaSenha, confirmaSenha);
         if (!result.ok) {
-          Alert.alert('Erro', result.error);
+          Alert.alert(
+            t('forgotPassword.error'),
+            result.error
+          );
           return;
         }
-        Alert.alert('Senha alterada', 'Você já pode fazer login com a nova senha.');
+        Alert.alert(
+          t('forgotPassword.passwordChanged'),
+          t('forgotPassword.passwordChangedMessage')
+        );
         onSuccess();
       } finally {
         setSalvandoSenha(false);
@@ -119,24 +137,67 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
   if (etapa === 'email') {
     return (
       <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
+        <View style={styles.languageSwitcher}>
+          <Pressable
+            onPress={() => i18n.changeLanguage('pt')}
+            style={[
+              styles.languageButton,
+              i18n.language === 'pt' && styles.languageButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.languageText,
+                i18n.language === 'pt' && styles.languageTextActive,
+              ]}
+            >
+              PT
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => i18n.changeLanguage('en')}
+            style={[
+              styles.languageButton,
+              i18n.language === 'en' && styles.languageButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.languageText,
+                i18n.language === 'en' && styles.languageTextActive,
+              ]}
+            >
+              EN
+            </Text>
+          </Pressable>
+        </View>
         <Pressable onPress={onBack} style={styles.header}>
           <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
-          <Text style={styles.headerText}>Voltar</Text>
+          <Text style={styles.headerText}>
+            {t('forgotPassword.back')}
+          </Text>
         </Pressable>
         <View style={styles.content}>
           <View style={styles.logoWrap}>
             <View style={styles.logoCircle}>
               <Image source={logoImage} style={styles.logoImage} />
             </View>
-            <Text style={styles.title}>Recuperar Senha</Text>
-            <Text style={styles.subtitle}>Digite seu e-mail para receber o código de recuperação</Text>
+            <Text style={styles.title}>
+              {t('forgotPassword.title')}
+            </Text>
+            <Text style={styles.subtitle}>
+              {t('forgotPassword.subtitle')}
+            </Text>
           </View>
           <View style={styles.field}>
-            <Text style={styles.label}>E-mail cadastrado</Text>
+            <Text style={styles.label}>
+              {t('forgotPassword.emailLabel')}
+            </Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="seu@email.com"
+              placeholder={t('forgotPassword.emailPlaceholder')}
               placeholderTextColor="rgba(255,255,255,0.5)"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -147,13 +208,20 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
             {enviandoEmail ? (
               <ActivityIndicator color="#0E6F73" />
             ) : (
-              <Text style={styles.buttonText}>Enviar Código</Text>
+              <Text style={styles.buttonText}>
+                {t('forgotPassword.sendCode')}
+              </Text>
             )}
           </Pressable>
           <Pressable onPress={onBack} style={styles.linkWrap}>
             <Text>
-              <Text style={styles.linkText}>Lembrou sua senha? </Text>
-              <Text style={styles.linkBold}>Fazer login</Text>
+              <Text style={styles.linkText}>
+                {t('forgotPassword.rememberPassword')}{' '}
+              </Text>
+
+              <Text style={styles.linkBold}>
+                {t('forgotPassword.login')}
+              </Text>
             </Text>
           </Pressable>
         </View>
@@ -165,19 +233,62 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
   if (etapa === 'token') {
     return (
       <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
+        <View style={styles.languageSwitcher}>
+          <Pressable
+            onPress={() => i18n.changeLanguage('pt')}
+            style={[
+              styles.languageButton,
+              i18n.language === 'pt' && styles.languageButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.languageText,
+                i18n.language === 'pt' && styles.languageTextActive,
+              ]}
+            >
+              PT
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => i18n.changeLanguage('en')}
+            style={[
+              styles.languageButton,
+              i18n.language === 'en' && styles.languageButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.languageText,
+                i18n.language === 'en' && styles.languageTextActive,
+              ]}
+            >
+              EN
+            </Text>
+          </Pressable>
+        </View>
         <Pressable onPress={() => setEtapa('email')} style={styles.header}>
           <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
-          <Text style={styles.headerText}>Voltar</Text>
+          <Text style={styles.headerText}>
+            {t('forgotPassword.back')}
+          </Text>
         </Pressable>
         <View style={styles.content}>
           <View style={styles.iconCircle}>
             <MaterialCommunityIcons name="email-outline" size={40} color="#0E6F73" />
           </View>
-          <Text style={styles.title}>Código enviado</Text>
-          <Text style={styles.subtitle}>Digite o código enviado para</Text>
+          <Text style={styles.title}>
+            {t('forgotPassword.codeSent')}
+          </Text>
+          <Text style={styles.subtitle}>
+            {t('forgotPassword.codeSubtitle')}
+          </Text>
           <Text style={styles.emailDestino}>{email}</Text>
           <View style={styles.field}>
-            <Text style={styles.label}>Código de verificação</Text>
+            <Text style={styles.label}>
+              {t('forgotPassword.verificationCode')}
+            </Text>
             <TextInput
               value={token}
               onChangeText={setTokenFiltrado}
@@ -191,18 +302,29 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
             />
           </View>
           <View style={styles.infoBox}>
-            <Text style={styles.infoText}>⏱️ O código expira em 5 minutos</Text>
+            <Text style={styles.infoText}>
+              {t('forgotPassword.codeExpires')}
+            </Text>
           </View>
           <Pressable
             onPress={handleValidarToken}
             disabled={!tokenCompleto}
             style={[styles.button, !tokenCompleto && styles.buttonDisabled]}
           >
-            <Text style={styles.buttonText}>Continuar</Text>
+            <Text style={styles.buttonText}>
+              {t('forgotPassword.continue')}
+            </Text>
           </Pressable>
           <Pressable onPress={handleReenviar} disabled={enviandoEmail} style={styles.linkWrap}>
-            <Text style={styles.linkText}>Não recebeu o código? </Text>
-            <Text style={styles.linkBold}>{enviandoEmail ? 'Enviando…' : 'Reenviar'}</Text>
+            <Text style={styles.linkText}>
+              {t('forgotPassword.didNotReceive')}{' '}
+            </Text>
+
+            <Text style={styles.linkBold}>
+              {enviandoEmail
+                ? 'Enviando...'
+                : t('forgotPassword.resend')}
+            </Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -212,34 +334,82 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
   // Etapa 3: Nova Senha
   return (
     <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
+      <View style={styles.languageSwitcher}>
+        <Pressable
+          onPress={() => i18n.changeLanguage('pt')}
+          style={[
+            styles.languageButton,
+            i18n.language === 'pt' && styles.languageButtonActive,
+          ]}
+        >
+          <Text
+            style={[
+              styles.languageText,
+              i18n.language === 'pt' && styles.languageTextActive,
+            ]}
+          >
+            PT
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => i18n.changeLanguage('en')}
+          style={[
+            styles.languageButton,
+            i18n.language === 'en' && styles.languageButtonActive,
+          ]}
+        >
+          <Text
+            style={[
+              styles.languageText,
+              i18n.language === 'en' && styles.languageTextActive,
+            ]}
+          >
+            EN
+          </Text>
+        </Pressable>
+      </View>
       <Pressable onPress={() => setEtapa('token')} style={styles.header}>
         <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
-        <Text style={styles.headerText}>Voltar</Text>
+        <Text style={styles.headerText}>
+          {t('forgotPassword.back')}
+        </Text>
       </Pressable>
       <View style={styles.content}>
         <View style={styles.iconCircle}>
           <MaterialCommunityIcons name="lock-outline" size={40} color="#0E6F73" />
         </View>
-        <Text style={styles.title}>Nova Senha</Text>
-        <Text style={styles.subtitle}>Crie uma senha forte para sua conta</Text>
+        <Text style={styles.title}>
+          {t('forgotPassword.newPassword')}
+        </Text>
+
+        <Text style={styles.subtitle}>
+          {t('forgotPassword.newPasswordSubtitle')}
+        </Text>
         <View style={styles.field}>
-          <Text style={styles.label}>Nova senha</Text>
+          <Text style={styles.label}>
+            {t('forgotPassword.newPasswordLabel')}
+          </Text>
           <TextInput value={novaSenha} onChangeText={setNovaSenha} placeholder="••••••••" placeholderTextColor="rgba(255,255,255,0.5)" secureTextEntry style={styles.input} />
         </View>
         <View style={styles.field}>
-          <Text style={styles.label}>Confirmar senha</Text>
+          <Text style={styles.label}>
+            {t('forgotPassword.confirmPasswordLabel')}
+          </Text>
           <TextInput value={confirmaSenha} onChangeText={setConfirmaSenha} placeholder="••••••••" placeholderTextColor="rgba(255,255,255,0.5)" secureTextEntry style={styles.input} />
         </View>
         {senhasDiferentes && (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠️ As senhas não coincidem</Text>
+            <Text style={styles.errorText}>
+              {t('forgotPassword.passwordMismatch')}
+            </Text>
           </View>
         )}
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
             {apiAuthOn
-              ? '✓ Mínimo 8 caracteres: maiúscula, minúscula, número e símbolo (@ # $ % ^ & + =)'
-              : '✓ Minimo de 6 caracteres'}
+              ? t('forgotPassword.passwordRule')
+              : t('forgotPassword.passwordRuleMock')}
           </Text>
         </View>
         <Pressable
@@ -250,7 +420,9 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
           {salvandoSenha ? (
             <ActivityIndicator color="#0E6F73" />
           ) : (
-            <Text style={styles.buttonText}>Redefinir Senha</Text>
+            <Text style={styles.buttonText}>
+              {t('forgotPassword.resetPassword')}
+            </Text>
           )}
         </Pressable>
       </View>
@@ -259,6 +431,35 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
 }
 
 const styles = StyleSheet.create({
+  languageSwitcher: {
+    flexDirection: 'row',
+    alignSelf: 'flex-end',
+    marginTop: 20,
+    marginRight: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 999,
+    padding: 4,
+  },
+
+  languageButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+
+  languageButtonActive: {
+    backgroundColor: '#FFFFFF',
+  },
+
+  languageText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+
+  languageTextActive: {
+    color: '#0E6F73',
+  },
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 24 },
   headerText: { color: '#fff', fontSize: 16 },

@@ -1,0 +1,51 @@
+{
+  "login": {
+    "title": "SoftWave Finance",
+    "subtitle": "Financial management for law firms",
+    "email": "E-mail",
+    "password": "Password",
+    "emailPlaceholder": "your@email.com",
+    "passwordPlaceholder": "••••••••",
+    "loginButton": "Sign In",
+    "forgotPassword": "Forgot my password",
+    "requiredFields": "Enter your e-mail and password.",
+    "loginError": "Login failed."
+  },
+  "language": {
+    "portuguese": "PT",
+    "english": "EN"
+  },
+  "forgotPassword": {
+    "back": "Back",
+    "title": "Recover Password",
+    "subtitle": "Enter your e-mail to receive the recovery code",
+    "emailLabel": "Registered e-mail",
+    "emailPlaceholder": "your@email.com",
+    "sendCode": "Send Code",
+    "rememberPassword": "Remembered your password?",
+    "login": "Sign In",
+    "emailSent": "E-mail sent",
+    "emailSentMessage": "Check your inbox (and spam). The code has 8 characters and expires in 5 minutes.",
+    "error": "Error",
+    "resend": "Resend",
+    "resendTitle": "Resend",
+    "resendError": "Unable to resend the code right now.",
+    "resendSuccess": "A new code has been requested. Check your e-mail.",
+    "codeSent": "Code sent",
+    "codeSubtitle": "Enter the code sent to",
+    "verificationCode": "Verification code",
+    "codeExpires": "⏱️ The code expires in 5 minutes",
+    "continue": "Continue",
+    "didNotReceive": "Didn't receive the code?",
+    "newPassword": "New Password",
+    "newPasswordSubtitle": "Create a strong password for your account",
+    "newPasswordLabel": "New password",
+    "confirmPasswordLabel": "Confirm password",
+    "passwordMismatch": "⚠️ Passwords do not match",
+    "passwordRule": "✓ Minimum 8 characters: uppercase, lowercase, number and symbol (@ # $ % ^ & + =)",
+    "passwordRuleMock": "✓ Minimum 6 characters",
+    "resetPassword": "Reset Password",
+    "passwordChanged": "Password changed",
+    "passwordChangedMessage": "You can now log in with your new password."
+  }
+}
