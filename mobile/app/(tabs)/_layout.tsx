@@ -7,7 +7,10 @@ import { Tabs } from 'expo-router';
  */
 export default function TabsLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
+    <Tabs
+      initialRouteName="home"
+      screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}
+    >
       <Tabs.Screen name="home" />
       <Tabs.Screen name="transacoes" />
       <Tabs.Screen name="pagamentos" />
