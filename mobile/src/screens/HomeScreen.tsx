@@ -8,12 +8,15 @@ import { CardKPI } from '../components/CardKPI';
 import { CardTransacao } from '../components/CardTransacao';
 import { BottomNav } from '../components/BottomNav';
 import { FAB } from '../components/FAB';
-import { getApiBaseUrl } from '../config/api';
+import { getApiBaseUrl, resolveFileUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { mapTransacaoApiToCard, type TransacaoCardModel } from '../mappers/transacao';
-import { fetchDashboardResumo, fetchTransacoesRecentes, syncPagamentosDashboardCount } from '../services/resources';
+import { fetchDashboardResumo, fetchNotificacoesNaoLidasAdvogado, fetchPerfilEscritorio, fetchTransacoesRecentes, syncPagamentosDashboardCount } from '../services/resources';
 import type { DashboardResumoApi } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
+import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
+import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
+import { MASKED_MONEY_VALUE } from '../utils/geo';
 
 type Props = {
   onBack?: () => void;
@@ -41,11 +44,15 @@ function variationTypeFromString(s: string): 'positive' | 'negative' {
 
 export function HomeScreen({ onBack, onNavigate }: Props) {
   const { token } = useAuth();
+  const restrict = useShouldRestrictSensitiveData();
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [dash, setDash] = useState<DashboardResumoApi | null>(null);
   const [recent, setRecent] = useState<TransacaoCardModel[]>([]);
   const [loading, setLoading] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
+  const [fotoPerfilUri, setFotoPerfilUri] = useState<string | null>(null);
+  const [nomeEscritorio, setNomeEscritorio] = useState('');
 
   const effectiveDash = dash ?? DASHBOARD_VAZIO;
 
@@ -57,7 +64,12 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
     }
     setLoading(true);
     try {
-      const [d, tx] = await Promise.all([fetchDashboardResumo(token), fetchTransacoesRecentes(token, 4)]);
+      const [d, tx, naoLidas, perfil] = await Promise.all([
+        fetchDashboardResumo(token),
+        fetchTransacoesRecentes(token, 4),
+        fetchNotificacoesNaoLidasAdvogado(token),
+        fetchPerfilEscritorio(token),
+      ]);
       try {
         await syncPagamentosDashboardCount(token);
       } catch {
@@ -67,6 +79,11 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
       if (dAfter) setDash(dAfter);
       else if (d) setDash(d);
       setRecent(tx.map(mapTransacaoApiToCard));
+      setNotifCount(naoLidas);
+      if (perfil) {
+        setFotoPerfilUri(resolveFileUrl(perfil.fotoPerfil));
+        setNomeEscritorio(perfil.nome ?? '');
+      }
     } catch {
       setDash(null);
       setRecent([]);
@@ -86,25 +103,33 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
     }, [carregar]),
   );
 
-  const heroValor = useMemo(
-    () => formatCentavosBRL(effectiveDash.valorDisponivel),
-    [effectiveDash.valorDisponivel],
-  );
-  const heroLucro = useMemo(
-    () => formatCentavosBRL(effectiveDash.lucroLiquidoMes),
-    [effectiveDash.lucroLiquidoMes],
-  );
+  const heroValor = useMemo(() => {
+    if (restrict) return MASKED_MONEY_VALUE;
+    return formatCentavosBRL(effectiveDash.valorDisponivel);
+  }, [effectiveDash.valorDisponivel, restrict]);
+  const heroLucro = useMemo(() => {
+    if (restrict) return MASKED_MONEY_VALUE;
+    return formatCentavosBRL(effectiveDash.lucroLiquidoMes);
+  }, [effectiveDash.lucroLiquidoMes, restrict]);
 
-  const receitaVal = formatCentavosBRL(effectiveDash.receitaMensal);
-  const pendentesVal = formatCentavosBRL(effectiveDash.pendentes);
-  const despesaVal = formatCentavosBRL(effectiveDash.despesaMensal);
-  const lucroVal = formatCentavosBRL(effectiveDash.lucroLiquidoMes);
+  const receitaVal = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(effectiveDash.receitaMensal);
+  const pendentesVal = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(effectiveDash.pendentes);
+  const despesaVal = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(effectiveDash.despesaMensal);
+  const lucroVal = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(effectiveDash.lucroLiquidoMes);
 
   return (
     <View style={styles.container}>
       <Header
         showNotification
+        notificationBadgeCount={notifCount}
         showAvatar
+        avatarUri={fotoPerfilUri}
+        avatarInitials={
+          nomeEscritorio
+            ? nomeEscritorio.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
+            : 'SA'
+        }
+        avatarHeaders={token ? { Authorization: `Bearer ${token}` } : undefined}
         onNotification={() => onNavigate('Notificacoes')}
         onAvatar={() => onNavigate('Perfil')}
       />
@@ -116,6 +141,8 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
             <Text style={styles.loadingText}>Atualizando dados…</Text>
           </View>
         )}
+
+        <LocaisSegurosBanner />
 
         <LinearGradient colors={['#14b8a6', '#0e7490']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
           <Text style={styles.heroLabel}>Valor disponível</Text>

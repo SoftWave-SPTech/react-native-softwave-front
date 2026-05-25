@@ -24,6 +24,8 @@ export function useNavigate() {
       case 'ImportacaoExportacao':   router.push('/importacao-exportacao'); break;
       case 'Notificacoes':           router.push('/notificacoes'); break;
       case 'Perfil':                 router.push('/perfil'); break;
+      case 'LocaisSeguros':          router.push('/locais-seguros'); break;
+      case 'AjudaSuporte':           router.push('/ajuda-suporte'); break;
 
       // Cliente area
       case 'ClienteHome':         router.push('/cliente'); break;

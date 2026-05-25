@@ -104,5 +104,29 @@ export function getEtlApiBaseUrl(): string | null {
 
 /** URL usada só no fluxo de login (`/auth/login`). */
 export function getLoginApiBaseUrl(): string | null {
-  return getAuthBaseUrl() ?? getApiBaseUrl();
+  const auth = getAuthBaseUrl();
+  const api = getApiBaseUrl();
+  if (typeof __DEV__ !== 'undefined' && __DEV__ && !auth && api) {
+    console.warn(
+      '[api] EXPO_PUBLIC_AUTH_API_URL vazio — login usará EXPO_PUBLIC_API_URL. Defina a base da API-AUTH-MAIL (porta 8083), ex.: http://192.168.x.x:8083',
+    );
+  }
+  return auth ?? api;
+}
+
+/**
+ * Transforma uma URL de foto retornada pelo backend (que pode conter localhost)
+ * em uma URL acessível pelo dispositivo móvel.
+ */
+export function resolveFileUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  if (raw.startsWith('file://')) return raw;
+  if (/^https?:\/\//i.test(raw)) return resolveMobileLoopback(raw);
+  if (raw.startsWith('/')) {
+    const base = getApiBaseUrl();
+    if (!base) return null;
+    const origin = base.replace(/\/v1\/?$/i, '');
+    return resolveMobileLoopback(`${origin}${raw}`);
+  }
+  return raw;
 }

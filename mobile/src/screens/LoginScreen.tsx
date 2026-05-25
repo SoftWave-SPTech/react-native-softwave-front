@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import logoImage from '../../assets/softwave-logo.png';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n/idiomas/i18n';
@@ -70,6 +71,7 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
           </Text>
         </Pressable>
       </View>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.card}>
         {/* Logo */}
         <View style={styles.logoContainer}>
@@ -149,6 +151,7 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
         </Pressable>
 
       </View>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
@@ -183,6 +186,9 @@ const styles = StyleSheet.create({
     color: '#0E6F73',
   },
   container: {
+    flex: 1,
+  },
+  safeArea: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',

@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
 
 type Props = {
   onPress: () => void;
@@ -9,6 +10,8 @@ type Props = {
 
 export function FAB({ onPress }: Props) {
   const insets = useSafeAreaInsets();
+  const restrict = useShouldRestrictSensitiveData();
+  if (restrict) return null;
   return (
     <Pressable onPress={onPress} style={[styles.fab, { bottom: 88 + insets.bottom }]}>
       <MaterialCommunityIcons name="plus" size={28} color="#fff" />

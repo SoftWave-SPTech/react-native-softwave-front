@@ -16,6 +16,11 @@ import {
   type UploadableFile,
 } from '../services/resources';
 import { formatCentavosBRL, formatDateIsoToBR } from '../utils/money';
+import {
+  cameraPickerOptions,
+  galleryPickerOptions,
+  uploadFileFromImageAsset,
+} from '../utils/uploadFile';
 
 const BANCO_VAZIO = {
   banco: '',
@@ -125,26 +130,11 @@ export function ClientePagamentoScreen({ cobrancaId, onBack }: Props) {
 
       const picked =
         tipo === 'camera'
-          ? await ImagePicker.launchCameraAsync({
-              quality: 0.85,
-              allowsEditing: false,
-              mediaTypes: ['images'],
-            })
-          : await ImagePicker.launchImageLibraryAsync({
-              quality: 0.85,
-              allowsEditing: false,
-              mediaTypes: ['images'],
-            });
+          ? await ImagePicker.launchCameraAsync(cameraPickerOptions())
+          : await ImagePicker.launchImageLibraryAsync(galleryPickerOptions());
 
       if (picked.canceled || !picked.assets[0]) return;
-      const a = picked.assets[0];
-      const ext = a.fileName?.split('.').pop() || 'jpg';
-      setArquivoSelecionado({
-        uri: a.uri,
-        name: a.fileName ?? `comprovante_${Date.now()}.${ext}`,
-        type: a.mimeType ?? 'image/jpeg',
-        file: (a as { file?: File | Blob }).file,
-      });
+      setArquivoSelecionado(uploadFileFromImageAsset(picked.assets[0]));
     } catch {
       Alert.alert('Erro', 'Não foi possível selecionar o arquivo.');
     }

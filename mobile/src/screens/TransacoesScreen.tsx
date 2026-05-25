@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { mapTransacaoApiToCard, type TransacaoCardModel } from '../mappers/transacao';
 import { fetchTransacoes } from '../services/resources';
 import { parseDateBRToIso } from '../utils/money';
+import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
 
 type TipoFiltro = 'todas' | 'receita' | 'despesa';
 type StatusFiltro = 'todos' | 'pago' | 'pendente' | 'atrasado' | 'em-dia' | 'cancelado';
@@ -122,6 +123,7 @@ export function TransacoesScreen({ onBack, onNavigate }: Props) {
             <Text style={styles.loadingText}>Carregando transações…</Text>
           </View>
         )}
+        <LocaisSegurosBanner />
         <Text style={styles.filterLabel}>Período</Text>
         <View style={[styles.filterRow, { flexWrap: 'wrap' }]}>
           {([

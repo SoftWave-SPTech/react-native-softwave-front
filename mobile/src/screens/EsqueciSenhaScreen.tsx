@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, ActivityIndicator, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getLoginApiBaseUrl } from '../config/api';
@@ -11,6 +11,7 @@ import {
   resetarSenhaAuth,
   solicitarResetSenhaAuth,
 } from '../services/authApi';
+import { useSafeAreaPaddingTop } from '../utils/scrollPadding';
 
 /** Token gerado pela API-AUTH-MAIL: 8 caracteres hexadecimais. */
 const TOKEN_LEN_API = 8;
@@ -26,6 +27,8 @@ type Props = {
 
 export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
   const { t } = useTranslation();
+  const headerPaddingTop = useSafeAreaPaddingTop(16);
+  const headerStyle = [styles.header, { paddingTop: headerPaddingTop, paddingBottom: 24 }];
   const [etapa, setEtapa] = useState<Etapa>('email');
   const [email, setEmail] = useState('');
   const [token, setToken] = useState('');
@@ -424,8 +427,26 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
               {t('forgotPassword.resetPassword')}
             </Text>
           )}
-        </Pressable>
-      </View>
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>
+              {apiAuthOn
+                ? '✓ Mínimo 8 caracteres: maiúscula, minúscula, número e símbolo (@ # $ % ^ & + =)'
+                : '✓ Minimo de 6 caracteres'}
+            </Text>
+          </View>
+          <Pressable
+            onPress={handleRedefinirSenha}
+            disabled={!podeRedefinir || salvandoSenha}
+            style={[styles.button, (!podeRedefinir || salvandoSenha) && styles.buttonDisabled]}
+          >
+            {salvandoSenha ? (
+              <ActivityIndicator color="#0E6F73" />
+            ) : (
+              <Text style={styles.buttonText}>Redefinir Senha</Text>
+            )}
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
@@ -461,9 +482,11 @@ const styles = StyleSheet.create({
     color: '#0E6F73',
   },
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 24 },
+  flex1: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20 },
   headerText: { color: '#fff', fontSize: 16 },
   content: { flex: 1, paddingHorizontal: 20, paddingTop: 24 },
+  contentScroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 },
   logoWrap: { alignItems: 'center', marginBottom: 32 },
   logoCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   logoImage: { width: 120, height: 120, resizeMode: 'contain' },
@@ -475,6 +498,7 @@ const styles = StyleSheet.create({
   field: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: 16, marginBottom: 12 },
   label: { color: '#fff', fontSize: 12, marginBottom: 8 },
   input: { color: '#fff', fontSize: 16 },
+  inputSenha: { color: '#fff', fontSize: 16, minHeight: 48, paddingVertical: 12 },
   tokenInput: { fontSize: 22, fontWeight: 'bold', letterSpacing: 4 },
   infoBox: { backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 16, padding: 16, marginBottom: 12 },
   infoText: { color: 'rgba(255,255,255,0.9)', fontSize: 14 },
