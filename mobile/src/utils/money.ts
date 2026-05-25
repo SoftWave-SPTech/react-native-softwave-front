@@ -1,3 +1,31 @@
+const RESUMO_KPI_FONT_MAX = 22;
+const RESUMO_KPI_FONT_MIN = 16;
+
+export type ResumoKpiTypography = {
+  fontSize: number;
+  lineHeight: number;
+  numberOfLines: 2 | 3;
+  adjustsFontSizeToFit: boolean;
+  minimumFontScale: number;
+};
+
+/** Tipografia dos KPIs de honorários: encolhe em valores longos, sem ficar ilegível. */
+export function resumoKpiTypography(value: string): ResumoKpiTypography {
+  const len = value.length;
+  let fontSize = RESUMO_KPI_FONT_MAX;
+  if (len > 16) fontSize = RESUMO_KPI_FONT_MIN;
+  else if (len > 13) fontSize = 18;
+  else if (len > 11) fontSize = 20;
+
+  return {
+    fontSize,
+    lineHeight: fontSize + 6,
+    numberOfLines: len > 14 ? 3 : 2,
+    adjustsFontSizeToFit: len > 10,
+    minimumFontScale: RESUMO_KPI_FONT_MIN / fontSize,
+  };
+}
+
 /** Valores em centavos (inteiro), ex.: 500000 = R$ 5.000,00 */
 export function formatCentavosBRL(centavos: number): string {
   const reais = centavos / 100;

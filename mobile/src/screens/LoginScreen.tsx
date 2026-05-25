@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import logoImage from '../../assets/softwave-logo.png';
 
 type Props = {
@@ -32,6 +33,7 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
 
   return (
     <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.card}>
         {/* Logo */}
         <View style={styles.logoContainer}>
@@ -111,12 +113,16 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
         </Pressable>
 
       </View>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  safeArea: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',

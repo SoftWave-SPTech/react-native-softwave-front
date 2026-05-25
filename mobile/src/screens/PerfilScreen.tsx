@@ -16,7 +16,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
 import { FeedbackModal } from '../components/FeedbackModal';
-import { getApiBaseUrl } from '../config/api';
+import { getApiBaseUrl, resolveFileUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { fetchPerfilEscritorio, postPerfilFoto, putPerfilEscritorio } from '../services/resources';
 import { ApiError } from '../services/http';
@@ -40,18 +40,6 @@ const CONFIG_ITENS: ConfigItem[] = [
   { icon: 'help-circle-outline', label: 'Ajuda e Suporte', screen: 'AjudaSuporte' },
 ];
 
-function resolverFotoPerfilUri(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith('file://')) return raw;
-  if (raw.startsWith('/')) {
-    const base = getApiBaseUrl();
-    if (!base) return null;
-    const origin = base.replace(/\/v1\/?$/i, '');
-    return `${origin}${raw}`;
-  }
-  return raw;
-}
 
 export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
   const { token } = useAuth();
@@ -96,7 +84,7 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
           telefone: p.telefone,
           endereco: p.endereco,
         });
-        setFotoPerfilUri(resolverFotoPerfilUri(p.fotoPerfil));
+        setFotoPerfilUri(resolveFileUrl(p.fotoPerfil));
       }
     } finally {
       setLoading(false);
@@ -182,7 +170,7 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
             file: (a as { file?: File | Blob }).file,
           });
           if (resp?.fotoUrl) {
-            setFotoPerfilUri(resolverFotoPerfilUri(resp.fotoUrl) ?? a.uri);
+            setFotoPerfilUri(resolveFileUrl(resp.fotoUrl) ?? a.uri);
           }
         }
         setModalFoto(false);
@@ -245,9 +233,6 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
           <InputField icon="email" label="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" />
           <InputField icon="phone" label="Telefone" value={telefone} onChangeText={setTelefone} keyboardType="phone-pad" />
           <InputField icon="file-document" label="OAB" value={oab} onChangeText={setOab} editable={false} />
-          <Text style={styles.oabHint}>
-            O registro OAB ainda não é persistido pela API; alterações de nome, e-mail, telefone e endereço são salvas.
-          </Text>
           <InputField icon="map-marker" label="Endereço" value={endereco} onChangeText={setEndereco} />
           {dirty ? (
             <Pressable

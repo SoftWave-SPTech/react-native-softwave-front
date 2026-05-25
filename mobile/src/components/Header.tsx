@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaPaddingTop } from '../utils/scrollPadding';
 
 type Props = {
   title?: string;
@@ -8,6 +9,9 @@ type Props = {
   showNotification?: boolean;
   notificationBadgeCount?: number;
   showAvatar?: boolean;
+  avatarUri?: string | null;
+  avatarInitials?: string;
+  avatarHeaders?: Record<string, string>;
   onBack?: () => void;
   onNotification?: () => void;
   onAvatar?: () => void;
@@ -19,12 +23,17 @@ export function Header({
   showNotification = false,
   notificationBadgeCount = 0,
   showAvatar = false,
+  avatarUri,
+  avatarInitials,
+  avatarHeaders,
   onBack,
   onNotification,
   onAvatar,
 }: Props) {
+  const paddingTop = useSafeAreaPaddingTop(8);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop }]}>
       <View style={styles.left}>
         {showBack && (
           <Pressable onPress={onBack} style={styles.iconButton}>
@@ -59,7 +68,14 @@ export function Header({
         )}
         {showAvatar && (
           <Pressable onPress={onAvatar} style={styles.avatar}>
-            <Text style={styles.avatarText}>SA</Text>
+            {avatarUri ? (
+              <Image
+                source={{ uri: avatarUri, headers: avatarHeaders }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Text style={styles.avatarText}>{avatarInitials || 'SA'}</Text>
+            )}
           </Pressable>
         )}
       </View>
@@ -71,7 +87,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -131,6 +147,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d9488',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     color: '#fff',

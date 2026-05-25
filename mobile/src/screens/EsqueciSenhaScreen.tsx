@@ -9,6 +9,7 @@ import {
   resetarSenhaAuth,
   solicitarResetSenhaAuth,
 } from '../services/authApi';
+import { useSafeAreaPaddingTop } from '../utils/scrollPadding';
 
 /** Token gerado pela API-AUTH-MAIL: 8 caracteres hexadecimais. */
 const TOKEN_LEN_API = 8;
@@ -23,6 +24,8 @@ type Props = {
 };
 
 export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
+  const headerPaddingTop = useSafeAreaPaddingTop(16);
+  const headerStyle = [styles.header, { paddingTop: headerPaddingTop, paddingBottom: 24 }];
   const [etapa, setEtapa] = useState<Etapa>('email');
   const [email, setEmail] = useState('');
   const [token, setToken] = useState('');
@@ -120,7 +123,7 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
   if (etapa === 'email') {
     return (
       <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
-        <Pressable onPress={onBack} style={styles.header}>
+        <Pressable onPress={onBack} style={headerStyle}>
           <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
           <Text style={styles.headerText}>Voltar</Text>
         </Pressable>
@@ -166,7 +169,7 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
   if (etapa === 'token') {
     return (
       <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
-        <Pressable onPress={() => setEtapa('email')} style={styles.header}>
+        <Pressable onPress={() => setEtapa('email')} style={headerStyle}>
           <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
           <Text style={styles.headerText}>Voltar</Text>
         </Pressable>
@@ -213,7 +216,7 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
   // Etapa 3: Nova Senha
   return (
     <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
-      <Pressable onPress={() => setEtapa('token')} style={styles.header}>
+      <Pressable onPress={() => setEtapa('token')} style={headerStyle}>
         <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
         <Text style={styles.headerText}>Voltar</Text>
       </Pressable>
@@ -291,7 +294,7 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex1: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 24 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20 },
   headerText: { color: '#fff', fontSize: 16 },
   content: { flex: 1, paddingHorizontal: 20, paddingTop: 24 },
   contentScroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 },

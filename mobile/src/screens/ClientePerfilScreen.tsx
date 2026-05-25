@@ -15,7 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Header } from '../components/Header';
 import { FeedbackModal } from '../components/FeedbackModal';
-import { getApiBaseUrl } from '../config/api';
+import { getApiBaseUrl, resolveFileUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { fetchClientePerfil, postClienteFotoPerfil, putClientePerfil } from '../services/resources';
 import { ApiError } from '../services/http';
@@ -35,18 +35,6 @@ function iniciais(nome: string) {
   return (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 
-function resolverFotoPerfilUri(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith('file://')) return null;
-  if (raw.startsWith('/')) {
-    const base = getApiBaseUrl();
-    if (!base) return null;
-    const origin = base.replace(/\/v1\/?$/i, '');
-    return `${origin}${raw}`;
-  }
-  return raw;
-}
 
 export function ClientePerfilScreen({ onBack, onLogout }: Props) {
   const { token } = useAuth();
@@ -96,7 +84,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
       endereco: p.endereco,
     });
     setSinceTopo(`Cliente desde ${p.clienteDesde}`);
-    setFotoPerfilUri(resolverFotoPerfilUri(p.fotoPerfil));
+    setFotoPerfilUri(resolveFileUrl(p.fotoPerfil));
   }, []);
 
   const carregar = useCallback(async () => {
@@ -211,7 +199,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
             file: (a as { file?: File | Blob }).file,
           });
           if (resp?.fotoUrl) {
-            setFotoPerfilUri(resolverFotoPerfilUri(resp.fotoUrl) ?? a.uri);
+            setFotoPerfilUri(resolveFileUrl(resp.fotoUrl) ?? a.uri);
           }
         }
         setModalFoto(false);

@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getApiBaseUrl } from '../config/api';
+import { useSafeAreaPaddingTop } from '../utils/scrollPadding';
+import { getApiBaseUrl, resolveFileUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
-import { fetchClienteDashboard } from '../services/resources';
+import { fetchClienteDashboard, fetchClientePerfil } from '../services/resources';
 import type { ClienteDashboardApi } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
 
@@ -34,11 +35,13 @@ function iniciais(nome: string): string {
 
 export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
   const insets = useSafeAreaInsets();
+  const headerPaddingTop = useSafeAreaPaddingTop(16);
   const { token } = useAuth();
   const apiOn = !!getApiBaseUrl() && !!token;
 
   const [dash, setDash] = useState<ClienteDashboardApi | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fotoPerfilUri, setFotoPerfilUri] = useState<string | null>(null);
 
   const d = dash ?? DASH_CLIENTE_VAZIO;
 
@@ -51,8 +54,14 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
     (async () => {
       setLoading(true);
       try {
-        const row = await fetchClienteDashboard(token);
+        const [row, perfil] = await Promise.all([
+          fetchClienteDashboard(token),
+          fetchClientePerfil(token),
+        ]);
         if (!cancelled && row) setDash(row);
+        if (!cancelled && perfil) {
+          setFotoPerfilUri(resolveFileUrl(perfil.fotoPerfil));
+        }
       } catch {
         if (!cancelled) setDash(null);
       } finally {
@@ -84,7 +93,7 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
 
   return (
     <LinearGradient colors={['#0d9488', '#115e59']} style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
         <View style={styles.headerLeft}>
           {onBack && (
             <Pressable onPress={onBack} style={styles.backBtn}>
@@ -108,7 +117,15 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
             )}
           </Pressable>
           <Pressable onPress={() => onNavigate('ClientePerfil')} style={styles.avatar}>
-            <Text style={styles.avatarText}>{avatarLetters}</Text>
+            {fotoPerfilUri ? (
+              <Image
+                source={{ uri: fotoPerfilUri, headers: token ? { Authorization: `Bearer ${token}` } : undefined }}
+                style={styles.avatarImage}
+                onError={() => setFotoPerfilUri(null)}
+              />
+            ) : (
+              <Text style={styles.avatarText}>{avatarLetters}</Text>
+            )}
           </Pressable>
         </View>
       </View>
@@ -180,7 +197,7 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flex: 1, backgroundColor: '#f9fafb', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  header: { paddingHorizontal: 20, paddingVertical: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { paddingHorizontal: 20, paddingBottom: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 },
   headerTitleWrap: { flex: 1, minWidth: 0, paddingRight: 12 },
   backBtn: { padding: 4 },
@@ -190,7 +207,8 @@ const styles = StyleSheet.create({
   bellBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', position: 'relative' },
   badge: { position: 'absolute', top: -4, right: -4, minWidth: 20, height: 20, borderRadius: 10, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   badgeText: { fontSize: 11, fontWeight: 'bold', color: '#fff' },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarImage: { width: '100%', height: '100%' },
   avatarText: { fontSize: 16, fontWeight: '600', color: '#0d9488' },
   content: {
     flexGrow: 1,

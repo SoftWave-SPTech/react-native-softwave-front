@@ -11,7 +11,7 @@ import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { fetchContratos } from '../services/resources';
 import type { ContratoApi } from '../types/api';
-import { formatCentavosBRL } from '../utils/money';
+import { formatCentavosBRL, resumoKpiTypography } from '../utils/money';
 import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
 import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
 import { MASKED_MONEY_VALUE, maskIfRestricted } from '../utils/geo';
@@ -47,6 +47,20 @@ function mapApiToContrato(c: ContratoApi): Contrato {
     reprovado: c.reprovado,
     encerrado: c.encerrado,
   };
+}
+
+function ResumoValorText({ value }: { value: string }) {
+  const typo = resumoKpiTypography(value);
+  return (
+    <Text
+      style={[styles.resumoValue, { fontSize: typo.fontSize, lineHeight: typo.lineHeight }]}
+      numberOfLines={typo.numberOfLines}
+      adjustsFontSizeToFit={typo.adjustsFontSizeToFit}
+      minimumFontScale={typo.minimumFontScale}
+    >
+      {value}
+    </Text>
+  );
 }
 
 function resumoAtivos(rows: ContratoApi[]) {
@@ -146,9 +160,7 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
         <View style={styles.resumoRow}>
           <View style={styles.resumoVerde}>
             <Text style={styles.resumoLabel}>Total Recebido</Text>
-            <Text style={styles.resumoValue} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
-              {restrict ? MASKED_MONEY_VALUE : topo.recebido}
-            </Text>
+            <ResumoValorText value={restrict ? MASKED_MONEY_VALUE : topo.recebido} />
           </View>
           <LinearGradient
             colors={['#14b8a6', '#0d9488']}
@@ -157,9 +169,7 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
             style={styles.resumoAzul}
           >
             <Text style={styles.resumoLabel}>A Receber</Text>
-            <Text style={styles.resumoValue} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
-              {restrict ? MASKED_MONEY_VALUE : topo.aReceber}
-            </Text>
+            <ResumoValorText value={restrict ? MASKED_MONEY_VALUE : topo.aReceber} />
           </LinearGradient>
         </View>
 
@@ -248,11 +258,36 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   loadingText: { fontSize: 13, color: '#6b7280' },
-  resumoRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  resumoVerde: { flex: 1, backgroundColor: '#16a34a', borderRadius: 16, padding: 16, shadowColor: '#16a34a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
-  resumoAzul: { flex: 1, borderRadius: 16, padding: 16, shadowColor: '#0d9488', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
-  resumoLabel: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4 },
-  resumoValue: { fontSize: 20, lineHeight: 24, fontWeight: 'bold', color: '#fff', flexShrink: 1 },
+  resumoRow: { flexDirection: 'row', gap: 12, marginBottom: 16, alignItems: 'stretch' },
+  resumoVerde: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 100,
+    backgroundColor: '#16a34a',
+    borderRadius: 16,
+    padding: 16,
+    justifyContent: 'space-between',
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  resumoAzul: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 100,
+    borderRadius: 16,
+    padding: 16,
+    justifyContent: 'space-between',
+    shadowColor: '#0d9488',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  resumoLabel: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginBottom: 8 },
+  resumoValue: { fontWeight: 'bold', color: '#fff' },
   tabs: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, padding: 4, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
   tabActive: { backgroundColor: '#111827' },

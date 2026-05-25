@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../src/context/AuthContext';
 import { LocaisSegurosGate } from '../src/context/LocaisSegurosContext';
@@ -10,6 +11,7 @@ export default function RootLayout() {
     <AuthProvider>
     <LocaisSegurosGate>
     <SafeAreaProvider>
+    <StatusBar style="auto" />
     <Stack
       screenOptions={{
         headerShown: false,

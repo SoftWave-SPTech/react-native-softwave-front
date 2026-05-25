@@ -8,10 +8,10 @@ import { CardKPI } from '../components/CardKPI';
 import { CardTransacao } from '../components/CardTransacao';
 import { BottomNav } from '../components/BottomNav';
 import { FAB } from '../components/FAB';
-import { getApiBaseUrl } from '../config/api';
+import { getApiBaseUrl, resolveFileUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { mapTransacaoApiToCard, type TransacaoCardModel } from '../mappers/transacao';
-import { fetchDashboardResumo, fetchNotificacoesNaoLidasAdvogado, fetchTransacoesRecentes, syncPagamentosDashboardCount } from '../services/resources';
+import { fetchDashboardResumo, fetchNotificacoesNaoLidasAdvogado, fetchPerfilEscritorio, fetchTransacoesRecentes, syncPagamentosDashboardCount } from '../services/resources';
 import type { DashboardResumoApi } from '../types/api';
 import { formatCentavosBRL } from '../utils/money';
 import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
@@ -51,6 +51,8 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
   const [recent, setRecent] = useState<TransacaoCardModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
+  const [fotoPerfilUri, setFotoPerfilUri] = useState<string | null>(null);
+  const [nomeEscritorio, setNomeEscritorio] = useState('');
 
   const effectiveDash = dash ?? DASHBOARD_VAZIO;
 
@@ -62,10 +64,11 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
     }
     setLoading(true);
     try {
-      const [d, tx, naoLidas] = await Promise.all([
+      const [d, tx, naoLidas, perfil] = await Promise.all([
         fetchDashboardResumo(token),
         fetchTransacoesRecentes(token, 4),
         fetchNotificacoesNaoLidasAdvogado(token),
+        fetchPerfilEscritorio(token),
       ]);
       try {
         await syncPagamentosDashboardCount(token);
@@ -77,6 +80,10 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
       else if (d) setDash(d);
       setRecent(tx.map(mapTransacaoApiToCard));
       setNotifCount(naoLidas);
+      if (perfil) {
+        setFotoPerfilUri(resolveFileUrl(perfil.fotoPerfil));
+        setNomeEscritorio(perfil.nome ?? '');
+      }
     } catch {
       setDash(null);
       setRecent([]);
@@ -116,6 +123,13 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
         showNotification
         notificationBadgeCount={notifCount}
         showAvatar
+        avatarUri={fotoPerfilUri}
+        avatarInitials={
+          nomeEscritorio
+            ? nomeEscritorio.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
+            : 'SA'
+        }
+        avatarHeaders={token ? { Authorization: `Bearer ${token}` } : undefined}
         onNotification={() => onNavigate('Notificacoes')}
         onAvatar={() => onNavigate('Perfil')}
       />
