@@ -45,6 +45,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
 
   const [dash, setDash] = useState<DashboardResumoApi | null>(null);
   const [recent, setRecent] = useState<TransacaoCardModel[]>([]);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const effectiveDash = dash ?? DASHBOARD_VAZIO;
@@ -53,6 +54,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
     if (!apiOn) {
       setDash(null);
       setRecent([]);
+      setAvatarUri(null);
       return;
     }
     setLoading(true);
@@ -67,6 +69,44 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
       if (dAfter) setDash(dAfter);
       else if (d) setDash(d);
       setRecent(tx.map(mapTransacaoApiToCard));
+      // busca foto do perfil do escritório/usuário — com logs e fallback para cliente
+      try {
+        const resources = await import('../services/resources');
+        let p = await resources.fetchPerfilEscritorio(token);
+        if (!p) {
+          // fallback: talvez o app esteja no fluxo de cliente
+          try {
+            const cp = await resources.fetchClientePerfil(token as string);
+            if (cp) p = { id: '0', nome: cp.nome, email: cp.email, telefone: cp.telefone, oab: '', endereco: '', fotoPerfil: cp.fotoPerfil } as any;
+          } catch {
+            /* ignore */
+          }
+        }
+        // debug log
+        // eslint-disable-next-line no-console
+        console.log('[Home] perfil fetch', { perfil: p });
+        const raw = p?.fotoPerfil ?? null;
+        const resolve = (rawUrl: string | null): string | null => {
+          if (!rawUrl) return null;
+          if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+          if (rawUrl.startsWith('file://')) return rawUrl;
+          if (rawUrl.startsWith('/')) {
+            const base = getApiBaseUrl();
+            if (!base) return null;
+            const origin = base.replace(/\/v1\/?$/i, '');
+            return `${origin}${rawUrl}`;
+          }
+          return rawUrl;
+        };
+        const resolved = resolve(raw);
+        // eslint-disable-next-line no-console
+        console.log('[Home] avatar resolved', { raw, resolved });
+        setAvatarUri(resolved);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[Home] failed to fetch perfil', err);
+        setAvatarUri(null);
+      }
     } catch {
       setDash(null);
       setRecent([]);
@@ -105,6 +145,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
       <Header
         showNotification
         showAvatar
+        avatarUri={avatarUri}
         onNotification={() => onNavigate('Notificacoes')}
         onAvatar={() => onNavigate('Perfil')}
       />

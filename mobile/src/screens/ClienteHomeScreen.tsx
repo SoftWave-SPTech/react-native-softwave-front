@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +39,7 @@ export function ClienteHomeScreen({ onNavigate }: Props) {
 
   const [dash, setDash] = useState<ClienteDashboardApi | null>(null);
   const [loading, setLoading] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   const d = dash ?? DASH_CLIENTE_VAZIO;
 
@@ -53,6 +54,27 @@ export function ClienteHomeScreen({ onNavigate }: Props) {
       try {
         const row = await fetchClienteDashboard(token);
         if (!cancelled && row) setDash(row);
+        // try fetch cliente profile foto
+        try {
+          const resources = await import('../services/resources');
+          const perfil = await resources.fetchClientePerfil(token);
+          const raw = perfil?.fotoPerfil ?? null;
+          const resolve = (rawUrl: string | null): string | null => {
+            if (!rawUrl) return null;
+            if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+            if (rawUrl.startsWith('file://')) return rawUrl;
+            if (rawUrl.startsWith('/')) {
+              const base = getApiBaseUrl();
+              if (!base) return null;
+              const origin = base.replace(/\/v1\/?$/i, '');
+              return `${origin}${rawUrl}`;
+            }
+            return rawUrl;
+          };
+          if (!cancelled) setAvatarUri(resolve(raw));
+        } catch {
+          if (!cancelled) setAvatarUri(null);
+        }
       } catch {
         if (!cancelled) setDash(null);
       } finally {
@@ -90,7 +112,11 @@ export function ClienteHomeScreen({ onNavigate }: Props) {
             )}
           </Pressable>
           <Pressable onPress={() => onNavigate('ClientePerfil')} style={styles.avatar}>
-            <Text style={styles.avatarText}>{avatarLetters}</Text>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={{ width: 48, height: 48, borderRadius: 24 }} />
+            ) : (
+              <Text style={styles.avatarText}>{avatarLetters}</Text>
+            )}
           </Pressable>
         </View>
       </View>

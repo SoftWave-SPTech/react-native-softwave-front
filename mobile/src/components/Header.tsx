@@ -1,5 +1,8 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
+import { useAuth } from '../context/AuthContext';
+import { getApiBaseUrl } from '../config/api';
+import { fetchPerfilEscritorio, fetchClientePerfil } from '../services/resources';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type Props = {
@@ -7,6 +10,8 @@ type Props = {
   showBack?: boolean;
   showNotification?: boolean;
   showAvatar?: boolean;
+  avatarUri?: string | null;
+  avatarHeaders?: Record<string, string> | undefined;
   onBack?: () => void;
   onNotification?: () => void;
   onAvatar?: () => void;
@@ -17,10 +22,66 @@ export function Header({
   showBack = false,
   showNotification = false,
   showAvatar = false,
+  avatarUri,
+  avatarHeaders,
   onBack,
   onNotification,
   onAvatar,
 }: Props) {
+  const { token } = useAuth();
+  const [internalAvatar, setInternalAvatar] = useState<string | null>(null);
+
+  function resolverFotoPerfilUri(raw: string | null | undefined): string | null {
+    if (!raw) return null;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (raw.startsWith('file://')) return raw;
+    if (raw.startsWith('/')) {
+      const base = getApiBaseUrl();
+      if (!base) return null;
+      const origin = base.replace(/\/v1\/?$/i, '');
+      return `${origin}${raw}`;
+    }
+    return raw;
+  }
+
+  useEffect(() => {
+    let mounted = true;
+    // If parent passed an avatarUri, prefer it. If not, try to fetch profile.
+    if (avatarUri) {
+      setInternalAvatar(null);
+      return () => {
+        mounted = false;
+      };
+    }
+    if (!token) {
+      setInternalAvatar(null);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    (async () => {
+      try {
+        let p = await fetchPerfilEscritorio(token);
+        if (!p) {
+          const cp = await fetchClientePerfil(token);
+          if (cp) {
+            // adapt cliente profile shape
+            p = { id: '0', nome: cp.nome, email: cp.email, telefone: cp.telefone, oab: '', endereco: '', fotoPerfil: cp.fotoPerfil } as any;
+          }
+        }
+        const raw = p?.fotoPerfil ?? null;
+        const resolved = resolverFotoPerfilUri(raw);
+        if (mounted) setInternalAvatar(resolved);
+      } catch {
+        if (mounted) setInternalAvatar(null);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [avatarUri, token]);
   return (
     <View style={styles.container}>
       <View style={styles.left}>
@@ -49,7 +110,11 @@ export function Header({
         )}
         {showAvatar && (
           <Pressable onPress={onAvatar} style={styles.avatar}>
-            <Text style={styles.avatarText}>SA</Text>
+            {(avatarUri || internalAvatar) ? (
+              <Image source={{ uri: avatarUri ?? internalAvatar ?? undefined }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>SA</Text>
+            )}
           </Pressable>
         )}
       </View>
@@ -117,5 +182,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
 });
