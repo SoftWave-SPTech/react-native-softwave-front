@@ -36,6 +36,7 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
 
   return (
     <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.languageSwitcher}>
         <Pressable
           onPress={() => i18n.changeLanguage('pt')}
@@ -71,7 +72,7 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
           </Text>
         </Pressable>
       </View>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <View style={styles.cardWrap}>
       <View style={styles.card}>
         {/* Logo */}
         <View style={styles.logoContainer}>
@@ -151,6 +152,7 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
         </Pressable>
 
       </View>
+      </View>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -160,10 +162,15 @@ const styles = StyleSheet.create({
   languageSwitcher: {
     flexDirection: 'row',
     alignSelf: 'flex-end',
-    marginBottom: 24,
+    marginTop: 8,
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 999,
     padding: 4,
+  },
+  cardWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   languageButton: {
@@ -190,8 +197,6 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 20,
   },
   card: {

@@ -378,7 +378,8 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
           {t('forgotPassword.back')}
         </Text>
       </Pressable>
-      <View style={styles.content}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex1}>
+        <ScrollView contentContainerStyle={styles.contentScroll} keyboardShouldPersistTaps="handled">
         <View style={styles.iconCircle}>
           <MaterialCommunityIcons name="lock-outline" size={40} color="#0E6F73" />
         </View>
@@ -427,24 +428,7 @@ export function EsqueciSenhaScreen({ onBack, onSuccess }: Props) {
               {t('forgotPassword.resetPassword')}
             </Text>
           )}
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              {apiAuthOn
-                ? '✓ Mínimo 8 caracteres: maiúscula, minúscula, número e símbolo (@ # $ % ^ & + =)'
-                : '✓ Minimo de 6 caracteres'}
-            </Text>
-          </View>
-          <Pressable
-            onPress={handleRedefinirSenha}
-            disabled={!podeRedefinir || salvandoSenha}
-            style={[styles.button, (!podeRedefinir || salvandoSenha) && styles.buttonDisabled]}
-          >
-            {salvandoSenha ? (
-              <ActivityIndicator color="#0E6F73" />
-            ) : (
-              <Text style={styles.buttonText}>Redefinir Senha</Text>
-            )}
-          </Pressable>
+        </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
