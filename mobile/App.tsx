@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './src/i18n/idiomas/i18n';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { EsqueciSenhaScreen } from './src/screens/EsqueciSenhaScreen';

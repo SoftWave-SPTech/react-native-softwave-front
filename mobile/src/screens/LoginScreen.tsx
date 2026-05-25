@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import logoImage from '../../assets/softwave-logo.png';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n/idiomas/i18n';
 
 type Props = {
   onLogin: (email: string, senha: string) => Promise<{ success: boolean; error?: string }>;
@@ -11,6 +13,7 @@ type Props = {
 };
 
 export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [senhaVisivel, setSenhaVisivel] = useState(false);
@@ -19,7 +22,7 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
 
   const handleLogin = async () => {
     if (!email.trim() || !senha.trim()) {
-      setErro('Preencha o e-mail e a senha.');
+      setErro(t('login.requiredFields'));
       return;
     }
     setErro('');
@@ -27,12 +30,47 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
     const resultado = await onLogin(email, senha);
     setCarregando(false);
     if (!resultado.success) {
-      setErro(resultado.error ?? 'Erro ao realizar login.');
+      setErro(resultado.error ?? t('login.loginError'));
     }
   };
 
   return (
     <LinearGradient colors={['#6EDDD6', '#0E6F73']} style={styles.container}>
+      <View style={styles.languageSwitcher}>
+        <Pressable
+          onPress={() => i18n.changeLanguage('pt')}
+          style={[
+            styles.languageButton,
+            i18n.language === 'pt' && styles.languageButtonActive,
+          ]}
+        >
+          <Text
+            style={[
+              styles.languageText,
+              i18n.language === 'pt' && styles.languageTextActive,
+            ]}
+          >
+            PT
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => i18n.changeLanguage('en')}
+          style={[
+            styles.languageButton,
+            i18n.language === 'en' && styles.languageButtonActive,
+          ]}
+        >
+          <Text
+            style={[
+              styles.languageText,
+              i18n.language === 'en' && styles.languageTextActive,
+            ]}
+          >
+            EN
+          </Text>
+        </Pressable>
+      </View>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.card}>
         {/* Logo */}
@@ -41,17 +79,17 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
             <Image source={logoImage} style={styles.logoImage} />
             {/* <Text style={styles.logoText}></Text> */}
           </View>
-          <Text style={styles.title}>SoftWave Finance</Text>
-          <Text style={styles.subtitle}>Gestão financeira para advocacia</Text>
+          <Text style={styles.title}>{t('login.title')}</Text>
+          <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
         </View>
 
         {/* Campo e-mail */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.label}>E-mail</Text>
+          <Text style={styles.label}>{t('login.email')}</Text>
           <TextInput
             value={email}
             onChangeText={(v) => { setEmail(v); setErro(''); }}
-            placeholder="seu@email.com"
+            placeholder={t('login.emailPlaceholder')}
             placeholderTextColor="rgba(255,255,255,0.5)"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -62,12 +100,12 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
 
         {/* Campo senha */}
         <View style={styles.fieldContainer}>
-          <Text style={styles.label}>Senha</Text>
+          <Text style={styles.label}>{t('login.password')}</Text>
           <View style={styles.senhaRow}>
             <TextInput
               value={senha}
               onChangeText={(v) => { setSenha(v); setErro(''); }}
-              placeholder="••••••••"
+              placeholder={t('login.passwordPlaceholder')}
               placeholderTextColor="rgba(255,255,255,0.5)"
               secureTextEntry={!senhaVisivel}
               style={[styles.input, styles.senhaInput]}
@@ -103,13 +141,13 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
           {carregando ? (
             <ActivityIndicator color="#0E6F73" />
           ) : (
-            <Text style={styles.buttonText}>Entrar</Text>
+            <Text style={styles.buttonText}>{t('login.loginButton')}</Text>
           )}
         </Pressable>
 
         {/* Esqueci minha senha */}
         <Pressable onPress={onEsqueciSenha} style={styles.linkContainer}>
-          <Text style={styles.linkText}>Esqueci minha senha</Text>
+          <Text style={styles.linkText}>{t('login.forgotPassword')}</Text>
         </Pressable>
 
       </View>
@@ -119,6 +157,34 @@ export function LoginScreen({ onLogin, onEsqueciSenha }: Props) {
 }
 
 const styles = StyleSheet.create({
+  languageSwitcher: {
+    flexDirection: 'row',
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 999,
+    padding: 4,
+  },
+
+  languageButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+
+  languageButtonActive: {
+    backgroundColor: '#FFFFFF',
+  },
+
+  languageText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+
+  languageTextActive: {
+    color: '#0E6F73',
+  },
   container: {
     flex: 1,
   },
