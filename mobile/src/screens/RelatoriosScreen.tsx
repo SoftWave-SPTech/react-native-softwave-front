@@ -525,7 +525,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           </View>
           {insightAberto === 'linha' && (
             <InsightCard
-              bullets={insightsPadrao.linha}
+              bullets={insights.linha}
               periodo={periodoLabel(periodo)}
               geradoEm={insightsGerados.linha?.geradoEm}
             />
@@ -563,7 +563,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           </ChartPlotContainer>
           {insightAberto === 'pizza' && (
             <InsightCard
-              bullets={insightsPadrao.pizza}
+              bullets={insights.pizza}
               periodo={periodoLabel(periodo)}
               geradoEm={insightsGerados.pizza?.geradoEm}
             />
@@ -609,7 +609,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           </ChartPlotContainer>
           {insightAberto === 'barra' && (
             <InsightCard
-              bullets={insightsPadrao.barra}
+              bullets={insights.barra}
               periodo={periodoLabel(periodo)}
               geradoEm={insightsGerados.barra?.geradoEm}
             />
@@ -643,7 +643,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           )}
           {insightAberto === 'maioresClientes' && (
             <InsightCard
-              bullets={insightsPadrao.maioresClientes}
+              bullets={insights.maioresClientes}
               periodo={periodoLabel(periodo)}
               geradoEm={insightsGerados.maioresClientes?.geradoEm}
             />
