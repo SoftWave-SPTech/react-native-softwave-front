@@ -907,6 +907,7 @@ export type PerfilEscritorioUpdateBody = {
   nome: string;
   email: string;
   telefone: string;
+  oab?: string;
   endereco: string;
 };
 

@@ -27,7 +27,7 @@ type Props = {
   onLogout: () => void;
 };
 
-type Baseline = { nome: string; email: string; telefone: string; endereco: string };
+type Baseline = { nome: string; email: string; telefone: string; oab: string; endereco: string };
 
 type ConfigItem = {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -82,6 +82,7 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
           nome: p.nome,
           email: p.email,
           telefone: p.telefone,
+          oab: p.oab,
           endereco: p.endereco,
         });
         setFotoPerfilUri(resolveFileUrl(p.fotoPerfil));
@@ -101,9 +102,10 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
       nome.trim() !== baseline.nome.trim() ||
       email.trim() !== baseline.email.trim() ||
       telefone.trim() !== baseline.telefone.trim() ||
+      oab.trim() !== baseline.oab.trim() ||
       endereco.trim() !== baseline.endereco.trim()
     );
-  }, [baseline, nome, email, telefone, endereco]);
+  }, [baseline, nome, email, telefone, oab, endereco]);
 
   const handleSalvar = async () => {
     if (!token || !dirty) return;
@@ -113,12 +115,14 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
         nome: nome.trim(),
         email: email.trim(),
         telefone: telefone.trim(),
+        oab: oab.trim(),
         endereco: endereco.trim(),
       });
       setBaseline({
         nome: nome.trim(),
         email: email.trim(),
         telefone: telefone.trim(),
+        oab: oab.trim(),
         endereco: endereco.trim(),
       });
       showFeedback('Sucesso', 'Perfil atualizado.', 'success');
@@ -232,7 +236,7 @@ export function PerfilScreen({ onBack, onNavigate, onLogout }: Props) {
           <InputField icon="domain" label="Nome do Escritório" value={nome} onChangeText={setNome} />
           <InputField icon="email" label="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" />
           <InputField icon="phone" label="Telefone" value={telefone} onChangeText={setTelefone} keyboardType="phone-pad" />
-          <InputField icon="file-document" label="OAB" value={oab} onChangeText={setOab} editable={false} />
+          <InputField icon="file-document" label="OAB" value={oab} onChangeText={setOab} />
           <InputField icon="map-marker" label="Endereço" value={endereco} onChangeText={setEndereco} />
           {dirty ? (
             <Pressable

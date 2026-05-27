@@ -95,11 +95,11 @@ export function ClienteHomeScreen({ onBack, onNavigate }: Props) {
     <LinearGradient colors={['#0d9488', '#115e59']} style={styles.container}>
       <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
         <View style={styles.headerLeft}>
-          {onBack && (
+          {/* {onBack && (
             <Pressable onPress={onBack} style={styles.backBtn}>
               <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
             </Pressable>
-          )}
+          )} */}
           <View style={styles.headerTitleWrap}>
             <Text style={styles.ola}>Olá,</Text>
             <Text style={styles.nome} numberOfLines={2}>

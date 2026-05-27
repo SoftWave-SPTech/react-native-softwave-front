@@ -20,30 +20,9 @@ function vencimentoLabel(iso: string) {
 }
 
 function percentualProgresso(c: CobrancaClienteApi): number {
-  const total = Number(c.totalParcelas || 0);
-  const parcelaAtual = Number(c.parcela || 0);
-  const percentualApiRaw = Number(c.percentualPago);
-  const percentualApi = Number.isFinite(percentualApiRaw) ? percentualApiRaw : null;
-  const percentualParcela =
-    total > 0
-      ? Math.round(((c.status === 'pago' ? total : Math.max(0, Math.min(total, parcelaAtual - 1))) / total) * 100)
-      : null;
-
-  let percentual = 0;
-  if (c.status === 'pago') {
-    percentual = 100;
-  } else if (percentualApi !== null && percentualApi >= 0 && percentualApi <= 100) {
-    if (percentualParcela === null) {
-      percentual = Math.round(percentualApi);
-    } else {
-      // Se o backend vier muito distante da progressão por parcelas, prioriza regra de parcelas.
-      percentual = Math.abs(percentualApi - percentualParcela) > 20 ? percentualParcela : Math.round(percentualApi);
-    }
-  } else if (percentualParcela !== null) {
-    percentual = percentualParcela;
-  }
-  if (!Number.isFinite(percentual)) return 0;
-  return Math.max(0, Math.min(100, percentual));
+  const raw = Number(c.percentualPago);
+  if (Number.isFinite(raw) && raw >= 0) return Math.max(0, Math.min(100, Math.round(raw)));
+  return 0;
 }
 
 export function ClienteCobrancasScreen({ onBack, onNavigate }: Props) {
