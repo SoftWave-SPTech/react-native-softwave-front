@@ -9,6 +9,8 @@ export type TransacaoApi = {
   ordem?: number;
   categoria?: string;
   clienteId?: string;
+  processoId?: string;
+  processo?: string;
   data?: string;
   vencimento?: string;
   comprovante?: boolean;

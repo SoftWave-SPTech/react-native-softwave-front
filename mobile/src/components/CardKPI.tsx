@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
 import { MASKED_MONEY_VALUE } from '../utils/geo';
+import { resumoKpiTypography } from '../utils/money';
 
 type Props = {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -10,18 +11,37 @@ type Props = {
   value: string;
   variation?: string;
   variationType?: 'positive' | 'negative';
+  /** Percentuais e textos curtos não usam redução de fonte monetária. */
+  valueKind?: 'money' | 'text';
 };
 
-export function CardKPI({ icon, title, value, variation, variationType }: Props) {
+export function CardKPI({ icon, title, value, variation, variationType, valueKind = 'money' }: Props) {
   const restrict = useShouldRestrictSensitiveData();
   const displayValue = restrict ? MASKED_MONEY_VALUE : value;
+  const typo = valueKind === 'money' ? resumoKpiTypography(displayValue) : null;
+
   return (
     <View style={styles.card}>
       <View style={styles.iconWrap}>
         <MaterialCommunityIcons name={icon} size={18} color="#0d9488" />
       </View>
       <Text style={styles.title}>{title}</Text>
-      <Text style={styles.value}>{displayValue}</Text>
+      <View style={styles.valueWrap}>
+        {typo ? (
+          <Text
+            style={[styles.value, { fontSize: typo.fontSize, lineHeight: typo.lineHeight }]}
+            numberOfLines={typo.numberOfLines}
+            adjustsFontSizeToFit={typo.adjustsFontSizeToFit}
+            minimumFontScale={typo.minimumFontScale}
+          >
+            {displayValue}
+          </Text>
+        ) : (
+          <Text style={styles.value} numberOfLines={1}>
+            {displayValue}
+          </Text>
+        )}
+      </View>
       {variation && !restrict && (
         <Text style={[styles.variation, variationType === 'negative' ? styles.negative : styles.positive]}>
           {variation}
@@ -55,6 +75,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     marginBottom: 4,
+  },
+  valueWrap: {
+    minHeight: 28,
+    justifyContent: 'center',
   },
   value: {
     fontSize: 20,
