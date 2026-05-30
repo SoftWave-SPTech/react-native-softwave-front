@@ -20,6 +20,11 @@ import { useAuth } from '../context/AuthContext';
 import { fetchClientePerfil, postClienteFotoPerfil, putClientePerfil } from '../services/resources';
 import { ApiError } from '../services/http';
 import type { ClientePerfilApi } from '../types/api';
+import {
+  cameraPickerOptions,
+  galleryPickerOptions,
+  uploadFileFromImageAsset,
+} from '../utils/uploadFile';
 
 type Props = {
   onBack: () => void;
@@ -51,6 +56,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
   const [sinceTopo, setSinceTopo] = useState('');
   const [modalFoto, setModalFoto] = useState(false);
   const [fotoPerfilUri, setFotoPerfilUri] = useState<string | null>(null);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackTitle, setFeedbackTitle] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState('');
@@ -161,6 +167,7 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
 
   const selecionarFoto = useCallback(
     async (tipo: 'camera' | 'galeria') => {
+      if (enviandoFoto) return;
       try {
         const permissao =
           tipo === 'camera'
@@ -174,41 +181,28 @@ export function ClientePerfilScreen({ onBack, onLogout }: Props) {
 
         const result =
           tipo === 'camera'
-            ? await ImagePicker.launchCameraAsync({
-                quality: 0.85,
-                allowsEditing: true,
-                aspect: [1, 1],
-                mediaTypes: ['images'],
-              })
-            : await ImagePicker.launchImageLibraryAsync({
-                quality: 0.85,
-                allowsEditing: true,
-                aspect: [1, 1],
-                mediaTypes: ['images'],
-              });
+            ? await ImagePicker.launchCameraAsync(cameraPickerOptions())
+            : await ImagePicker.launchImageLibraryAsync(galleryPickerOptions());
 
         if (result.canceled || !result.assets[0]?.uri) return;
-        const a = result.assets[0];
-        setFotoPerfilUri(a.uri);
+        const arquivo = uploadFileFromImageAsset(result.assets[0]);
+        setFotoPerfilUri(result.assets[0].uri);
         if (apiOn && token) {
-          const ext = a.fileName?.split('.').pop() || 'jpg';
-          const resp = await postClienteFotoPerfil(token, {
-            uri: a.uri,
-            name: a.fileName ?? `perfil_${Date.now()}.${ext}`,
-            type: a.mimeType ?? 'image/jpeg',
-            file: (a as { file?: File | Blob }).file,
-          });
+          setEnviandoFoto(true);
+          const resp = await postClienteFotoPerfil(token, arquivo);
           if (resp?.fotoUrl) {
-            setFotoPerfilUri(resolveFileUrl(resp.fotoUrl) ?? a.uri);
+            setFotoPerfilUri(resolveFileUrl(resp.fotoUrl) ?? result.assets[0].uri);
           }
         }
         setModalFoto(false);
         showFeedback('Sucesso', 'Foto de perfil atualizada.', 'success');
       } catch {
         showFeedback('Erro', 'Não foi possível atualizar a foto de perfil.', 'error');
+      } finally {
+        setEnviandoFoto(false);
       }
     },
-    [apiOn, token],
+    [apiOn, token, enviandoFoto],
   );
 
   return (

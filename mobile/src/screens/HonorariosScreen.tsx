@@ -11,7 +11,7 @@ import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { fetchContratos } from '../services/resources';
 import type { ContratoApi } from '../types/api';
-import { formatCentavosBRL, resumoKpiTypography } from '../utils/money';
+import { formatCentavosBRL, resumoKpiTypography, resumoKpisShouldStack } from '../utils/money';
 import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
 import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
 import { MASKED_MONEY_VALUE, maskIfRestricted } from '../utils/geo';
@@ -63,11 +63,20 @@ function ResumoValorText({ value }: { value: string }) {
   );
 }
 
-function resumoAtivos(rows: ContratoApi[]) {
+function resumoKpis(rows: ContratoApi[], resumoApi?: { totalRecebido: number; aReceber: number }) {
   const ativos = rows.filter((c) => !c.encerrado);
-  const recebido = ativos.reduce((s, c) => s + c.pago, 0);
-  const aReceber = ativos.reduce((s, c) => s + Math.max(0, c.total - c.pago), 0);
-  return { recebido: formatCentavosBRL(recebido), aReceber: formatCentavosBRL(aReceber) };
+  const recebidoCent = rows.reduce((s, c) => s + (c.pago ?? 0), 0);
+  const aReceberCent = ativos.reduce((s, c) => s + Math.max(0, (c.total ?? 0) - (c.pago ?? 0)), 0);
+
+  const recebidoFinalCent = resumoApi?.totalRecebido ?? recebidoCent;
+  const aReceberFinalCent = resumoApi?.aReceber ?? aReceberCent;
+
+  return {
+    recebido: formatCentavosBRL(recebidoFinalCent),
+    aReceber: formatCentavosBRL(aReceberFinalCent),
+    recebidoCent: recebidoFinalCent,
+    aReceberCent: aReceberFinalCent,
+  };
 }
 
 type Props = {
@@ -89,6 +98,7 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
   const scrollPad = useScrollPaddingBottom();
 
   const [rowsApi, setRowsApi] = useState<ContratoApi[]>([]);
+  const [resumoApi, setResumoApi] = useState<{ totalRecebido: number; aReceber: number } | undefined>();
   const [loading, setLoading] = useState(false);
 
   const emTelaHonorarios = routePath.includes('honorarios');
@@ -96,6 +106,7 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
   useEffect(() => {
     if (!apiOn) {
       setRowsApi([]);
+      setResumoApi(undefined);
       return undefined;
     }
     if (!isFocused || !emTelaHonorarios) return undefined;
@@ -104,9 +115,15 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
       setLoading(true);
       try {
         const data = await fetchContratos(token);
-        if (!cancelled) setRowsApi(Array.isArray(data) ? data : []);
+        if (!cancelled) {
+          setRowsApi(Array.isArray(data.contratos) ? data.contratos : []);
+          setResumoApi(data.resumo);
+        }
       } catch {
-        if (!cancelled) setRowsApi([]);
+        if (!cancelled) {
+          setRowsApi([]);
+          setResumoApi(undefined);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -118,7 +135,11 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
 
   const rowsSeguros = Array.isArray(rowsApi) ? rowsApi : [];
   const lista = useMemo(() => rowsSeguros.map(mapApiToContrato), [rowsSeguros]);
-  const topo = useMemo(() => resumoAtivos(rowsSeguros), [rowsSeguros]);
+  const topo = useMemo(() => resumoKpis(rowsSeguros, resumoApi), [rowsSeguros, resumoApi]);
+  const resumoEmpilhado = useMemo(
+    () => resumoKpisShouldStack(topo.recebidoCent, topo.aReceberCent),
+    [topo.recebidoCent, topo.aReceberCent],
+  );
 
   const [aba, setAba] = useState<'ativos' | 'encerrados'>('ativos');
   const [filtroCliente, setFiltroCliente] = useState('todos');
@@ -157,8 +178,8 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
           </View>
         )}
 
-        <View style={styles.resumoRow}>
-          <View style={styles.resumoVerde}>
+        <View style={[styles.resumoRow, resumoEmpilhado && styles.resumoRowStacked]}>
+          <View style={[styles.resumoVerde, resumoEmpilhado && styles.resumoCardStacked]}>
             <Text style={styles.resumoLabel}>Total Recebido</Text>
             <ResumoValorText value={restrict ? MASKED_MONEY_VALUE : topo.recebido} />
           </View>
@@ -166,7 +187,7 @@ export function HonorariosScreen({ isFocused = true, routePath = '', onBack, onN
             colors={['#14b8a6', '#0d9488']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.resumoAzul}
+            style={[styles.resumoAzul, resumoEmpilhado && styles.resumoCardStacked]}
           >
             <Text style={styles.resumoLabel}>A Receber</Text>
             <ResumoValorText value={restrict ? MASKED_MONEY_VALUE : topo.aReceber} />
@@ -259,6 +280,8 @@ const styles = StyleSheet.create({
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   loadingText: { fontSize: 13, color: '#6b7280' },
   resumoRow: { flexDirection: 'row', gap: 12, marginBottom: 16, alignItems: 'stretch' },
+  resumoRowStacked: { flexDirection: 'column' },
+  resumoCardStacked: { flex: 0, width: '100%', minHeight: 88, alignSelf: 'stretch' },
   resumoVerde: {
     flex: 1,
     minWidth: 0,

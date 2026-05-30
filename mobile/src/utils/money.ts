@@ -4,12 +4,28 @@ const RESUMO_KPI_FONT_MIN = 16;
 export type ResumoKpiTypography = {
   fontSize: number;
   lineHeight: number;
-  numberOfLines: 2 | 3;
+  numberOfLines: 1 | 2 | 3;
   adjustsFontSizeToFit: boolean;
   minimumFontScale: number;
 };
 
 /** Tipografia dos KPIs de honorários: encolhe em valores longos, sem ficar ilegível. */
+/** Valores longos (ex.: centenas de milhar) empilham os cards de resumo em coluna. */
+function kpiCentavosShouldStack(centavos: number): boolean {
+  const thresholdCent = 10_000_000; // R$ 100.000,00+
+  if (centavos >= thresholdCent) return true;
+  return formatCentavosBRL(centavos).length >= 13;
+}
+
+export function resumoKpisShouldStack(recebidoCent: number, aReceberCent: number): boolean {
+  return kpiCentavosShouldStack(recebidoCent) || kpiCentavosShouldStack(aReceberCent);
+}
+
+/** Empilha grid de KPIs quando qualquer valor monetário é longo (ex.: centenas de milhar). */
+export function anyKpiShouldStack(centavosValues: number[]): boolean {
+  return centavosValues.some(kpiCentavosShouldStack);
+}
+
 export function resumoKpiTypography(value: string): ResumoKpiTypography {
   const len = value.length;
   let fontSize = RESUMO_KPI_FONT_MAX;
@@ -20,8 +36,8 @@ export function resumoKpiTypography(value: string): ResumoKpiTypography {
   return {
     fontSize,
     lineHeight: fontSize + 6,
-    numberOfLines: len > 14 ? 3 : 2,
-    adjustsFontSizeToFit: len > 10,
+    numberOfLines: len > 14 ? 2 : 1,
+    adjustsFontSizeToFit: len > 11,
     minimumFontScale: RESUMO_KPI_FONT_MIN / fontSize,
   };
 }

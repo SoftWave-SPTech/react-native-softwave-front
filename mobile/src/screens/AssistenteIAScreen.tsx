@@ -315,7 +315,13 @@ export function AssistenteIAScreen({ onBack, onNavigate }: Props) {
               onPress={() => setModalFiltro(true)}
             >
               <MaterialCommunityIcons name="filter-variant" size={16} color={corFiltro} />
-              <Text style={[styles.filtroText, filtroAtivo && styles.filtroTextActive]}>{filtroLabel}</Text>
+              <Text
+                style={[styles.filtroText, filtroAtivo && styles.filtroTextActive]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {filtroLabel}
+              </Text>
               <MaterialCommunityIcons name="chevron-down" size={16} color={corFiltro} />
             </Pressable>
           </View>
@@ -540,13 +546,19 @@ const styles = StyleSheet.create({
 
   section: { marginBottom: 16 },
   sectionHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 12,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 10,
+    marginBottom: 12,
   },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#111827', flex: 1 },
   filtroBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    maxWidth: '100%',
     backgroundColor: '#fff',
     borderRadius: 999,
     paddingHorizontal: 16,
@@ -555,7 +567,7 @@ const styles = StyleSheet.create({
   filtroBtnActive: {
     backgroundColor: '#111827',
   },
-  filtroText: { fontSize: 13, color: '#111827', fontWeight: '500' },
+  filtroText: { flexShrink: 1, fontSize: 13, color: '#111827', fontWeight: '500' },
   filtroTextActive: { color: '#fff' },
 
   historicoCard: {

@@ -33,7 +33,7 @@ import type {
   RelatorioReceitaDespesaApi,
   TipoInsightApi,
 } from '../types/api';
-import { formatCentavosBRL } from '../utils/money';
+import { formatCentavosBRL, anyKpiShouldStack } from '../utils/money';
 
 type Props = {
   onBack: () => void;
@@ -164,6 +164,14 @@ function formatGeradoEm(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function ticketMedioCentavos(k: RelatorioKpisApi | null): number {
+  if (!k?.ticketMedio?.valor) return 0;
+  const raw = k.ticketMedio.valor;
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+  const n = Number(String(raw).replace(/\D/g, ''));
+  return Number.isFinite(n) ? n : 0;
 }
 
 /** Exibe valor principal do KPI com fallback quando a API omite campos ou usa formato alternativo. */
@@ -400,6 +408,8 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
 
   const k = kpis;
 
+  const kpiEmpilhado = useMemo(() => anyKpiShouldStack([ticketMedioCentavos(k)]), [k]);
+
   return (
     <View style={styles.container}>
       <Header title="Relatórios" showBack onBack={onBack} />
@@ -424,41 +434,45 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           </View>
         </View>
 
-        <View style={styles.kpiGrid}>
-          <View style={styles.kpiItem}>
+        <View style={[styles.kpiGrid, kpiEmpilhado && styles.kpiGridStacked]}>
+          <View style={[styles.kpiItem, kpiEmpilhado && styles.kpiItemStacked]}>
             <CardKPI
               icon="chart-line"
               title="Margem de Lucro"
               value={valorPrincipalKpi(k, 'margemLucro', '—')}
               variation={k?.margemLucro?.variacao}
               variationType={k?.margemLucro?.tipo === 'negativo' ? 'negative' : 'positive'}
+              valueKind="text"
             />
           </View>
-          <View style={styles.kpiItem}>
+          <View style={[styles.kpiItem, kpiEmpilhado && styles.kpiItemStacked]}>
             <CardKPI
               icon="cash"
               title="Ticket Médio"
               value={valorPrincipalKpi(k, 'ticketMedio', '—')}
               variation={k?.ticketMedio?.variacao}
               variationType={k?.ticketMedio?.tipo === 'negativo' ? 'negative' : 'positive'}
+              valueKind="money"
             />
           </View>
-          <View style={styles.kpiItem}>
+          <View style={[styles.kpiItem, kpiEmpilhado && styles.kpiItemStacked]}>
             <CardKPI
               icon="alert-circle"
               title="Inadimplência"
               value={valorPrincipalKpi(k, 'inadimplencia', '—')}
               variation={k?.inadimplencia?.variacao}
               variationType={k?.inadimplencia?.tipo === 'negativo' ? 'negative' : 'positive'}
+              valueKind="text"
             />
           </View>
-          <View style={styles.kpiItem}>
+          <View style={[styles.kpiItem, kpiEmpilhado && styles.kpiItemStacked]}>
             <CardKPI
               icon="trending-up"
               title="Crescimento"
               value={valorPrincipalKpi(k, 'crescimento', '—')}
               variation={k?.crescimento?.variacao}
               variationType={k?.crescimento?.tipo === 'negativo' ? 'negative' : 'positive'}
+              valueKind="text"
             />
           </View>
         </View>
@@ -476,7 +490,7 @@ export function RelatoriosScreen({ onBack, onNavigate }: Props) {
           <View style={styles.etlIcon}><MaterialCommunityIcons name="folder-open" size={24} color="#0d9488" /></View>
           <View style={styles.etlContent}>
             <Text style={styles.etlTitle}>Importação & Exportação</Text>
-            <Text style={styles.etlSubtitle}>ETL de extratos bancários e dados</Text>
+            <Text style={styles.etlSubtitle}>Extratos bancários e dados</Text>
           </View>
           <MaterialCommunityIcons name="upload" size={22} color="#0d9488" />
           <MaterialCommunityIcons name="download" size={22} color="#0d9488" />
@@ -740,7 +754,9 @@ const styles = StyleSheet.create({
   periodoChipText: { fontSize: 14, color: '#6b7280' },
   periodoChipTextActive: { color: '#fff' },
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
+  kpiGridStacked: { flexDirection: 'column', flexWrap: 'nowrap' },
   kpiItem: { width: '47%' },
+  kpiItemStacked: { width: '100%' },
   chartCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   chartTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },

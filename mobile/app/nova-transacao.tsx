@@ -9,6 +9,7 @@ export default function NovaTransacaoPage() {
     valor?: string;
     categoria?: string;
     cliente?: string;
+    processoId?: string;
     processo?: string;
     data?: string;
     vencimento?: string;
@@ -24,6 +25,7 @@ export default function NovaTransacaoPage() {
         categoria: params.categoria ?? '',
         cliente: params.cliente ?? '',
         processo: params.processo ?? '',
+        processoId: params.processoId ? String(params.processoId) : undefined,
         data: params.data ?? '',
         vencimento: params.vencimento ?? '',
         status: (params.status as 'pago' | 'pendente') ?? 'pendente',

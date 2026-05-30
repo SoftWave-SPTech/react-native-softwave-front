@@ -36,17 +36,78 @@ import { getEtlApiBaseUrl, getIaApiBaseUrl } from '../config/api';
 import { Platform } from 'react-native';
 import { ApiError, apiDeleteJson, apiFetch, apiGetJson, apiPatchJson, apiPostFormData, apiPostJson, apiPutJson } from './http';
 
+function parseCentavosField(v: unknown): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string' && v.trim()) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
+
+function normalizeContratoApi(raw: Record<string, unknown>): ContratoApi {
+  const idRaw = raw.id;
+  let idNum = 0;
+  if (typeof idRaw === 'number' && Number.isFinite(idRaw)) {
+    idNum = idRaw;
+  } else if (typeof idRaw === 'string') {
+    const stripped = idRaw.startsWith('ctr_') ? idRaw.slice(4) : idRaw;
+    const parsed = Number.parseInt(stripped, 10);
+    if (Number.isFinite(parsed)) idNum = parsed;
+  }
+
+  return {
+    id: idNum,
+    clienteId: typeof raw.clienteId === 'string' ? raw.clienteId : undefined,
+    cliente: typeof raw.cliente === 'string' ? raw.cliente : String(raw.cliente ?? ''),
+    processo: typeof raw.processo === 'string' ? raw.processo : String(raw.processo ?? ''),
+    tipoContrato: typeof raw.tipoContrato === 'string' ? raw.tipoContrato : String(raw.tipoContrato ?? ''),
+    status: (raw.status as ContratoApi['status']) ?? 'pendente',
+    progresso: typeof raw.progresso === 'number' ? raw.progresso : Number(raw.progresso) || 0,
+    vencimento: typeof raw.vencimento === 'string' ? raw.vencimento : String(raw.vencimento ?? ''),
+    total: parseCentavosField(raw.total),
+    pago: parseCentavosField(raw.pago),
+    encerrado: Boolean(raw.encerrado),
+    reprovado: raw.reprovado != null ? Boolean(raw.reprovado) : undefined,
+    descricao: typeof raw.descricao === 'string' ? raw.descricao : undefined,
+    criadoEm: typeof raw.criadoEm === 'string' ? raw.criadoEm : undefined,
+  };
+}
+
+export type ContratosResumoApi = {
+  totalRecebido: number;
+  aReceber: number;
+};
+
+export type ContratosListApi = {
+  contratos: ContratoApi[];
+  resumo?: ContratosResumoApi;
+};
+
 /** Spring / outros backends costumam envolver a lista em `{ data }` ou `{ contratos }`. */
 function unwrapContratosArray(raw: unknown): ContratoApi[] {
-  if (Array.isArray(raw)) return raw as ContratoApi[];
+  if (Array.isArray(raw)) return raw.map((item) => normalizeContratoApi(item as Record<string, unknown>));
   if (raw && typeof raw === 'object') {
     const o = raw as Record<string, unknown>;
     for (const key of ['contratos', 'data', 'content', 'items']) {
       const v = o[key];
-      if (Array.isArray(v)) return v as ContratoApi[];
+      if (Array.isArray(v)) {
+        return v.map((item) => normalizeContratoApi(item as Record<string, unknown>));
+      }
     }
   }
   return [];
+}
+
+function unwrapContratosResumo(raw: unknown): ContratosResumoApi | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const resumo = (raw as Record<string, unknown>).resumo;
+  if (!resumo || typeof resumo !== 'object') return undefined;
+  const r = resumo as Record<string, unknown>;
+  return {
+    totalRecebido: parseCentavosField(r.totalRecebido),
+    aReceber: parseCentavosField(r.aReceber),
+  };
 }
 
 export async function fetchDashboardResumo(token: string | null): Promise<DashboardResumoApi | null> {
@@ -242,12 +303,15 @@ export async function fetchNotificacoesCliente(token: string | null): Promise<No
   }));
 }
 
-export async function fetchContratos(token: string | null): Promise<ContratoApi[]> {
+export async function fetchContratos(token: string | null): Promise<ContratosListApi> {
   try {
     const raw = await apiGetJson<unknown>('/contratos?_sort=id&_order=asc', token);
-    return unwrapContratosArray(raw);
+    return {
+      contratos: unwrapContratosArray(raw),
+      resumo: unwrapContratosResumo(raw),
+    };
   } catch {
-    return [];
+    return { contratos: [], resumo: undefined };
   }
 }
 
@@ -344,14 +408,15 @@ export async function postClienteFotoPerfil(
   token: string | null,
   arquivo: UploadableFile,
 ): Promise<UploadFotoPerfilResponseApi> {
+  const prepared = await prepareUploadFile(arquivo);
   const fd = new FormData();
-  if (arquivo.file) {
-    fd.append('foto', arquivo.file, arquivo.name);
+  if (prepared.file) {
+    fd.append('foto', prepared.file, prepared.name);
   } else {
     fd.append('foto', {
-      uri: arquivo.uri,
-      name: arquivo.name,
-      type: arquivo.type,
+      uri: prepared.uri,
+      name: prepared.name,
+      type: prepared.type,
     } as unknown as Blob);
   }
   return apiPostFormData<UploadFotoPerfilResponseApi>('/cliente/perfil/foto', token, fd);
@@ -361,14 +426,15 @@ export async function postPerfilFoto(
   token: string | null,
   arquivo: UploadableFile,
 ): Promise<UploadFotoPerfilResponseApi> {
+  const prepared = await prepareUploadFile(arquivo);
   const fd = new FormData();
-  if (arquivo.file) {
-    fd.append('foto', arquivo.file, arquivo.name);
+  if (prepared.file) {
+    fd.append('foto', prepared.file, prepared.name);
   } else {
     fd.append('foto', {
-      uri: arquivo.uri,
-      name: arquivo.name,
-      type: arquivo.type,
+      uri: prepared.uri,
+      name: prepared.name,
+      type: prepared.type,
     } as unknown as Blob);
   }
   return apiPostFormData<UploadFotoPerfilResponseApi>('/perfil/foto', token, fd);

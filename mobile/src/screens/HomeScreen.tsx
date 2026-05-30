@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { mapTransacaoApiToCard, type TransacaoCardModel } from '../mappers/transacao';
 import { fetchDashboardResumo, fetchNotificacoesNaoLidasAdvogado, fetchPerfilEscritorio, fetchTransacoesRecentes, syncPagamentosDashboardCount } from '../services/resources';
 import type { DashboardResumoApi } from '../types/api';
-import { formatCentavosBRL } from '../utils/money';
+import { anyKpiShouldStack, formatCentavosBRL } from '../utils/money';
 import { LocaisSegurosBanner } from '../components/LocaisSegurosBanner';
 import { useShouldRestrictSensitiveData } from '../context/LocaisSegurosContext';
 import { MASKED_MONEY_VALUE } from '../utils/geo';
@@ -117,6 +117,22 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
   const despesaVal = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(effectiveDash.despesaMensal);
   const lucroVal = restrict ? MASKED_MONEY_VALUE : formatCentavosBRL(effectiveDash.lucroLiquidoMes);
 
+  const kpiEmpilhado = useMemo(() => {
+    if (restrict) return false;
+    return anyKpiShouldStack([
+      effectiveDash.receitaMensal,
+      effectiveDash.pendentes,
+      effectiveDash.despesaMensal,
+      effectiveDash.lucroLiquidoMes,
+    ]);
+  }, [
+    restrict,
+    effectiveDash.receitaMensal,
+    effectiveDash.pendentes,
+    effectiveDash.despesaMensal,
+    effectiveDash.lucroLiquidoMes,
+  ]);
+
   return (
     <View style={styles.container}>
       <Header
@@ -153,8 +169,8 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
           </View>
         </LinearGradient>
 
-        <View style={styles.kpiGrid}>
-          <View style={styles.kpiItem}>
+        <View style={[styles.kpiGrid, kpiEmpilhado && styles.kpiGridStacked]}>
+          <View style={[styles.kpiItem, kpiEmpilhado && styles.kpiItemStacked]}>
             <CardKPI
               icon="cash"
               title="Receita Mensal"
@@ -163,7 +179,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
               variationType={variationTypeFromString(effectiveDash.variacaoReceita)}
             />
           </View>
-          <View style={styles.kpiItem}>
+          <View style={[styles.kpiItem, kpiEmpilhado && styles.kpiItemStacked]}>
             <CardKPI
               icon="clock-outline"
               title="Pendentes"
@@ -172,7 +188,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
               variationType={variationTypeFromString(effectiveDash.variacaoPendentes)}
             />
           </View>
-          <View style={styles.kpiItem}>
+          <View style={[styles.kpiItem, kpiEmpilhado && styles.kpiItemStacked]}>
             <CardKPI
               icon="trending-down"
               title="Despesa Mensal"
@@ -181,7 +197,7 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
               variationType={variationTypeFromString(effectiveDash.variacaoDespesa)}
             />
           </View>
-          <View style={styles.kpiItem}>
+          <View style={[styles.kpiItem, kpiEmpilhado && styles.kpiItemStacked]}>
             <CardKPI
               icon="trending-up"
               title="Lucro Líquido"
@@ -192,21 +208,17 @@ export function HomeScreen({ onBack, onNavigate }: Props) {
           </View>
         </View>
 
-        <View style={styles.insightsCard}>
-          <View style={styles.insightsIconWrap}>
-            <MaterialCommunityIcons name="lightbulb-outline" size={20} color="#0d9488" />
+        <Pressable onPress={() => onNavigate('ImportacaoExportacao')} style={styles.etlCard}>
+          <View style={styles.etlIcon}>
+            <MaterialCommunityIcons name="folder-open" size={24} color="#0d9488" />
           </View>
-          <View style={styles.insightsContent}>
-            <Text style={styles.insightsTitle}>Insights Inteligentes</Text>
-            <Text style={styles.insightsText}>
-              Os resumos aparecem conforme os dados retornados pela API.
-            </Text>
-            <Pressable onPress={() => onNavigate('AssistenteIA')} style={styles.insightsLink}>
-              <Text style={styles.insightsLinkText}>Ver Assistente IA</Text>
-              <Text style={styles.insightsLinkArrow}>→</Text>
-            </Pressable>
+          <View style={styles.etlContent}>
+            <Text style={styles.etlTitle}>Importação & Exportação</Text>
+            <Text style={styles.etlSubtitle}>Extratos bancários e dados</Text>
           </View>
-        </View>
+          <MaterialCommunityIcons name="upload" size={22} color="#0d9488" />
+          <MaterialCommunityIcons name="download" size={22} color="#0d9488" />
+        </Pressable>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -336,13 +348,21 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
+  kpiGridStacked: {
+    flexDirection: 'column',
+    flexWrap: 'nowrap',
+  },
   kpiItem: {
     width: '47%',
   },
-  insightsCard: {
+  kpiItemStacked: {
+    width: '100%',
+  },
+  etlCard: {
     flexDirection: 'row',
-    backgroundColor: '#f0fdfa',
-    borderWidth: 1,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 2,
     borderColor: '#99f6e4',
     borderRadius: 16,
     padding: 16,
@@ -353,43 +373,18 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  insightsIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+  etlIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     backgroundColor: '#ccfbf1',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  insightsContent: {
-    flex: 1,
-  },
-  insightsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  insightsText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 8,
-  },
-  insightsLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  insightsLinkText: {
-    fontSize: 14,
-    color: '#0f766e',
-    fontWeight: '500',
-  },
-  insightsLinkArrow: {
-    fontSize: 18,
-    color: '#115e59',
-  },
+  etlContent: { flex: 1 },
+  etlTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 4 },
+  etlSubtitle: { fontSize: 14, color: '#6b7280' },
   section: {
     marginBottom: 16,
   },

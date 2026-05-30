@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Header } from '../components/Header';
 import { AccordionSelect, SelectOption } from '../components/AccordionSelect';
+import { FeedbackModal } from '../components/FeedbackModal';
 import { getApiBaseUrl } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -24,6 +25,7 @@ import {
   updateTransacao,
   type UploadableFile,
 } from '../services/resources';
+import { ApiError } from '../services/http';
 import type { ClienteAdvogadoApi, ProcessoResumoApi } from '../types/api';
 import { parseClienteId, parseProcessoIdNum } from '../utils/apiIds';
 import { parseDateBRToIso, parseValorInputToCentavos } from '../utils/money';
@@ -41,6 +43,7 @@ export type TransacaoParaEditar = {
   categoria: string;
   cliente: string;
   processo: string;
+  processoId?: string;
   data: string;
   vencimento: string;
   status: 'pago' | 'pendente';
@@ -87,6 +90,24 @@ const RECORRENCIAS: SelectOption[] = [
 /** Valor do select de processo = lançamento avulso (backend: semProcesso). */
 const PROCESSO_SEM_VINCULO = '__sem_processo__';
 
+function mensagemErroSalvar(error: unknown): { title: string; message: string; variant: 'success' | 'error' } {
+  const raw =
+    error instanceof ApiError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : 'Não foi possível salvar a transação.';
+  if (raw.toLowerCase().includes('não está vinculado ao processo') || raw.toLowerCase().includes('nao esta vinculado ao processo')) {
+    return {
+      title: 'Cliente e processo incompatíveis',
+      message:
+        'O cliente selecionado não está vinculado ao processo escolhido. Altere a seleção ou vincule o cliente ao processo no cadastro.',
+      variant: 'error',
+    };
+  }
+  return { title: 'Não foi possível salvar', message: raw, variant: 'error' };
+}
+
 function maskCurrencyInput(value: string): string {
   const digits = value.replace(/\D/g, '');
   if (!digits) return '';
@@ -130,16 +151,25 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
   const [duracaoMeses, setDuracaoMeses] = useState('');
   const [comprovanteNome, setComprovanteNome] = useState('');
   const [comprovanteArquivo, setComprovanteArquivo] = useState<UploadableFile | null>(null);
+  const [feedback, setFeedback] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    variant: 'success' | 'error';
+  }>({ visible: false, title: '', message: '', variant: 'error' });
 
   const opcoesClientes: SelectOption[] = useMemo(() => {
-    const base: SelectOption[] = [{ value: '', label: 'Nenhum cliente vinculado' }];
+    const base: SelectOption[] = [{ value: '', label: 'Nenhum cliente' }];
     return base.concat(clientesLista.map((c) => ({ value: c.id, label: c.nome || c.email || c.id })));
   }, [clientesLista]);
 
   const opcoesProcessos: SelectOption[] = useMemo(() => {
-    const base: SelectOption[] = [{ value: PROCESSO_SEM_VINCULO, label: 'Sem processo vinculado' }];
+    const base: SelectOption[] =
+      categoria === 'honorarios'
+        ? []
+        : [{ value: PROCESSO_SEM_VINCULO, label: 'Sem processo vinculado' }];
     return base.concat(processosLista.map((p) => ({ value: String(p.id), label: p.titulo })));
-  }, [processosLista]);
+  }, [processosLista, categoria]);
 
   const carregarListas = useCallback(async () => {
     if (!apiOn || !token) return;
@@ -171,6 +201,18 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
     }
   }, [transacaoParaEditar]);
 
+  useEffect(() => {
+    if (!transacaoParaEditar?.processoId || processosLista.length === 0) return;
+    const pid = parseProcessoIdNum(transacaoParaEditar.processoId);
+    if (pid != null) setProcessoIdApi(String(pid));
+  }, [transacaoParaEditar?.processoId, processosLista]);
+
+  useEffect(() => {
+    if (categoria === 'honorarios' && processoIdApi === PROCESSO_SEM_VINCULO) {
+      setProcessoIdApi('');
+    }
+  }, [categoria, processoIdApi]);
+
   const getPreviewRecorrencia = () => {
     const dur = parseInt(duracaoMeses, 10) || 0;
     if (!dur) return '';
@@ -197,6 +239,28 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
     }
     const dataIso = data.trim() ? parseDateBRToIso(data) ?? vencIso : vencIso;
     const semProc = processoIdApi === PROCESSO_SEM_VINCULO;
+
+    if (categoria === 'honorarios') {
+      if (!cliente.trim()) {
+        setFeedback({
+          visible: true,
+          title: 'Campos obrigatórios',
+          message: 'Para honorários, selecione o cliente associado.',
+          variant: 'error',
+        });
+        return;
+      }
+      if (semProc) {
+        setFeedback({
+          visible: true,
+          title: 'Campos obrigatórios',
+          message: 'Para honorários, selecione o processo vinculado.',
+          variant: 'error',
+        });
+        return;
+      }
+    }
+
     const tituloProc = semProc ? '' : processosLista.find((p) => String(p.id) === processoIdApi)?.titulo ?? '';
     const subtitulo =
       [tituloProc, processo.trim()].filter(Boolean).join(' · ') ||
@@ -204,10 +268,18 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
       (tipo === 'despesa' ? 'Despesa' : 'Receita');
 
     if (apiOn && token) {
-      if (!modoEdicao && !semProc) {
+      if (!semProc) {
         const pid = parseProcessoIdNum(processoIdApi);
         if (pid == null) {
-          Alert.alert('Processo', 'Selecione um processo ou a opção “Sem processo vinculado”.');
+          setFeedback({
+            visible: true,
+            title: 'Processo obrigatório',
+            message:
+              categoria === 'honorarios'
+                ? 'Selecione o processo vinculado ao honorário.'
+                : 'Selecione um processo ou a opção “Sem processo vinculado”.',
+            variant: 'error',
+          });
           return;
         }
       }
@@ -264,8 +336,8 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
         setMostrarSucesso(true);
         setTimeout(() => onSuccess(), 1500);
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Não foi possível salvar.';
-        Alert.alert('Erro', msg);
+        const fb = mensagemErroSalvar(e);
+        setFeedback({ visible: true, ...fb });
       } finally {
         setSalvando(false);
       }
@@ -377,25 +449,23 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
           />
         </View>
 
-        {apiOn && !modoEdicao && (
-          <>
-            <View style={styles.selectWrap}>
-              <AccordionSelect
-                label="Processo"
-                required
-                placeholder={listasCarregando ? 'Carregando…' : 'Processo ou avulso'}
-                options={opcoesProcessos}
-                value={processoIdApi}
-                onChange={setProcessoIdApi}
-              />
-            </View>
-          </>
+        {apiOn && (
+          <View style={styles.selectWrap}>
+            <AccordionSelect
+              label="Processo"
+              required={categoria === 'honorarios' || !modoEdicao}
+              placeholder={listasCarregando ? 'Carregando…' : 'Selecione o processo'}
+              options={opcoesProcessos}
+              value={processoIdApi}
+              onChange={setProcessoIdApi}
+            />
+          </View>
         )}
 
         {/* Cliente */}
         <View style={styles.selectWrap}>
           <AccordionSelect
-            label="Cliente"
+            label="Cliente associado"
             placeholder={listasCarregando ? 'Carregando…' : 'Selecione um cliente'}
             options={opcoesClientes}
             value={cliente}
@@ -403,17 +473,21 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
           />
         </View>
 
-        {/* Processo — texto livre (referência / modo offline) */}
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>{apiOn && !modoEdicao ? 'Referência / observação' : 'Processo'}</Text>
-          <TextInput
-            value={processo}
-            onChangeText={setProcesso}
-            placeholder={apiOn && !modoEdicao ? 'Opcional: complemento exibido na lista' : 'Número ou descrição do processo'}
-            placeholderTextColor="#9ca3af"
-            style={styles.fieldInput}
-          />
-        </View>
+        {/* Referência livre — só criação ou sem API */}
+        {(!apiOn || !modoEdicao) && (
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>{apiOn ? 'Referência / observação' : 'Processo'}</Text>
+            <TextInput
+              value={processo}
+              onChangeText={setProcesso}
+              placeholder={
+                apiOn ? 'Opcional: complemento exibido na lista' : 'Número ou descrição do processo'
+              }
+              placeholderTextColor="#9ca3af"
+              style={styles.fieldInput}
+            />
+          </View>
+        )}
 
         {/* Data e Vencimento */}
         <View style={styles.row}>
@@ -529,6 +603,14 @@ export function NovaTransacaoScreen({ onBack, onSuccess, transacaoParaEditar }: 
         </Pressable>
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <FeedbackModal
+        visible={feedback.visible}
+        title={feedback.title}
+        message={feedback.message}
+        variant={feedback.variant}
+        onClose={() => setFeedback((f) => ({ ...f, visible: false }))}
+      />
     </View>
   );
 }
